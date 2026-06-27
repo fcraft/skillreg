@@ -23,7 +23,7 @@ def dashboard_dir() -> Optional[Path]:
         p = Path(env)
         if p.is_dir():
             return p
-    dev = Path(__file__).resolve().parents[2] / "dashboard"
+    dev = Path(__file__).resolve().parents[3] / "dashboard"
     if dev.is_dir():
         return dev
     return None
