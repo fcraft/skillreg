@@ -16,6 +16,8 @@ dependencies = [
     "uvicorn[standard]>=0.27",
     "pydantic>=2.5",
     "click>=8.1",
+    "python-multipart>=0.0.5",
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
@@ -29,6 +31,9 @@ skillreg = "skillreg.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/skillreg"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/skillreg/builtin" = "skillreg/builtin"
 
 [tool.hatch.build.targets.sdist]
 include = ["src/skillreg", "dashboard", "README.md"]

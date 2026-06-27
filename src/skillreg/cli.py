@@ -58,6 +58,32 @@ def dashboard() -> None:
     """Manage the skillreg dashboard."""
 
 
+@cli.group()
+def workspace() -> None:
+    """Manage skillreg workspaces."""
+
+
+@workspace.command("create")
+@click.argument("location", type=click.Path())
+def create_workspace(location: str) -> None:
+    """Create a new workspace at LOCATION.
+
+    Initializes a git repo with skills/ and repos/ directories,
+    writes .gitignore and README, and updates the config pointer.
+    """
+    from .services.importer import create_workspace as _create
+
+    try:
+        result = _create(location)
+        click.echo(f"✓ Workspace created at {result['workspace_path']}")
+        click.echo(f"  git init  : {'✓' if result['has_git'] else '✗'}")
+        click.echo(f"  skills/   : {'✓' if result['has_skills_dir'] else '✗'}")
+        click.echo(f"  repos/    : {'✓' if result['has_repos_dir'] else '✗'}")
+    except ValueError as e:
+        click.echo(f"✗ {e}", err=True)
+        raise SystemExit(1)
+
+
 @dashboard.command("open")
 @click.option("--host", default=DEFAULT_HOST, show_default=True, help="Bind host.")
 @click.option("--port", default=DEFAULT_PORT, show_default=True, type=int, help="Bind port.")

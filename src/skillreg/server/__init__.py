@@ -33,6 +33,17 @@ def create_app() -> FastAPI:
     """Build the FastAPI application with all routes mounted."""
     app = FastAPI(title="skillreg", version=__version__)
 
+    # Inject self-skill on startup if workspace is configured
+    from ..config import load_config
+    from ..services.self_skill import init_self_skill
+
+    cfg = load_config()
+    if cfg.workspace_path:
+        try:
+            init_self_skill(cfg.workspace_path)
+        except Exception:
+            pass  # Non-fatal: dashboard still works without self-skill
+
     # Register route modules
     from .health import router as health_router
 
