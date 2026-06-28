@@ -171,7 +171,11 @@ def test_dashboard_lifecycle_commands_are_exposed(tmp_path, monkeypatch):
     import skillreg.cli as climod
 
     monkeypatch.setattr(climod, "DASHBOARD_PID_FILE", pid_file)
+    monkeypatch.setattr(climod, "DASHBOARD_META_FILE", tmp_path / "dashboard.json")
     monkeypatch.setattr(climod, "DASHBOARD_LOG_FILE", log_file)
+    monkeypatch.setattr(climod, "_find_available_port", lambda host, port: port)
+    monkeypatch.setattr(climod, "_wait_for_dashboard", lambda url, proc: True)
+    monkeypatch.setattr(climod, "_dashboard_health_ok", lambda url: True)
 
     class FakeProc:
         pid = 12345
@@ -189,15 +193,111 @@ def test_dashboard_lifecycle_commands_are_exposed(tmp_path, monkeypatch):
     assert started.exit_code == 0, started.output
     assert "Dashboard 已启动" in started.output
     assert pid_file.read_text(encoding="utf-8") == "12345"
+    assert '"port": 9999' in climod.DASHBOARD_META_FILE.read_text(encoding="utf-8")
 
     status = runner.invoke(cli, ["dashboard", "status"])
     assert status.exit_code == 0, status.output
     assert "Dashboard 运行中" in status.output
+    assert "http://127.0.0.1:9999" in status.output
 
     stopped = runner.invoke(cli, ["dashboard", "stop"])
     assert stopped.exit_code == 0, stopped.output
     assert "Dashboard 已停止" in stopped.output
     assert seen_kills
+
+
+def test_dashboard_start_auto_uses_next_available_port(tmp_path, monkeypatch):
+    _configure(tmp_path, monkeypatch)
+
+    import skillreg.cli as climod
+
+    monkeypatch.setattr(climod, "DASHBOARD_PID_FILE", tmp_path / "dashboard.pid")
+    monkeypatch.setattr(climod, "DASHBOARD_META_FILE", tmp_path / "dashboard.json")
+    monkeypatch.setattr(climod, "DASHBOARD_LOG_FILE", tmp_path / "dashboard.log")
+    monkeypatch.setattr(climod, "_is_port_available", lambda host, port: port == 8788)
+    monkeypatch.setattr(climod, "_wait_for_dashboard", lambda url, proc: True)
+
+    seen_cmd = {}
+
+    class FakeProc:
+        pid = 45678
+
+        def poll(self):
+            return None
+
+    def fake_popen(cmd, **kwargs):
+        seen_cmd["cmd"] = cmd
+        return FakeProc()
+
+    monkeypatch.setattr(climod.subprocess, "Popen", fake_popen)
+
+    result = CliRunner().invoke(cli, ["dashboard", "start", "--port", "8787"])
+
+    assert result.exit_code == 0, result.output
+    assert "http://127.0.0.1:8788" in result.output
+    assert seen_cmd["cmd"][-1] == "8788"
+    assert '"port": 8788' in climod.DASHBOARD_META_FILE.read_text(encoding="utf-8")
+
+
+def test_dashboard_open_starts_background_service_without_blocking(tmp_path, monkeypatch):
+    _configure(tmp_path, monkeypatch)
+
+    import skillreg.cli as climod
+
+    monkeypatch.setattr(climod, "DASHBOARD_PID_FILE", tmp_path / "dashboard.pid")
+    monkeypatch.setattr(climod, "DASHBOARD_META_FILE", tmp_path / "dashboard.json")
+    monkeypatch.setattr(climod, "DASHBOARD_LOG_FILE", tmp_path / "dashboard.log")
+    monkeypatch.setattr(climod, "_find_available_port", lambda host, port: 8899)
+    monkeypatch.setattr(climod, "_wait_for_dashboard", lambda url, proc: True)
+
+    opened = []
+
+    class FakeProc:
+        pid = 24680
+
+        def poll(self):
+            return None
+
+    monkeypatch.setattr(climod.subprocess, "Popen", lambda *args, **kwargs: FakeProc())
+    monkeypatch.setattr(climod.webbrowser, "open", lambda url: opened.append(url))
+
+    result = CliRunner().invoke(cli, ["dashboard", "open", "--port", "8787"])
+
+    assert result.exit_code == 0, result.output
+    assert "Dashboard 已后台启动" in result.output
+    assert "http://127.0.0.1:8899" in result.output
+    assert opened == ["http://127.0.0.1:8899"]
+    assert climod.DASHBOARD_PID_FILE.read_text(encoding="utf-8") == "24680"
+
+
+def test_dashboard_start_ignores_stale_non_dashboard_pid(tmp_path, monkeypatch):
+    _configure(tmp_path, monkeypatch)
+
+    import skillreg.cli as climod
+
+    pid_file = tmp_path / "dashboard.pid"
+    pid_file.write_text("777", encoding="utf-8")
+    monkeypatch.setattr(climod, "DASHBOARD_PID_FILE", pid_file)
+    monkeypatch.setattr(climod, "DASHBOARD_META_FILE", tmp_path / "dashboard.json")
+    monkeypatch.setattr(climod, "DASHBOARD_LOG_FILE", tmp_path / "dashboard.log")
+    monkeypatch.setattr(climod, "_find_available_port", lambda host, port: port)
+    monkeypatch.setattr(climod, "_wait_for_dashboard", lambda url, proc: True)
+    monkeypatch.setattr(climod, "_pid_looks_like_dashboard", lambda pid: False)
+
+    class FakeProc:
+        pid = 888
+
+        def poll(self):
+            return None
+
+    monkeypatch.setattr(climod.os, "kill", lambda pid, sig: None)
+    monkeypatch.setattr(climod.subprocess, "Popen", lambda *args, **kwargs: FakeProc())
+
+    result = CliRunner().invoke(cli, ["dashboard", "start", "--port", "8787"])
+
+    assert result.exit_code == 0, result.output
+    assert "Dashboard 已启动" in result.output
+    assert pid_file.read_text(encoding="utf-8") == "888"
 
 
 def test_help_short_option_is_available_at_all_levels():

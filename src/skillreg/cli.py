@@ -7,25 +7,29 @@ points at the skill workspace.
 
 from __future__ import annotations
 
-import threading
 import time
 import webbrowser
 import os
 import signal
 import subprocess
+import json
+import socket
+import urllib.request
+from contextlib import closing
 from pathlib import Path
 from typing import Optional, Sequence
 
 import click
-import uvicorn
-
 from . import __version__
 from .config import CONFIG_FILE, load_config, save_config
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8787
 DASHBOARD_PID_FILE = Path.home() / ".skillreg" / "dashboard.pid"
+DASHBOARD_META_FILE = Path.home() / ".skillreg" / "dashboard.json"
 DASHBOARD_LOG_FILE = Path.home() / ".skillreg" / "dashboard.log"
+PORT_PROBE_LIMIT = 50
+STARTUP_TIMEOUT_SECONDS = 10.0
 CONTEXT_SETTINGS = {
     "help_option_names": ["-h", "--help"],
 }
@@ -560,23 +564,17 @@ def list_submodules() -> None:
     help="只启动服务，不打开浏览器。",
 )
 def open_dashboard(host: str, port: int, no_browser: bool) -> None:
-    """启动 FastAPI 后端并打开 dashboard。"""
-    url = f"http://{host}:{port}"
+    """后台启动 FastAPI dashboard 并打开浏览器。"""
+    result = _ensure_dashboard_started(host, port)
+    if result["already_running"]:
+        click.echo(f"✓ Dashboard 已在运行 (PID: {result['pid']})")
+    else:
+        click.echo(f"✓ Dashboard 已后台启动 (PID: {result['pid']})")
+    click.echo(f"  url : {result['url']}")
+    click.echo(f"  日志 : {DASHBOARD_LOG_FILE}")
     if not no_browser:
-        # Delay browser launch so uvicorn has a moment to bind the socket.
-        threading.Thread(
-            target=lambda: (time.sleep(1.0), webbrowser.open(url)),
-            daemon=True,
-        ).start()
-    click.echo(f"skillreg 后端启动中: {url}")
-    _echo_workspace_summary(heading="dashboard 启动时的 skillreg 上下文")
-    click.echo("  按 Ctrl+C 停止。")
-    uvicorn.run(
-        "skillreg.server:app",
-        host=host,
-        port=port,
-        log_config=None,
-    )
+        webbrowser.open(result["url"])
+    _echo_workspace_summary(heading="dashboard open 后的 skillreg 上下文")
 
 
 @dashboard.command("start")
@@ -584,33 +582,12 @@ def open_dashboard(host: str, port: int, no_browser: bool) -> None:
 @click.option("--port", default=DEFAULT_PORT, show_default=True, type=int, help="绑定端口。")
 def start_dashboard(host: str, port: int) -> None:
     """在后台启动 dashboard 后端。"""
-    running_pid = _dashboard_running_pid()
-    if running_pid:
-        click.echo(f"✓ Dashboard 已在运行 (PID: {running_pid})")
-        click.echo(f"  url : http://{host}:{port}")
-        return
-
-    DASHBOARD_PID_FILE.parent.mkdir(parents=True, exist_ok=True)
-    log = DASHBOARD_LOG_FILE.open("w", encoding="utf-8")
-    proc = subprocess.Popen(
-        [
-            "python",
-            "-m",
-            "uvicorn",
-            "skillreg.server:app",
-            "--host",
-            host,
-            "--port",
-            str(port),
-        ],
-        stdout=log,
-        stderr=log,
-        start_new_session=True,
-    )
-    log.close()
-    DASHBOARD_PID_FILE.write_text(str(proc.pid), encoding="utf-8")
-    click.echo(f"✓ Dashboard 已启动 (PID: {proc.pid})")
-    click.echo(f"  url : http://{host}:{port}")
+    result = _ensure_dashboard_started(host, port)
+    if result["already_running"]:
+        click.echo(f"✓ Dashboard 已在运行 (PID: {result['pid']})")
+    else:
+        click.echo(f"✓ Dashboard 已启动 (PID: {result['pid']})")
+    click.echo(f"  url : {result['url']}")
     click.echo(f"  日志 : {DASHBOARD_LOG_FILE}")
     _echo_workspace_summary(heading="dashboard 启动后的 skillreg 上下文")
 
@@ -620,8 +597,12 @@ def status_dashboard() -> None:
     """查看 dashboard 后台进程状态。"""
     running_pid = _dashboard_running_pid()
     if running_pid:
+        meta = _read_dashboard_meta()
         click.echo(f"Dashboard 运行中 (PID: {running_pid})")
+        if meta.get("url"):
+            click.echo(f"  url      : {meta['url']}")
         click.echo(f"  PID 文件 : {DASHBOARD_PID_FILE}")
+        click.echo(f"  元信息   : {DASHBOARD_META_FILE}")
         click.echo(f"  日志文件 : {DASHBOARD_LOG_FILE}")
     else:
         click.echo("Dashboard 未运行")
@@ -641,6 +622,7 @@ def stop_dashboard() -> None:
         click.echo(f"✗ 停止 Dashboard 失败: {e}", err=True)
         raise SystemExit(1)
     DASHBOARD_PID_FILE.unlink(missing_ok=True)
+    DASHBOARD_META_FILE.unlink(missing_ok=True)
     click.echo(f"✓ Dashboard 已停止 (PID: {running_pid})")
     _echo_workspace_summary(heading="dashboard 停止后的 skillreg 上下文")
 
@@ -664,10 +646,145 @@ def _dashboard_running_pid() -> int | None:
     try:
         pid = int(DASHBOARD_PID_FILE.read_text(encoding="utf-8").strip())
         os.kill(pid, 0)
+        meta = _read_dashboard_meta()
+        if meta.get("url"):
+            return pid if _dashboard_health_ok(str(meta["url"])) else _clear_dashboard_state()
+        if not _pid_looks_like_dashboard(pid):
+            return _clear_dashboard_state()
         return pid
     except (ValueError, OSError):
+        return _clear_dashboard_state()
+
+
+def _ensure_dashboard_started(host: str, requested_port: int) -> dict:
+    running_pid = _dashboard_running_pid()
+    if running_pid:
+        meta = _read_dashboard_meta()
+        url = meta.get("url") or f"http://{host}:{meta.get('port') or requested_port}"
+        return {
+            "already_running": True,
+            "pid": running_pid,
+            "host": meta.get("host") or host,
+            "port": int(meta.get("port") or requested_port),
+            "url": url,
+        }
+
+    port = _find_available_port(host, requested_port)
+    url = f"http://{host}:{port}"
+    DASHBOARD_PID_FILE.parent.mkdir(parents=True, exist_ok=True)
+    log = DASHBOARD_LOG_FILE.open("w", encoding="utf-8")
+    proc = subprocess.Popen(
+        [
+            "python",
+            "-m",
+            "uvicorn",
+            "skillreg.server:app",
+            "--host",
+            host,
+            "--port",
+            str(port),
+        ],
+        stdout=log,
+        stderr=log,
+        start_new_session=True,
+    )
+    log.close()
+    DASHBOARD_PID_FILE.write_text(str(proc.pid), encoding="utf-8")
+    _write_dashboard_meta({"pid": proc.pid, "host": host, "port": port, "url": url})
+
+    if not _wait_for_dashboard(url, proc):
         DASHBOARD_PID_FILE.unlink(missing_ok=True)
-        return None
+        DASHBOARD_META_FILE.unlink(missing_ok=True)
+        raise click.ClickException(
+            f"Dashboard 启动失败，请查看日志: {DASHBOARD_LOG_FILE}",
+        )
+
+    return {
+        "already_running": False,
+        "pid": proc.pid,
+        "host": host,
+        "port": port,
+        "url": url,
+    }
+
+
+def _find_available_port(host: str, start_port: int) -> int:
+    for port in range(start_port, start_port + PORT_PROBE_LIMIT):
+        if _is_port_available(host, port):
+            return port
+    raise click.ClickException(
+        f"无法找到可用端口: {start_port}-{start_port + PORT_PROBE_LIMIT - 1}",
+    )
+
+
+def _is_port_available(host: str, port: int) -> bool:
+    probe_host = "127.0.0.1" if host in {"0.0.0.0", "::"} else host
+    try:
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sock.bind((probe_host, port))
+            return True
+    except OSError:
+        return False
+
+
+def _wait_for_dashboard(url: str, proc: subprocess.Popen, timeout: float = STARTUP_TIMEOUT_SECONDS) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if proc.poll() is not None:
+            return False
+        if _dashboard_health_ok(url):
+            return True
+        time.sleep(0.2)
+    return False
+
+
+def _dashboard_health_ok(url: str) -> bool:
+    health_url = f"{url.rstrip('/')}/health"
+    try:
+        with urllib.request.urlopen(health_url, timeout=0.5) as response:
+            return response.status < 500
+    except OSError:
+        return False
+
+
+def _pid_looks_like_dashboard(pid: int) -> bool:
+    try:
+        result = subprocess.run(
+            ["ps", "-p", str(pid), "-o", "command="],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    command = result.stdout.strip()
+    return "uvicorn" in command and "skillreg.server:app" in command
+
+
+def _clear_dashboard_state() -> None:
+    DASHBOARD_PID_FILE.unlink(missing_ok=True)
+    DASHBOARD_META_FILE.unlink(missing_ok=True)
+    return None
+
+
+def _read_dashboard_meta() -> dict:
+    if not DASHBOARD_META_FILE.exists():
+        return {}
+    try:
+        data = json.loads(DASHBOARD_META_FILE.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def _write_dashboard_meta(meta: dict) -> None:
+    DASHBOARD_META_FILE.parent.mkdir(parents=True, exist_ok=True)
+    DASHBOARD_META_FILE.write_text(
+        json.dumps(meta, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
 
 
 if __name__ == "__main__":
