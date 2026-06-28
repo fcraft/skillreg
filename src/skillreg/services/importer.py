@@ -7,6 +7,7 @@ Handles three import sources (zip / git-clone / local directory) × two modes
 from __future__ import annotations
 
 import io
+import os
 import re
 import shutil
 import subprocess
@@ -18,6 +19,13 @@ from pathlib import Path
 from ..config import load_config
 
 # ── constants ──────────────────────────────────────────────────────────────
+
+GIT_AUTHOR_ENV = {
+    "GIT_AUTHOR_NAME": "skillreg",
+    "GIT_AUTHOR_EMAIL": "skillreg@example.invalid",
+    "GIT_COMMITTER_NAME": "skillreg",
+    "GIT_COMMITTER_EMAIL": "skillreg@example.invalid",
+}
 
 _SKILL_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 
@@ -79,6 +87,7 @@ def create_workspace(location: str) -> dict:
 
     # git init
     try:
+        git_env = {**os.environ, **GIT_AUTHOR_ENV}
         subprocess.run(
             ["git", "init"], cwd=str(ws), capture_output=True, text=True, check=True,
         )
@@ -87,7 +96,7 @@ def create_workspace(location: str) -> dict:
         )
         subprocess.run(
             ["git", "commit", "-m", "chore: init skillreg workspace"],
-            cwd=str(ws), capture_output=True, text=True, check=True,
+            cwd=str(ws), capture_output=True, text=True, check=True, env=git_env,
         )
     except subprocess.CalledProcessError as e:
         raise ValueError(f"git init failed: {e.stderr.strip()}")

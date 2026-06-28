@@ -195,6 +195,6 @@ class TestCleanup:
 
     def test_cleanup_rejects_non_tmpdir(self, tmp_path):
         # Use a path clearly outside the temp directory
-        outside = Path("/tmp/skillreg-test-outside")
+        outside = Path.cwd() / "skillreg-test-outside"
         with pytest.raises(ValueError, match="not in tmpdir"):
             importer.cleanup_temp(str(outside))
