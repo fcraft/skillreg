@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      - name: Check version and tag
+        run: uv run python scripts/check_version.py --require-tag
+
+      - name: Test
+        run: uv run pytest -q
+
+      - name: Build package
+        run: uv run --with build python -m build
+
+      - name: Verify built package version
+        run: |
+          uv run python - <<'PY'
+          import glob
+          import os
+          import tomllib
+          import zipfile
+
+          with open("pyproject.toml", "rb") as fh:
+              expected = tomllib.load(fh)["project"]["version"]
+
+          wheels = glob.glob("dist/*.whl")
+          if len(wheels) != 1:
+              raise SystemExit(f"expected one wheel, found {wheels}")
+
+          with zipfile.ZipFile(wheels[0]) as zf:
+              metadata_name = next(name for name in zf.namelist() if name.endswith(".dist-info/METADATA"))
+              metadata = zf.read(metadata_name).decode("utf-8")
+
+          actual = None
+          for line in metadata.splitlines():
+              if line.startswith("Version: "):
+                  actual = line.removeprefix("Version: ").strip()
+                  break
+
+          if actual != expected:
+              raise SystemExit(f"built package version mismatch: expected {expected}, got {actual}")
+
+          print(f"built package version ok: {actual}")
+          print("artifacts:")
+          for path in sorted(glob.glob("dist/*")):
+              print(f"  {path} ({os.path.getsize(path)} bytes)")
+          PY
+
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: skillreg-dist-${{ github.ref_name }}
+          path: dist/*
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

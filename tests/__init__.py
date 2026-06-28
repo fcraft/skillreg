@@ -1,0 +1,1 @@
+"""skillreg test suite."""

@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+*.egg
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# Test / coverage caches
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Node (dashboard frontend)
+node_modules/
+dashboard/node_modules/
+dashboard/dist/
+dashboard/test-results/
+dashboard/playwright-report/
+
+# skillreg workspace reserved area (self-skill injection target, gitignored)
+.skillreg/builtin/
+
+# Local code-index artifacts
+.codebase-memory/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
