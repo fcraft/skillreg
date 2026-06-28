@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "skillreg"
-version = "1.2.4"
+version = "1.2.5"
 description = "skillreg — skill registry control plane (CLI + FastAPI backend)"
 readme = "README.md"
 requires-python = ">=3.9"
