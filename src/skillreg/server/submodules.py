@@ -199,7 +199,7 @@ def submodule_diff(body: SubmodulePathBody):
 
 @router.post("/sync")
 def sync_submodule(body: SyncBody):
-    """Run a best-effort submodule sync update flow."""
+    """Run a submodule sync flow and update the parent gitlink pointer."""
     ws = _ws()
     path = body.path
     cwd = str(ws / path)
@@ -210,18 +210,64 @@ def sync_submodule(body: SyncBody):
     try:
         _run("git fetch origin", cwd)
         steps.append("fetch")
+
+        if _is_head_detached(ws, path):
+            _run(f"git checkout {branch}", cwd)
+            steps.append("checkout")
+
+        porcelain = _run("git status --porcelain", cwd)
+        tracked = [p for p in _parse_porcelain(porcelain) if not p["untracked"]]
+        if tracked:
+            _run("git add -u", cwd)
+            msg = body.commitMessage.strip() if body.commitMessage else "chore: sync changes"
+            _run(f"git commit -m {_shell_quote(msg)}", cwd)
+            steps.append("commit")
+
+        ahead, behind = _ahead_behind(cwd, branch)
+        if ahead > 0 and behind > 0:
+            _run(f"git rebase origin/{branch}", cwd, timeout=120)
+            steps.append("rebase")
+        elif behind > 0:
+            _run(f"git pull --ff-only origin {branch}", cwd, timeout=120)
+            steps.append("pull")
+
+        ahead, behind = _ahead_behind(cwd, branch)
+        if ahead > 0:
+            _run(f"git push origin HEAD:{branch}", cwd, timeout=120)
+            steps.append("push")
+        if behind > 0:
+            raise RuntimeError(
+                f"Submodule still behind origin/{branch} after sync: {behind} commit(s)"
+            )
+
+        idx = _get_submodule_index_status(ws, path)
+        parent_pointer_staged = False
+        parent_pointer_committed = False
+        if idx["indexBehind"] > 0 or idx["indexAhead"] > 0 or idx["indexDirty"]:
+            _run(f"git add -- {path}", str(ws))
+            steps.append("stage-parent-pointer")
+            parent_pointer_staged = True
+            pointer_status = _run(f"git status --porcelain -- {path}", str(ws))
+            if pointer_status:
+                _run(
+                    "git commit "
+                    f"-m {_shell_quote(f'dashboard: sync {path} submodule')} "
+                    f"-- {path}",
+                    str(ws),
+                )
+                steps.append("commit-parent-pointer")
+                parent_pointer_committed = True
     except RuntimeError as e:
         raise HTTPException(400, str(e))
-
-    if _is_head_detached(ws, path):
-        _run(f"git checkout {branch}", cwd)
-        steps.append("checkout")
 
     return {
         "success": True,
         "path": path,
         "branch": branch,
         "steps": steps,
+        "parentPointerStaged": parent_pointer_staged,
+        "parentPointerCommitted": parent_pointer_committed,
+        "status": get_submodule_status(ws, path, branch),
         "commitMessage": body.commitMessage,
     }
 
@@ -302,3 +348,17 @@ def _parse_porcelain(porcelain: str) -> list[dict]:
             if m:
                 results.append({"raw": (m.group(1) or " ") + m.group(2), "path": m.group(3), "untracked": False})
     return results
+
+
+def _ahead_behind(cwd: str, branch: str) -> tuple[int, int]:
+    counts = _run(f"git rev-list --left-right --count HEAD...origin/{branch}", cwd)
+    parts = counts.split()
+    ahead = int(parts[0]) if parts else 0
+    behind = int(parts[1]) if len(parts) > 1 else 0
+    return ahead, behind
+
+
+def _shell_quote(value: str) -> str:
+    import shlex
+
+    return shlex.quote(value)

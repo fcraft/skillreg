@@ -6,12 +6,21 @@ from pathlib import Path
 
 import skillreg.config as cfgmod
 from skillreg.server import create_app
+from skillreg.server import health as health_api
 from skillreg.server import submodules as submodules_api
 
 
 def _client():
     from fastapi.testclient import TestClient
     return TestClient(create_app())
+
+
+def _use_temp_config(tmp_path, monkeypatch):
+    cfg_path = tmp_path / "config.json"
+    monkeypatch.setattr(cfgmod, "CONFIG_FILE", cfg_path)
+    monkeypatch.setattr(cfgmod, "CONFIG_DIR", cfg_path.parent)
+    monkeypatch.setattr(health_api, "CONFIG_FILE", cfg_path)
+    return cfg_path
 
 
 def _make_workspace(tmp_path, monkeypatch):
@@ -25,9 +34,7 @@ def _make_workspace(tmp_path, monkeypatch):
         encoding="utf-8",
     )
 
-    cfg_path = tmp_path / "config.json"
-    monkeypatch.setattr(cfgmod, "CONFIG_FILE", cfg_path)
-    monkeypatch.setattr(cfgmod, "CONFIG_DIR", cfg_path.parent)
+    _use_temp_config(tmp_path, monkeypatch)
     cfg = cfgmod.load_config()
     cfg.workspace_path = str(tmp_path)
     cfgmod.save_config(cfg)
@@ -90,9 +97,7 @@ def test_skills_stats(tmp_path, monkeypatch):
 
 def test_skills_no_workspace(tmp_path, monkeypatch):
     """Without workspace, skills endpoint returns 400."""
-    cfg_path = tmp_path / "config.json"
-    monkeypatch.setattr(cfgmod, "CONFIG_FILE", cfg_path)
-    monkeypatch.setattr(cfgmod, "CONFIG_DIR", cfg_path.parent)
+    _use_temp_config(tmp_path, monkeypatch)
     cfg = cfgmod.load_config()
     # workspace_path remains None
     cfgmod.save_config(cfg)
@@ -104,9 +109,7 @@ def test_skills_no_workspace(tmp_path, monkeypatch):
 
 def test_sync_targets(tmp_path, monkeypatch):
     """GET /api/sync/targets returns target list."""
-    cfg_path = tmp_path / "config.json"
-    monkeypatch.setattr(cfgmod, "CONFIG_FILE", cfg_path)
-    monkeypatch.setattr(cfgmod, "CONFIG_DIR", cfg_path.parent)
+    _use_temp_config(tmp_path, monkeypatch)
     client = _client()
     r = client.get("/api/sync/targets")
     assert r.status_code == 200
@@ -171,11 +174,64 @@ def test_submodule_refresh_all_without_path(tmp_path, monkeypatch):
     assert all(item["error"] is None for item in data["results"])
 
 
+def test_submodule_sync_pulls_remote_and_stages_parent_pointer(tmp_path, monkeypatch):
+    """POST /api/submodules/sync pulls a behind submodule and stages the gitlink."""
+    _make_workspace(tmp_path, monkeypatch)
+    client = _client()
+
+    subdir = tmp_path / "repos" / "demo"
+    subdir.mkdir(parents=True)
+    calls = []
+
+    monkeypatch.setattr(submodules_api, "_get_submodule_branch", lambda ws, path: "main")
+    monkeypatch.setattr(submodules_api, "_is_head_detached", lambda ws, path: False)
+    monkeypatch.setattr(submodules_api, "_get_submodule_index_status", lambda ws, path: {
+        "indexAhead": 0,
+        "indexBehind": 1,
+        "indexDirty": False,
+    })
+    monkeypatch.setattr(submodules_api, "get_submodule_status", lambda ws, path, branch: {
+        "syncState": "synced",
+        "branch": branch,
+    })
+
+    def fake_run(cmd, cwd, timeout=30):
+        calls.append((cmd, cwd, timeout))
+        if cmd == "git status --porcelain -- repos/demo":
+            return "M  repos/demo"
+        if cmd.startswith("git status"):
+            return ""
+        if cmd.startswith("git rev-list"):
+            return "0\t2" if not any(c[0].startswith("git pull") for c in calls) else "0\t0"
+        return ""
+
+    monkeypatch.setattr(submodules_api, "_run", fake_run)
+
+    r = client.post("/api/submodules/sync", json={"path": "repos/demo"})
+
+    assert r.status_code == 200
+    data = r.json()
+    assert data["success"] is True
+    assert data["steps"] == [
+        "fetch",
+        "pull",
+        "stage-parent-pointer",
+        "commit-parent-pointer",
+    ]
+    assert data["parentPointerStaged"] is True
+    assert data["parentPointerCommitted"] is True
+    assert ("git pull --ff-only origin main", str(subdir), 120) in calls
+    assert ("git add -- repos/demo", str(tmp_path), 30) in calls
+    assert (
+        "git commit -m 'dashboard: sync repos/demo submodule' -- repos/demo",
+        str(tmp_path),
+        30,
+    ) in calls
+
+
 def test_workspace_current_and_switch(tmp_path, monkeypatch):
     """Workspace current/switch endpoints update config pointer."""
-    cfg_path = tmp_path / "config.json"
-    monkeypatch.setattr(cfgmod, "CONFIG_FILE", cfg_path)
-    monkeypatch.setattr(cfgmod, "CONFIG_DIR", cfg_path.parent)
+    _use_temp_config(tmp_path, monkeypatch)
 
     first_ws = tmp_path / "first-workspace"
     first_ws.mkdir()

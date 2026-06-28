@@ -286,6 +286,14 @@ def _get_remote_url(workspace: Path, submodule_path: str) -> str | None:
 
 def _get_submodule_index_ref(workspace: Path, submodule_path: str) -> str | None:
     try:
+        output = _run(f"git ls-files -s -- {submodule_path}", cwd=str(workspace))
+        m = re.search(r"^160000\s+([0-9a-f]+)\s+\d+\s+", output)
+        if m:
+            return m.group(1)
+    except RuntimeError:
+        pass
+
+    try:
         output = _run(f"git ls-tree HEAD {submodule_path}", cwd=str(workspace))
         m = re.search(r"^160000\s+commit\s+([0-9a-f]+)", output)
         return m.group(1) if m else None

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import skillreg.services.skill_registry as registry
 from skillreg.services.skill_registry import get_all, get_skill
 
 
@@ -100,3 +101,29 @@ def test_get_all_multiple_skills(tmp_path):
     assert len(data["skills"]) == 3
     names = {s["name"] for s in data["skills"]}
     assert names == {"skill-a", "skill-b", "skill-c"}
+
+
+def test_submodule_index_status_prefers_staged_gitlink(tmp_path, monkeypatch):
+    """A staged parent gitlink should be treated as the current pointer."""
+    submodule = tmp_path / "repos" / "demo"
+    submodule.mkdir(parents=True)
+
+    def fake_run(cmd, cwd):
+        if cmd == "git ls-files -s -- repos/demo":
+            return "160000 feedbeeffeedbeeffeedbeeffeedbeeffeedbeef 0\trepos/demo"
+        if cmd == "git status --porcelain repos/demo":
+            return "M  repos/demo"
+        if cmd == "git rev-parse --short HEAD":
+            return "feedbee"
+        raise RuntimeError(f"unexpected command: {cmd}")
+
+    monkeypatch.setattr(registry, "_run", fake_run)
+
+    status = registry._get_submodule_index_status(tmp_path, "repos/demo")
+
+    assert status == {
+        "indexRef": "feedbeeffeedbeeffeedbeeffeedbeeffeedbeef",
+        "indexAhead": 0,
+        "indexBehind": 0,
+        "indexDirty": True,
+    }
