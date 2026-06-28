@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ..config import load_config
+from ..services import importer
 
 router = APIRouter(prefix="/api/registry", tags=["registry"])
 
@@ -22,29 +23,35 @@ class ConvertBody(BaseModel):
 @router.post("/register")
 def register_skill(body: RegisterBody):
     """Register an external skill into the workspace.
-
-    Placeholder for now; full implementation in Issue #4.
     """
     cfg = load_config()
     if not cfg.workspace_path:
         raise HTTPException(400, "Workspace not configured")
-    # TODO: Implement registerSkill in Issue #4
-    return {
-        "success": False,
-        "error": "Skill registration not yet implemented (coming in Issue #4)",
-    }
+    try:
+        result = importer.import_skill(body.sourcePath, force=body.force)
+        return {"success": True, "data": result}
+    except ValueError as exc:
+        detail = str(exc)
+        status = 409 if "already exists" in detail else 400
+        raise HTTPException(status, detail) from exc
 
 
 @router.post("/convert")
 def convert_skill(body: ConvertBody):
     """Convert a file skill to a CLI repo.
-
-    Placeholder for now.
     """
-    return {
-        "success": False,
-        "error": "Skill conversion not yet implemented",
-    }
+    cfg = load_config()
+    if not cfg.workspace_path:
+        raise HTTPException(400, "Workspace not configured")
+    try:
+        result = importer.convert_skill(body.name)
+        return {"success": True, "data": result}
+    except FileNotFoundError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except FileExistsError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 @router.get("/list")

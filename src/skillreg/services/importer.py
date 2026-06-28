@@ -328,6 +328,136 @@ def execute_update(source_path: str, skill_name: str, temp_path: str | None = No
     return import_skill(source_path, temp_path, rename_to=skill_name, force=True)
 
 
+def convert_skill(name: str) -> dict:
+    """Convert ``skills/<name>`` into ``repos/<name>-cli/skill/<name>``."""
+    if not name:
+        raise ValueError("missing name parameter")
+    if not _is_valid_skill_name(name):
+        raise ValueError(
+            f"invalid skill name '{name}': must match [A-Za-z0-9][A-Za-z0-9_-]*"
+        )
+
+    ws = _resolve_workspace()
+    source_skill_dir = ws / "skills" / name
+    if not source_skill_dir.exists():
+        raise FileNotFoundError(f"skill '{name}' not found at skills/{name}")
+
+    skill_md = source_skill_dir / "SKILL.md"
+    if not skill_md.exists():
+        raise ValueError(f"no SKILL.md found for skill '{name}'")
+
+    repo_name = f"{name}-cli"
+    target_repo_dir = ws / "repos" / repo_name
+    if target_repo_dir.exists():
+        raise FileExistsError(f"repo already exists at repos/{repo_name}")
+
+    from .skill_registry import _parse_frontmatter
+
+    frontmatter = _parse_frontmatter(skill_md) or {}
+    version = str(frontmatter.get("version") or "0.1.0")
+    description = str(frontmatter.get("description") or f"{name} skill")
+
+    src_dir = target_repo_dir / "src" / f"{name.replace('-', '_')}_cli"
+    src_dir.mkdir(parents=True, exist_ok=True)
+
+    (target_repo_dir / "pyproject.toml").write_text(
+        "[build-system]\n"
+        'requires = ["hatchling"]\n'
+        'build-backend = "hatchling.build"\n'
+        "\n"
+        "[project]\n"
+        f'name = "{repo_name}"\n'
+        f'version = "{version}"\n'
+        f'description = "{description}"\n'
+        'requires-python = ">=3.8"\n'
+        "\n"
+        "[project.scripts]\n"
+        f'{name} = "{name.replace("-", "_")}_cli.main:main"\n',
+        encoding="utf-8",
+    )
+
+    (target_repo_dir / ".gitignore").write_text(
+        "__pycache__/\n"
+        "*.egg-info/\n"
+        "dist/\n"
+        "build/\n"
+        "*.pyc\n"
+        "*.pyo\n"
+        ".DS_Store\n",
+        encoding="utf-8",
+    )
+
+    (src_dir / "__init__.py").write_text(
+        f'__version__ = "{version}"\n',
+        encoding="utf-8",
+    )
+    module_name = f"{name.replace('-', '_')}_cli"
+    (src_dir / "main.py").write_text(
+        f'"""CLI entry point for {name}."""\n'
+        "import argparse\n"
+        "import sys\n"
+        "\n"
+        "\n"
+        "def main():\n"
+        "    parser = argparse.ArgumentParser(\n"
+        f'        prog="{name}",\n'
+        f'        description="{description}",\n'
+        "    )\n"
+        "    parser.add_argument(\n"
+        '        "--version",\n'
+        '        action="version",\n'
+        f'        version=f"%(prog)s {{__import__(\"{module_name}\").__version__}}",\n'
+        "    )\n"
+        "    parser.parse_args()\n"
+        f'    print("TODO: implement {name} CLI", file=sys.stderr)\n'
+        "    return 1\n"
+        "\n"
+        "\n"
+        'if __name__ == "__main__":\n'
+        "    sys.exit(main())\n",
+        encoding="utf-8",
+    )
+
+    skill_target_dir = target_repo_dir / "skill" / name
+    skill_target_dir.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        source_skill_dir.rename(skill_target_dir)
+    except OSError:
+        _copy_skill_files(source_skill_dir, skill_target_dir)
+        shutil.rmtree(source_skill_dir)
+
+    try:
+        subprocess.run(
+            ["git", "init"],
+            cwd=str(target_repo_dir),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "add", "-A"],
+            cwd=str(target_repo_dir),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-m", f"init: {name} skill (converted from skills/)"],
+            cwd=str(target_repo_dir),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError:
+        pass
+
+    return {
+        "name": name,
+        "repoPath": f"repos/{repo_name}",
+        "skillPath": f"repos/{repo_name}/skill/{name}",
+    }
+
+
 # ── git import ──────────────────────────────────────────────────────────
 
 
