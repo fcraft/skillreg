@@ -1,6 +1,6 @@
 ---
 name: skillreg-skill
-description: 当用户要注册、导入、转换或同步本地 skill 时使用。用户可能在任意项目里对 agent 说“注册这个 skill”；优先把当前项目或用户给定路径中 agent/用户写好的 SKILL.md 注册到当前 skillreg workspace，而不是要求用户理解产品仓、workspace 仓等实现细节。
+description: 当用户需要使用 skillreg 管理本地 AI Agent Skills 时使用，包括创建或切换 workspace、注册包含 SKILL.md 的本地目录、转换 skill、配置同步目标、执行同步、查看差异、打开 dashboard 或排查 skillreg 相关问题。
 metadata:
   version: "1.2.0"
 ---
