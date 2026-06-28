@@ -32,16 +32,24 @@ CONTEXT_SETTINGS = {
 
 
 class ChineseHelpMixin:
+    @staticmethod
+    def _show_help(ctx: click.Context, _param: click.Parameter, value: bool) -> None:
+        if value and not ctx.resilient_parsing:
+            click.echo(ctx.get_help(), color=ctx.color)
+            ctx.exit()
+
     def get_help_option(self, ctx: click.Context) -> click.Option | None:
         help_options = self.get_help_option_names(ctx)
         if not help_options or not self.add_help_option:
             return None
         if self._help_option is None:
-            from click.decorators import HelpOption
-
-            self._help_option = HelpOption(
+            self._help_option = click.Option(
                 help_options,
+                is_flag=True,
+                expose_value=False,
+                is_eager=True,
                 help="显示帮助信息并退出。",
+                callback=self._show_help,
             )
         return self._help_option
 
