@@ -198,3 +198,21 @@ def test_dashboard_lifecycle_commands_are_exposed(tmp_path, monkeypatch):
     assert stopped.exit_code == 0, stopped.output
     assert "Dashboard stopped" in stopped.output
     assert seen_kills
+
+
+def test_help_short_option_is_available_at_all_levels():
+    runner = CliRunner()
+
+    top = runner.invoke(cli, ["-h"])
+    assert top.exit_code == 0, top.output
+    assert "Usage: cli" in top.output
+
+    group = runner.invoke(cli, ["sync", "-h"])
+    assert group.exit_code == 0, group.output
+    assert "Commands:" in group.output
+    assert "execute" in group.output
+
+    command = runner.invoke(cli, ["sync", "execute", "-h"])
+    assert command.exit_code == 0, command.output
+    assert "--target" in command.output
+    assert "-h, --help" in command.output

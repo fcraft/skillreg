@@ -26,6 +26,28 @@ DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8787
 DASHBOARD_PID_FILE = Path.home() / ".skillreg" / "dashboard.pid"
 DASHBOARD_LOG_FILE = Path.home() / ".skillreg" / "dashboard.log"
+CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
+
+
+class SkillregCommand(click.Command):
+    """Click command that supports both -h and --help."""
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("context_settings", CONTEXT_SETTINGS)
+        super().__init__(*args, **kwargs)
+
+
+class SkillregGroup(click.Group):
+    """Click group that creates skillreg commands by default."""
+
+    command_class = SkillregCommand
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("context_settings", CONTEXT_SETTINGS)
+        super().__init__(*args, **kwargs)
+
+
+SkillregGroup.group_class = SkillregGroup
 
 
 def _format_csv(values: Sequence[str]) -> str:
@@ -41,7 +63,7 @@ def _echo_workspace_summary(*, heading: str = "skillreg context") -> None:
     click.echo(f"  sync targets      : {_format_csv(cfg.targets)}")
 
 
-@click.group()
+@click.group(cls=SkillregGroup)
 @click.version_option(version=__version__, package_name="skillreg")
 def cli() -> None:
     """skillreg — skill registry control plane."""
