@@ -7,6 +7,7 @@ from pathlib import Path
 import skillreg.config as cfgmod
 from skillreg.server import create_app
 from skillreg.server import health as health_api
+from skillreg.server import import_ as import_api
 from skillreg.server import submodules as submodules_api
 
 
@@ -31,6 +32,12 @@ def _make_workspace(tmp_path, monkeypatch):
     skill_dir.mkdir(parents=True)
     (skill_dir / "SKILL.md").write_text(
         "---\nname: my-skill\ndescription: Test\n---\n\n# my-skill\n",
+        encoding="utf-8",
+    )
+    other_skill_dir = skills_dir / "other-skill"
+    other_skill_dir.mkdir(parents=True)
+    (other_skill_dir / "SKILL.md").write_text(
+        "---\nname: other-skill\ndescription: Other\n---\n\n# other-skill\n",
         encoding="utf-8",
     )
 
@@ -114,6 +121,67 @@ def test_sync_targets(tmp_path, monkeypatch):
     r = client.get("/api/sync/targets")
     assert r.status_code == 200
     assert isinstance(r.json(), list)
+
+
+def test_update_target_skills_persists_and_filters_sync(tmp_path, monkeypatch):
+    """PUT /api/sync/targets/:name/skills stores a whitelist used by sync."""
+    _make_workspace(tmp_path, monkeypatch)
+    target = tmp_path / "agent" / "skills"
+    cfg = cfgmod.load_config()
+    cfg.targets = [str(target)]
+    cfgmod.save_config(cfg)
+
+    client = _client()
+    r = client.put(
+        f"/api/sync/targets/{target.parent.name}/skills",
+        json={"skills": ["my-skill"]},
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["path"] == str(target)
+    assert data["skillCount"] == 1
+
+    saved = cfgmod.load_config()
+    assert saved.target_skill_filters[str(target)] == ["my-skill"]
+
+    sync_resp = client.post("/api/sync/execute", json={"target": target.parent.name})
+    assert sync_resp.status_code == 200
+    assert sync_resp.json()["success"] is True
+    assert (target / "my-skill" / "SKILL.md").is_file()
+    assert not (target / "other-skill").exists()
+
+
+def test_update_target_skills_unknown_target_fails(tmp_path, monkeypatch):
+    _make_workspace(tmp_path, monkeypatch)
+    client = _client()
+
+    r = client.put("/api/sync/targets/missing/skills", json={"skills": ["my-skill"]})
+
+    assert r.status_code == 400
+
+
+def test_git_import_defaults_to_third_directory(monkeypatch):
+    """Git skill import keeps agent-hub's default skills/third target."""
+    seen = {}
+
+    def fake_git_import_skills(temp_path, selected_skills, target_dir):
+        seen["args"] = (temp_path, selected_skills, target_dir)
+        return {"imported": [], "targetPath": f"skills/{target_dir}", "commit": None}
+
+    monkeypatch.setattr(import_api.importer, "git_import_skills", fake_git_import_skills)
+    client = _client()
+
+    r = client.post(
+        "/api/import/git-import",
+        json={
+            "mode": "skill",
+            "tempPath": "/tmp/skillreg-import-demo",
+            "selectedSkills": ["my-skill"],
+        },
+    )
+
+    assert r.status_code == 200
+    assert seen["args"] == ("/tmp/skillreg-import-demo", ["my-skill"], "third")
 
 
 def test_sync_discover_home(tmp_path, monkeypatch):

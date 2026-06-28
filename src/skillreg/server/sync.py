@@ -100,8 +100,12 @@ def remove_target(name: str):
 
 @router.put("/targets/{name:path}/skills")
 def update_target_skills(name: str, body: UpdateSkillsBody):
-    """Update target skill whitelist (no-op in v1; targets are simple paths)."""
-    return {"success": True, "target": name, "skillCount": len(body.skills)}
+    """Update target skill whitelist."""
+    try:
+        result = sync_manager.update_target_skills(name, body.skills)
+        return {"success": True, **result}
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 @router.put("/targets/{name:path}/rename")

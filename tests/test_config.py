@@ -23,9 +23,10 @@ def test_creates_config_when_missing(tmp_path, monkeypatch):
     # File was created on disk with the default structure.
     assert cfg_path.exists()
     data = json.loads(cfg_path.read_text(encoding="utf-8"))
-    assert set(data.keys()) >= {"workspace_path", "targets", "agents"}
+    assert set(data.keys()) >= {"workspace_path", "targets", "target_skill_filters", "agents"}
     assert data["workspace_path"] is None
     assert data["targets"] == []
+    assert data["target_skill_filters"] == {}
     assert data["agents"] == {}
 
     # Returned model matches.
@@ -44,6 +45,7 @@ def test_roundtrip_preserves_fields(tmp_path, monkeypatch):
     cfg = cfgmod.load_config()
     cfg.workspace_path = str(tmp_path / "ws")
     cfg.targets = ["~/.claude/skills", "~/.codebuddy/skills"]
+    cfg.target_skill_filters = {"~/.claude/skills": ["demo-skill"]}
     cfg.agents = {
         "claude": {"skill_dir": "~/.claude/skills"},
         "codex": {"skill_dir": "~/.codex/skills"},
@@ -53,6 +55,7 @@ def test_roundtrip_preserves_fields(tmp_path, monkeypatch):
     cfg2 = cfgmod.load_config()
     assert cfg2.workspace_path == str(tmp_path / "ws")
     assert cfg2.targets == ["~/.claude/skills", "~/.codebuddy/skills"]
+    assert cfg2.target_skill_filters == {"~/.claude/skills": ["demo-skill"]}
     assert cfg2.agents["claude"]["skill_dir"] == "~/.claude/skills"
     assert cfg2.agents["codex"]["skill_dir"] == "~/.codex/skills"
 
@@ -71,6 +74,7 @@ def test_load_existing_partial_config_defaults_missing_keys(tmp_path, monkeypatc
     cfg = cfgmod.load_config()
     assert cfg.workspace_path == "/some/workspace"
     assert cfg.targets == []
+    assert cfg.target_skill_filters == {}
     assert cfg.agents == {}
 
 

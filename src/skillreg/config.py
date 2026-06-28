@@ -6,6 +6,8 @@ Per PRD §2.3, all skillreg-local state lives in ``~/.skillreg/config.json``:
   workspace itself only holds ``skills/`` + ``repos/``; it no longer carries
   ``sync-skills.json`` or ``infra/``.
 - ``targets`` — install targets (e.g. ``~/.claude/skills``).
+- ``target_skill_filters`` — optional per-target skill whitelist used by the
+  dashboard sync target editor.
 - ``agents`` — agent conventions map (claude / codebuddy / codex …).
 
 Exclude rules and manifest settings stay code-internal (not in this file).
@@ -39,6 +41,10 @@ class SkillregConfig(BaseModel):
     targets: List[str] = Field(
         default_factory=list,
         description="Install targets (agent skill dirs), e.g. ~/.claude/skills.",
+    )
+    target_skill_filters: Dict[str, List[str]] = Field(
+        default_factory=dict,
+        description="Optional per-target skill whitelist keyed by target path/name.",
     )
     agents: Dict[str, Any] = Field(
         default_factory=dict,

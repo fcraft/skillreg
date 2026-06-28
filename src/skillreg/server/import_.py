@@ -163,7 +163,7 @@ def git_import(body: GitImportBody):
             if not body.tempPath or not body.selectedSkills:
                 raise HTTPException(400, "tempPath and selectedSkills are required for skill mode")
             result = importer.git_import_skills(
-                body.tempPath, body.selectedSkills, body.targetDir or "",
+                body.tempPath, body.selectedSkills, body.targetDir or "third",
             )
         return {"success": True, "data": result}
     except ValueError as e:

@@ -54,10 +54,13 @@ def get_targets(cfg: SkillregConfig | None = None) -> list[dict]:
     result = []
     for t in cfg.targets:
         label = _target_display_name(Path(t))
+        skills = _target_filter_for(cfg, t)
         result.append({
             "name": label,
             "path": t,
             "label": label,
+            "skills": skills,
+            "skillCount": len(skills),
             "status": {},
         })
     return result
@@ -74,7 +77,7 @@ def get_sync_config(cfg: SkillregConfig | None = None) -> dict:
                 "name": _target_display_name(Path(t)),
                 "path": t,
                 "label": _target_display_name(Path(t)),
-                "skills": [],
+                "skills": _target_filter_for(cfg, t),
             }
             for t in cfg.targets
         ],
@@ -108,23 +111,44 @@ def add_target(name: str, path: str) -> dict:
 def remove_target(name: str) -> None:
     """Remove a sync target by name or path."""
     cfg = load_config()
-    if name not in cfg.targets:
+    target = _resolve_config_target(cfg, name)
+    if target is None:
         raise ValueError(f'Target "{name}" not found')
-    cfg.targets.remove(name)
+    cfg.targets.remove(target)
+    _remove_target_filter(cfg, target)
     save_config(cfg)
 
 
 def rename_target(old_name: str, new_name: str) -> dict:
     """Rename a target."""
     cfg = load_config()
-    if old_name not in cfg.targets:
+    target = _resolve_config_target(cfg, old_name)
+    if target is None:
         raise ValueError(f'Target "{old_name}" not found')
-    if new_name in cfg.targets:
+    if _resolve_config_target(cfg, new_name) is not None:
         raise ValueError(f'Target "{new_name}" already exists')
-    idx = cfg.targets.index(old_name)
+    idx = cfg.targets.index(target)
     cfg.targets[idx] = new_name
+    _rename_target_filter(cfg, target, new_name)
     save_config(cfg)
     return {"name": new_name, "path": new_name}
+
+
+def update_target_skills(target: str, skills: list[str]) -> dict:
+    """Persist the skill whitelist for a configured sync target."""
+    cfg = load_config()
+    target_path = _resolve_config_target(cfg, target)
+    if target_path is None:
+        raise ValueError(f"Unknown target: {target}")
+    normalized_skills = list(dict.fromkeys(skills))
+    cfg.target_skill_filters[target_path] = normalized_skills
+    save_config(cfg)
+    return {
+        "target": target,
+        "path": target_path,
+        "skills": normalized_skills,
+        "skillCount": len(normalized_skills),
+    }
 
 
 def get_sync_status(
@@ -246,9 +270,11 @@ def execute_sync(target: str, dry_run: bool = False, skills: list[str] | None = 
     """
     cfg = load_config()
     workspace = _workspace_from_config(cfg)
-    target_path = Path(target).expanduser()
+    target_config_path = _resolve_config_target(cfg, target) or target
+    target_path = Path(target_config_path).expanduser()
     target_path.mkdir(parents=True, exist_ok=True)
-    selected_skills = _select_source_skills(workspace, skills)
+    selected_names = skills if skills is not None else _target_filter_for(cfg, target_config_path)
+    selected_skills = _select_source_skills(workspace, selected_names or None)
 
     if dry_run:
         return {
@@ -286,8 +312,8 @@ def execute_sync(target: str, dry_run: bool = False, skills: list[str] | None = 
     ]
     if dry_run:
         args.append("--dry-run")
-    if skills:
-        args.extend(skills)
+    if selected_names:
+        args.extend(selected_names)
 
     try:
         result = subprocess.run(
@@ -322,7 +348,8 @@ def list_target_skills(target: str) -> dict:
     """List skills currently present in a target directory."""
     cfg = load_config()
     workspace = _workspace_from_config(cfg)
-    target_path = Path(target).expanduser()
+    target_config_path = _resolve_config_target(cfg, target) or target
+    target_path = Path(target_config_path).expanduser()
     source_lookup = {item["name"]: item for item in get_all(workspace)["skills"]}
     skills: list[dict] = []
     if target_path.is_dir():
@@ -339,23 +366,29 @@ def list_target_skills(target: str) -> dict:
                 "managed": managed,
                 "status": status,
             })
-    return {"target": str(target_path), "skills": skills}
+    return {
+        "target": str(target_path),
+        "configuredSkills": _target_filter_for(cfg, target_config_path),
+        "skills": skills,
+    }
 
 
 def get_skill_diff(skill: str, target: str) -> list[dict]:
     """Return file-level diff summary between workspace skill and target skill."""
-    workspace = _workspace_from_config()
+    cfg = load_config()
+    workspace = _workspace_from_config(cfg)
     item = get_skill(workspace, skill)
     if not item:
         raise ValueError(f"Unknown skill: {skill}")
     source_dir = workspace / item["path"]
-    target_dir = Path(target).expanduser() / skill
+    target_dir = Path(_resolve_config_target(cfg, target) or target).expanduser() / skill
     return _diff_dirs(source_dir, target_dir)
 
 
 def remove_skill_from_target(skill: str, target: str, force: bool = False) -> dict:
     """Remove a skill directory from a target."""
-    target_dir = Path(target).expanduser() / skill
+    cfg = load_config()
+    target_dir = Path(_resolve_config_target(cfg, target) or target).expanduser() / skill
     if not target_dir.exists():
         return {"success": True, "removed": False, "target": str(target_dir.parent), "skill": skill}
     shutil.rmtree(target_dir)
@@ -370,7 +403,8 @@ def remove_skill_from_target(skill: str, target: str, force: bool = False) -> di
 
 def get_target_file(skill: str, target: str, rel_path: str) -> dict:
     """Read a file from a synced target skill."""
-    base = Path(target).expanduser() / skill
+    cfg = load_config()
+    base = Path(_resolve_config_target(cfg, target) or target).expanduser() / skill
     file_path = (base / rel_path).resolve()
     if not str(file_path).startswith(str(base.resolve())):
         raise ValueError("Invalid file path")
@@ -499,7 +533,53 @@ def _selected_targets(targets: list[str], target: str | None) -> list[str]:
     if not target:
         return list(targets)
     resolved = Path(target).expanduser()
-    return [t for t in targets if Path(t).expanduser() == resolved or t == target] or [target]
+    return [
+        t
+        for t in targets
+        if Path(t).expanduser() == resolved
+        or t == target
+        or _target_display_name(Path(t)) == target
+    ] or [target]
+
+
+def _resolve_config_target(cfg: SkillregConfig, target: str) -> str | None:
+    if target in cfg.targets:
+        return target
+    target_path = Path(target).expanduser()
+    for item in cfg.targets:
+        item_path = Path(item).expanduser()
+        if item_path == target_path or _target_display_name(item_path) == target:
+            return item
+    return None
+
+
+def _target_filter_for(cfg: SkillregConfig, target: str) -> list[str]:
+    for key in _target_filter_keys(target):
+        skills = cfg.target_skill_filters.get(key)
+        if skills is not None:
+            return list(skills)
+    return []
+
+
+def _target_filter_keys(target: str) -> list[str]:
+    path = Path(target).expanduser()
+    keys = [target, str(path), _target_display_name(path)]
+    resolved = str(path.resolve()) if path.exists() else None
+    if resolved:
+        keys.append(resolved)
+    return list(dict.fromkeys(keys))
+
+
+def _remove_target_filter(cfg: SkillregConfig, target: str) -> None:
+    for key in _target_filter_keys(target):
+        cfg.target_skill_filters.pop(key, None)
+
+
+def _rename_target_filter(cfg: SkillregConfig, old_target: str, new_target: str) -> None:
+    skills = _target_filter_for(cfg, old_target)
+    _remove_target_filter(cfg, old_target)
+    if skills:
+        cfg.target_skill_filters[new_target] = skills
 
 
 def _dirs_equal(source: Path, target: Path) -> bool:
