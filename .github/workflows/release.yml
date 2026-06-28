@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   release:
@@ -21,23 +22,20 @@ jobs:
           python-version: "3.13"
 
       - name: Install dependencies
-        run: uv pip install --system -e ".[dev]"
+        run: uv sync --extra dev
 
       - name: Check version and tag
-        run: python scripts/check_version.py --require-tag
-
-      - name: Install build tool
-        run: uv pip install --system build
+        run: uv run python scripts/check_version.py --require-tag
 
       - name: Test
-        run: pytest -q
+        run: uv run pytest -q
 
       - name: Build package
-        run: python -m build
+        run: uv run --with build python -m build
 
       - name: Verify built package version
         run: |
-          python - <<'PY'
+          uv run python - <<'PY'
           import glob
           import os
           import tomllib
@@ -80,3 +78,6 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

@@ -22,18 +22,16 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv pip install --system -e ".[dev]"
+        run: uv sync --extra dev
 
       - name: Check version metadata
-        run: python scripts/check_version.py
+        run: uv run python scripts/check_version.py
 
       - name: Lint (ruff)
-        run: |
-          uv pip install --system ruff
-          ruff check src/ tests/
+        run: uv run --with ruff ruff check src/ tests/ scripts/
 
       - name: Test
-        run: pytest -q
+        run: uv run pytest -q
 
   smoke:
     runs-on: ubuntu-latest
@@ -48,8 +46,8 @@ jobs:
 
       - name: Install and smoke test
         run: |
-          uv pip install --system -e ".[dev]"
+          uv sync --extra dev
           # Smoke: CLI runs without error
-          skillreg config
+          uv run skillreg config
           # Verify import
-          python -c "from skillreg.server import create_app; app = create_app(); assert app.title == 'skillreg'"
+          uv run python -c "from skillreg.server import create_app; app = create_app(); assert app.title == 'skillreg'"

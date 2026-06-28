@@ -36,11 +36,26 @@ git push origin v0.2.0
 - 校验 wheel metadata 中的版本号
 - 上传构建产物
 - 创建 GitHub Release，并自动生成 release notes
+- 发布到 PyPI
 
 如果 tag 不匹配，例如 tag 是 `v0.2.1`，但 `pyproject.toml` 写的是
 `0.2.0`，release job 会在发布产物前失败。
 
-## 可选：发布到 PyPI
+## PyPI 发布
 
-当前默认不启用 PyPI 发布。等包名、权限和凭据确认后，可以在 `Build package`
-之后追加发布步骤，优先使用 trusted publishing，其次使用受限范围的 API token。
+`uv tool install skillreg` 默认会从 PyPI 安装 `skillreg` 包。当前 PyPI
+项目已注册，发布通过 trusted publishing 完成。
+
+PyPI trusted publisher 配置：
+
+- PyPI project name: `skillreg`
+- Owner: `fcraft`
+- Repository: `skillreg`
+- Workflow name: `release.yml`
+- Environment name: 留空
+
+发布成功后，用户可以直接安装：
+
+```bash
+uv tool install skillreg
+```
