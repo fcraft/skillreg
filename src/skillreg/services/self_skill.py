@@ -1,7 +1,7 @@
-"""Self-skill injection — injects skillreg's own SKILL.md into the workspace.
+"""Builtin skill injection — injects skillreg's own SKILL.md into the workspace.
 
 Per PRD §2.4, the skillreg self-skill is baked into the Python package via
-``importlib.resources`` and injected into the workspace's ``.skillreg/builtin/skillreg/``
+``importlib.resources`` and injected into the workspace's ``.skillreg/builtin/skillreg-skill/``
 directory on startup. This directory is gitignored (does not enter workspace git).
 """
 
@@ -12,14 +12,14 @@ from pathlib import Path
 
 
 def inject_self_skill(workspace: Path) -> Path | None:
-    """Copy skillreg's builtin SKILL.md to workspace/.skillreg/builtin/skillreg/.
+    """Copy skillreg's builtin SKILL.md to workspace/.skillreg/builtin/skillreg-skill/.
 
     Returns the target directory path, or None if the workspace doesn't exist.
     """
     if not workspace.is_dir():
         return None
 
-    target = workspace / ".skillreg" / "builtin" / "skillreg"
+    target = workspace / ".skillreg" / "builtin" / "skillreg-skill"
     target.mkdir(parents=True, exist_ok=True)
 
     # Read builtin SKILL.md from package resources
@@ -36,14 +36,14 @@ def _copy_builtin_from_package(target: Path) -> None:
     """Copy from importlib.resources (installed package)."""
     from importlib.resources import files as resource_files
 
-    source = resource_files("skillreg") / "builtin" / "skillreg"
+    source = resource_files("skillreg") / "builtin" / "skillreg-skill"
     if source.is_dir():
         _copy_tree(source, target)
 
 
 def _copy_builtin_from_dev(target: Path) -> None:
     """Copy from development source tree."""
-    dev_source = Path(__file__).resolve().parent.parent / "builtin" / "skillreg"
+    dev_source = Path(__file__).resolve().parent.parent / "builtin" / "skillreg-skill"
     if dev_source.is_dir():
         _copy_tree(dev_source, target)
 

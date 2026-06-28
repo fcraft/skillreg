@@ -14,7 +14,6 @@ import tempfile
 import uuid
 import zipfile
 from pathlib import Path
-from typing import Any
 
 from ..config import load_config
 
@@ -71,10 +70,10 @@ def create_workspace(location: str) -> dict:
 
     # README
     (ws / "README.md").write_text(
-        f"# skillreg workspace\n\n"
-        f"Skills managed by [skillreg](https://github.com/fcraft/skillreg).\n\n"
-        f"- `skills/` — individual skills\n"
-        f"- `repos/` — submodule-based skills\n",
+        "# skillreg workspace\n\n"
+        "Skills managed by [skillreg](https://github.com/fcraft/skillreg).\n\n"
+        "- `skills/` — individual skills\n"
+        "- `repos/` — submodule-based skills\n",
         encoding="utf-8",
     )
 

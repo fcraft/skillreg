@@ -58,6 +58,26 @@ def get_targets():
     return sync_manager.get_targets()
 
 
+@router.get("/config")
+def get_config():
+    """Get synthesized sync config."""
+    return sync_manager.get_sync_config()
+
+
+@router.get("/status")
+def get_status(
+    target: str | None = Query(None),
+    include_projects: bool = Query(False, alias="include_projects"),
+    skill: str | None = Query(None),
+):
+    """Per-target per-skill sync status."""
+    return sync_manager.get_sync_status(
+        target=target,
+        include_projects=include_projects,
+        skill=skill,
+    )
+
+
 @router.post("/targets")
 def add_target(body: AddTargetBody):
     """Add a new sync target."""
@@ -68,7 +88,7 @@ def add_target(body: AddTargetBody):
         raise HTTPException(409 if "already exists" in str(e) else 400, str(e))
 
 
-@router.delete("/targets/{name}")
+@router.delete("/targets/{name:path}")
 def remove_target(name: str):
     """Remove a target."""
     try:
@@ -78,13 +98,13 @@ def remove_target(name: str):
         raise HTTPException(404, str(e))
 
 
-@router.put("/targets/{name}/skills")
+@router.put("/targets/{name:path}/skills")
 def update_target_skills(name: str, body: UpdateSkillsBody):
     """Update target skill whitelist (no-op in v1; targets are simple paths)."""
     return {"success": True, "target": name, "skillCount": len(body.skills)}
 
 
-@router.put("/targets/{name}/rename")
+@router.put("/targets/{name:path}/rename")
 def rename_target(name: str, body: RenameTargetBody):
     """Rename a target."""
     try:
@@ -109,6 +129,49 @@ def execute_sync(body: ExecuteSyncBody):
     if not body.target:
         raise HTTPException(400, "Missing target or project")
     return sync_manager.execute_sync(body.target, dry_run=body.dryRun, skills=body.skills)
+
+
+@router.get("/skill-presence")
+def skill_presence(skill: str = Query(...)):
+    """Query which targets contain a skill."""
+    try:
+        return sync_manager.get_skill_presence(skill)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@router.get("/target-skills")
+def target_skills(target: str = Query(...)):
+    """List skills inside a target."""
+    return sync_manager.list_target_skills(target)
+
+
+@router.get("/diff")
+def skill_diff(skill: str = Query(...), target: str = Query(...)):
+    """Compare a workspace skill against the target copy."""
+    try:
+        return sync_manager.get_skill_diff(skill, target)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@router.post("/remove-skill")
+def remove_skill(body: RemoveSkillBody):
+    """Remove a skill from a target."""
+    return sync_manager.remove_skill_from_target(body.skill, body.target, force=body.force)
+
+
+@router.get("/target-file")
+def target_file(
+    skill: str = Query(...),
+    target: str = Query(...),
+    path: str = Query(...),
+):
+    """Read a file from the target-side skill copy."""
+    try:
+        return sync_manager.get_target_file(skill, target, path)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 @router.get("/discover-home")

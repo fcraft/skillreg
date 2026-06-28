@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import json
 
+from click.testing import CliRunner
+
+import skillreg.cli as climod
 import skillreg.config as cfgmod
+from skillreg.cli import cli
 from skillreg.config import SkillregConfig
 
 
@@ -68,3 +72,19 @@ def test_load_existing_partial_config_defaults_missing_keys(tmp_path, monkeypatc
     assert cfg.workspace_path == "/some/workspace"
     assert cfg.targets == []
     assert cfg.agents == {}
+
+
+def test_workspace_create_prints_current_workspace_context(tmp_path, monkeypatch):
+    """Workspace-affecting commands print enough context for agents to continue."""
+    cfg_path = tmp_path / "config.json"
+    ws = tmp_path / "workspace"
+    monkeypatch.setattr(cfgmod, "CONFIG_FILE", cfg_path)
+    monkeypatch.setattr(cfgmod, "CONFIG_DIR", cfg_path.parent)
+    monkeypatch.setattr(climod, "CONFIG_FILE", cfg_path)
+
+    result = CliRunner().invoke(cli, ["workspace", "create", str(ws)])
+
+    assert result.exit_code == 0
+    assert f"Workspace created at {ws}" in result.output
+    assert "skillreg context after workspace create" in result.output
+    assert f"current workspace : {ws}" in result.output

@@ -65,7 +65,7 @@ class TestFiles:
         assert "src" in children_names
 
     def test_file_content(self, tmp_path, monkeypatch):
-        ws = _setup_workspace(tmp_path, monkeypatch)
+        _setup_workspace(tmp_path, monkeypatch)
         client = _client()
         r = client.get("/api/files/content?root=.&path=README.md")
         assert r.status_code == 200

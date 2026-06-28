@@ -38,7 +38,7 @@ def _parse_logs(raw: str) -> list[dict]:
 def _run_git_log(ws: Path, cwd: Path | None = None, n: int = 15) -> list[dict]:
     try:
         result = subprocess.run(
-            ["git", "log", f"--format={_FMT}", f"-n", str(n)],
+            ["git", "log", f"--format={_FMT}", "-n", str(n)],
             capture_output=True, text=True, cwd=str(cwd or ws), timeout=10,
         )
         return _parse_logs(result.stdout)

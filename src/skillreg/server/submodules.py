@@ -6,9 +6,10 @@ Provides submodule listing, sync preview/execute, diff, refresh, and fix-detache
 from __future__ import annotations
 
 import subprocess
+import time
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Body, HTTPException
 from pydantic import BaseModel
 
 from ..config import load_config
@@ -84,7 +85,7 @@ def preview_sync(body: SubmodulePathBody):
     warnings = []
 
     # Fetch
-    _run(f"git fetch origin", cwd)
+    _run("git fetch origin", cwd)
 
     # Check detached
     detached = _is_head_detached(ws, path)
@@ -132,7 +133,7 @@ def preview_sync(body: SubmodulePathBody):
         needs_pointer = True
     elif idx["indexAhead"] > 0:
         actions.append(f"主仓库指针领先子模块 HEAD {idx['indexAhead']} 个提交（异常，需检查）")
-        warnings.append(f"主仓库记录的提交领先于子模块 HEAD，建议人工确认")
+        warnings.append("主仓库记录的提交领先于子模块 HEAD，建议人工确认")
         needs_pointer = True
     elif idx["indexDirty"]:
         actions.append("提交主仓库中待提交的子模块指针变更")
@@ -194,6 +195,78 @@ def submodule_diff(body: SubmodulePathBody):
         result_files.append({"path": f["path"], "status": status, "diff": diff})
 
     return {"path": path, "branch": sm["branch"], "files": result_files}
+
+
+@router.post("/sync")
+def sync_submodule(body: SyncBody):
+    """Run a best-effort submodule sync update flow."""
+    ws = _ws()
+    path = body.path
+    cwd = str(ws / path)
+    if not (ws / path).is_dir():
+        raise HTTPException(400, f"Directory not found: {path}")
+    branch = _get_submodule_branch(ws, path)
+    steps = []
+    try:
+        _run("git fetch origin", cwd)
+        steps.append("fetch")
+    except RuntimeError as e:
+        raise HTTPException(400, str(e))
+
+    if _is_head_detached(ws, path):
+        _run(f"git checkout {branch}", cwd)
+        steps.append("checkout")
+
+    return {
+        "success": True,
+        "path": path,
+        "branch": branch,
+        "steps": steps,
+        "commitMessage": body.commitMessage,
+    }
+
+
+@router.post("/refresh")
+def refresh_submodule(body: dict | None = Body(default=None)):
+    """Refresh one submodule, or all submodules when path is omitted."""
+    ws = _ws()
+    configs = read_submodule_configs(ws)
+    path = body.get("path") if isinstance(body, dict) else None
+
+    if path:
+        sm = next((s for s in configs if s["path"] == path), None)
+        if not sm:
+            raise HTTPException(400, f"Unknown submodule: {path}")
+        cwd = str(ws / path)
+        try:
+            _run("git fetch origin", cwd)
+        except RuntimeError:
+            pass
+        return {
+            "path": path,
+            "status": get_submodule_status(ws, path, sm["branch"]),
+            "error": None,
+        }
+
+    results = []
+    for sm in configs:
+        sub_path = sm["path"]
+        cwd = str(ws / sub_path)
+        error = None
+        try:
+            _run("git fetch origin", cwd)
+        except RuntimeError as exc:
+            error = str(exc)
+        results.append({
+            "path": sub_path,
+            "status": get_submodule_status(ws, sub_path, sm["branch"]),
+            "error": error,
+        })
+
+    return {
+        "results": results,
+        "checkedAt": int(time.time() * 1000),
+    }
 
 
 @router.post("/fix-detached")

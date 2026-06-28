@@ -10,8 +10,8 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 
 from .. import __version__
 
@@ -23,9 +23,12 @@ def dashboard_dir() -> Optional[Path]:
         p = Path(env)
         if p.is_dir():
             return p
-    dev = Path(__file__).resolve().parents[3] / "dashboard"
-    if dev.is_dir():
-        return dev
+    dashboard_root = Path(__file__).resolve().parents[3] / "dashboard"
+    dist = dashboard_root / "dist"
+    if dist.is_dir():
+        return dist
+    if dashboard_root.is_dir():
+        return dashboard_root
     return None
 
 
@@ -98,10 +101,45 @@ def create_app() -> FastAPI:
     except ImportError:
         pass
 
-    # Dashboard static mount (catch-all, after /api routes)
+    try:
+        from .compat import router as compat_router
+        app.include_router(compat_router)
+    except ImportError:
+        pass
+
+    try:
+        from .workspace import router as workspace_router
+        app.include_router(workspace_router)
+    except ImportError:
+        pass
+
+    # Dashboard static serving (SPA fallback, after /api routes)
     _d = dashboard_dir()
     if _d is not None:
-        app.mount("/", StaticFiles(directory=str(_d), html=True), name="dashboard")
+        index_file = _d / "index.html"
+        if index_file.is_file():
+            @app.get("/assets/{asset_path:path}", include_in_schema=False)
+            def dashboard_assets(asset_path: str):
+                file_path = (_d / "assets" / asset_path).resolve()
+                assets_root = (_d / "assets").resolve()
+                try:
+                    file_path.relative_to(assets_root)
+                except ValueError as exc:
+                    raise HTTPException(404) from exc
+                if not file_path.is_file():
+                    raise HTTPException(404)
+                return FileResponse(file_path)
+
+            @app.get("/{full_path:path}", include_in_schema=False)
+            def dashboard_spa_fallback(full_path: str):
+                request_path = (_d / full_path).resolve()
+                try:
+                    request_path.relative_to(_d.resolve())
+                except ValueError:
+                    return FileResponse(index_file)
+                if full_path and request_path.is_file():
+                    return FileResponse(request_path)
+                return FileResponse(index_file)
 
     return app
 

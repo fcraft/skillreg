@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Request, UploadFile
+from fastapi import APIRouter, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from ..services import importer

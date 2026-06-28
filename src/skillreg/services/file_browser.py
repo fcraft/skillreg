@@ -163,7 +163,7 @@ def clear_cache() -> None:
 class FileTooLargeError(ValueError):
     def __init__(self, size: int):
         self.size = size
-        super().__init__(f"File is too large to preview")
+        super().__init__("File is too large to preview")
 
 
 def _get_workspace() -> Path:

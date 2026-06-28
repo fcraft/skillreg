@@ -26,6 +26,19 @@ DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8787
 
 
+def _format_csv(values: Sequence[str]) -> str:
+    return ", ".join(values) if values else "(none)"
+
+
+def _echo_workspace_summary(*, heading: str = "skillreg context") -> None:
+    """Print the current workspace context after user-facing commands."""
+    cfg = load_config()
+    click.echo(heading)
+    click.echo(f"  config file       : {CONFIG_FILE}")
+    click.echo(f"  current workspace : {cfg.workspace_path or '(not configured)'}")
+    click.echo(f"  sync targets      : {_format_csv(cfg.targets)}")
+
+
 @click.group()
 @click.version_option(version=__version__, package_name="skillreg")
 def cli() -> None:
@@ -40,7 +53,7 @@ def config() -> None:
     on first run.
     """
     cfg = load_config()
-    click.echo(f"skillreg config")
+    click.echo("skillreg config")
     click.echo(f"  config file : {CONFIG_FILE}")
     click.echo(f"  workspace   : {cfg.workspace_path or '(not configured)'}")
     click.echo(
@@ -79,6 +92,7 @@ def create_workspace(location: str) -> None:
         click.echo(f"  git init  : {'✓' if result['has_git'] else '✗'}")
         click.echo(f"  skills/   : {'✓' if result['has_skills_dir'] else '✗'}")
         click.echo(f"  repos/    : {'✓' if result['has_repos_dir'] else '✗'}")
+        _echo_workspace_summary(heading="skillreg context after workspace create")
     except ValueError as e:
         click.echo(f"✗ {e}", err=True)
         raise SystemExit(1)
@@ -103,6 +117,7 @@ def open_dashboard(host: str, port: int, no_browser: bool) -> None:
             daemon=True,
         ).start()
     click.echo(f"skillreg backend starting at {url}")
+    _echo_workspace_summary(heading="skillreg context for dashboard")
     click.echo("  press Ctrl+C to stop.")
     uvicorn.run(
         "skillreg.server:app",

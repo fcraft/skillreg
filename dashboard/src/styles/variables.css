@@ -1,0 +1,216 @@
+/* QQX Design Tokens — Dual Theme */
+
+/*
+ * Responsive Breakpoints:
+ *   Mobile:  < 768px  — single column, drawer sidebar, reduced padding
+ *   Tablet:  768px – 1024px — collapsible sidebar, flex-wrap headers
+ *   Desktop: > 1024px — full sidebar, standard layout
+ */
+
+/* ========== Shared tokens (theme-independent) ========== */
+:root {
+  /* Font */
+  --qqx-font-family: Inter, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --qqx-font-size-hero: 36px;
+  --qqx-font-size-display: 20px;
+  --qqx-font-size-title: 18px;
+  --qqx-font-size-body: 16px;
+  --qqx-font-size-label: 14px;
+  --qqx-font-size-caption: 13px;
+  --qqx-font-size-small: 12px;
+  --qqx-font-size-tiny: 10px;
+
+  /* Font Weight */
+  --qqx-font-regular: 400;
+  --qqx-font-medium: 500;
+  --qqx-font-semibold: 600;
+
+  /* Border Radius */
+  --qqx-radius-xs: 8px;
+  --qqx-radius-sm: 10px;
+  --qqx-radius-md: 12px;
+  --qqx-radius-lg: 16px;
+  --qqx-radius-xl: 18px;
+  --qqx-radius-2xl: 24px;
+  --qqx-radius-full: 9999px;
+
+  /* Spacing */
+  --qqx-space-xs: 4px;
+  --qqx-space-sm: 8px;
+  --qqx-space-md: 12px;
+  --qqx-space-lg: 16px;
+  --qqx-space-xl: 24px;
+  --qqx-space-2xl: 32px;
+  --qqx-space-3xl: 48px;
+
+  /* Sidebar */
+  --qqx-sidebar-width: 240px;
+
+  /* Transition — QQX uses 0.15s with Material Design standard easing */
+  --qqx-transition: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Z-Index Scale — QQX layer hierarchy */
+  --z-base: 0;
+  --z-card-hover: 1;
+  --z-sticky: 100;
+  --z-dropdown: 200;
+  --z-overlay-backdrop: 1000;
+  --z-overlay-panel: 1010;
+  --z-overlay-top: 1020;
+  --z-tooltip: 1100;
+  --z-notification: 1200;
+  --z-command: 1300;
+}
+
+/* ========== Light Theme (default) ========== */
+:root,
+[data-theme="light"] {
+  /* Background */
+  --qqx-bg-base: #ffffff;
+  --qqx-bg-surface: #fbfbfc;
+  --qqx-bg-elevated: #f3f5f7;
+  --qqx-bg-card: #ffffff;
+  --qqx-bg-subtle: #f0f2f4;
+  --qqx-bg-hover: #eef0f3;
+  --qqx-bg-overlay: rgba(231, 234, 238, 0.6);
+  --qqx-bg-backdrop: rgba(0, 0, 0, 0.3);
+
+  /* Text */
+  --qqx-text-primary: #48566a;
+  --qqx-text-secondary: #637083;
+  --qqx-text-tertiary: rgba(99, 112, 131, 0.7);
+  --qqx-text-quaternary: rgba(99, 112, 131, 0.6);
+
+  /* Brand */
+  --qqx-brand: #0099ff;
+  --qqx-brand-light: rgba(0, 153, 255, 0.1);
+  --qqx-brand-hover: #0088e6;
+  --qqx-link: #0099ff;
+
+  /* Border */
+  --qqx-border-color: #e7eaee;
+  --qqx-border-dashed: rgba(231, 234, 238, 0.7);
+
+  /* Shadow — QQX uses flat design, shadows only for floating layers */
+  --qqx-shadow-card: none;
+  --qqx-shadow-dropdown: 0px 10px 15px -3px rgba(0, 0, 0, 0.1), 0px 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --qqx-shadow-button: none;
+  --qqx-shadow-focus: 0 0 0 2px #fff, 0 0 0 4px var(--qqx-brand);
+
+  /* Brand fill — solid backgrounds (buttons, tabs, progress bars) */
+  --qqx-brand-fill-bg: var(--qqx-brand);
+  --qqx-brand-fill-hover-bg: var(--qqx-brand-hover);
+
+  /* Input specific */
+  --qqx-input-bg: #ffffff;
+  --qqx-input-border: #e7eaee;
+
+  /* Modal */
+  --qqx-modal-bg: #ffffff;
+  --qqx-modal-shadow: 0px 20px 60px rgba(0, 0, 0, 0.15), 0px 4px 12px rgba(0, 0, 0, 0.08);
+
+  /* Diff Viewer */
+  --qqx-diff-added-bg: rgba(16, 185, 129, 0.12);
+  --qqx-diff-added-border: rgba(16, 185, 129, 0.35);
+  --qqx-diff-added-tag-bg: #d1fae5;
+  --qqx-diff-added-tag-text: #065f46;
+  --qqx-diff-removed-bg: rgba(239, 68, 68, 0.1);
+  --qqx-diff-removed-border: rgba(239, 68, 68, 0.35);
+  --qqx-diff-removed-tag-bg: #fee2e2;
+  --qqx-diff-removed-tag-text: #991b1b;
+  /* Diff file stat badges */
+  --qqx-diff-modified-tag-bg: #fef3c7;
+  --qqx-diff-modified-tag-text: #92400e;
+  --qqx-diff-unchanged-tag-bg: #d1fae5;
+  --qqx-diff-unchanged-tag-text: #065f46;
+  /* Diff file row backgrounds */
+  --qqx-diff-added-row-bg: #dbeafe;
+  --qqx-diff-modified-row-bg: #fef3c7;
+  --qqx-diff-removed-row-bg: #fee2e2;
+
+  /* Status colors */
+  --qqx-success: #10b981;
+  --qqx-success-light: rgba(16, 185, 129, 0.1);
+  --qqx-error: #ef4444;
+  --qqx-error-light: rgba(239, 68, 68, 0.1);
+  --qqx-warning: #f59e0b;
+  --qqx-warning-light: rgba(245, 158, 11, 0.1);
+  --qqx-info: #b45309;
+  --qqx-info-light: rgba(180, 83, 9, 0.06);
+}
+
+/* ========== Dark Theme ========== */
+[data-theme="dark"] {
+  /* Background */
+  --qqx-bg-base: #0a0a0a;
+  --qqx-bg-surface: #121212;
+  --qqx-bg-elevated: #1a1a1a;
+  --qqx-bg-card: #171717;
+  --qqx-bg-subtle: #242424;
+  --qqx-bg-hover: #262626;
+  --qqx-bg-overlay: rgba(41, 41, 41, 0.6);
+  --qqx-bg-backdrop: rgba(0, 0, 0, 0.5);
+
+  /* Text */
+  --qqx-text-primary: #f5f5f5;
+  --qqx-text-secondary: #999999;
+  --qqx-text-tertiary: rgba(153, 153, 153, 0.7);
+  --qqx-text-quaternary: rgba(153, 153, 153, 0.6);
+
+  /* Brand */
+  --qqx-brand: #33adff;
+  --qqx-brand-light: rgba(51, 173, 255, 0.1);
+  --qqx-brand-hover: #4db8ff;
+  --qqx-link: #3b82f6;
+
+  /* Border */
+  --qqx-border-color: #292929;
+  --qqx-border-dashed: rgba(41, 41, 41, 0.7);
+
+  /* Shadow */
+  --qqx-shadow-card: none;
+  --qqx-shadow-dropdown: 0px 10px 15px -3px rgba(0, 0, 0, 0.3);
+  --qqx-shadow-button: none;
+  --qqx-shadow-focus: 0 0 0 2px #121212, 0 0 0 4px var(--qqx-brand);
+
+  /* Brand fill — solid backgrounds (buttons, tabs, progress bars) */
+  --qqx-brand-fill-bg: #2289c4;
+  --qqx-brand-fill-hover-bg: #279ad6;
+
+  /* Input specific */
+  --qqx-input-bg: #121212;
+  --qqx-input-border: #292929;
+
+  /* Modal */
+  --qqx-modal-bg: #1a1a1a;
+  --qqx-modal-shadow: 0px 20px 60px rgba(0, 0, 0, 0.5);
+
+  /* Diff Viewer */
+  --qqx-diff-added-bg: rgba(52, 211, 153, 0.1);
+  --qqx-diff-added-border: rgba(52, 211, 153, 0.25);
+  --qqx-diff-added-tag-bg: #0d2818;
+  --qqx-diff-added-tag-text: #6ee7b7;
+  --qqx-diff-removed-bg: rgba(248, 113, 113, 0.1);
+  --qqx-diff-removed-border: rgba(248, 113, 113, 0.25);
+  --qqx-diff-removed-tag-bg: #3d1215;
+  --qqx-diff-removed-tag-text: #fca5a5;
+  /* Diff file stat badges */
+  --qqx-diff-modified-tag-bg: #32240a;
+  --qqx-diff-modified-tag-text: #fcd34d;
+  --qqx-diff-unchanged-tag-bg: #0d2818;
+  --qqx-diff-unchanged-tag-text: #6ee7b7;
+  /* Diff file row backgrounds */
+  --qqx-diff-added-row-bg: #0d1d31;
+  --qqx-diff-modified-row-bg: #32240a;
+  --qqx-diff-removed-row-bg: #3d1215;
+
+  /* Status colors */
+  --qqx-success: #34d399;
+  --qqx-success-light: rgba(52, 211, 153, 0.1);
+  --qqx-error: #f87171;
+  --qqx-error-light: rgba(248, 113, 113, 0.1);
+  --qqx-warning: #fbbf24;
+  --qqx-warning-light: rgba(251, 191, 36, 0.1);
+  --qqx-info: #d97706;
+  --qqx-info-light: rgba(217, 119, 6, 0.1);
+}

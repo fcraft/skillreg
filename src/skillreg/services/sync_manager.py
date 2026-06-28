@@ -6,10 +6,14 @@ Delegates actual sync logic to ``sync-skills.py`` via subprocess.
 
 from __future__ import annotations
 
+import filecmp
 import json
+import shutil
 import subprocess
 import uuid
 from pathlib import Path
+
+from .skill_registry import get_all, get_skill
 
 from ..config import load_config, save_config, SkillregConfig
 
@@ -49,13 +53,46 @@ def get_targets(cfg: SkillregConfig | None = None) -> list[dict]:
         cfg = load_config()
     result = []
     for t in cfg.targets:
-        # For now return basic target info; full status comes from sync engine
+        label = _target_display_name(Path(t))
         result.append({
-            "name": t,
+            "name": label,
             "path": t,
+            "label": label,
             "status": {},
         })
     return result
+
+
+def get_sync_config(cfg: SkillregConfig | None = None) -> dict:
+    """Return a synthesized sync config compatible with the dashboard."""
+    if cfg is None:
+        cfg = load_config()
+    return {
+        "schema_version": 2,
+        "targets": [
+            {
+                "name": _target_display_name(Path(t)),
+                "path": t,
+                "label": _target_display_name(Path(t)),
+                "skills": [],
+            }
+            for t in cfg.targets
+        ],
+        "sources": [
+            {"path": "skills", "mode": "scan"},
+            {"path": "repos", "mode": "scan"},
+        ],
+        "exclude_dirs": [
+            "__pycache__", ".git", ".venv", "infra", "specs", "logs",
+            "node_modules", "venv",
+        ],
+        "exclude_files": [".DS_Store", "*.pyc"],
+        "manifest": {
+            "enabled": True,
+            "skip_unchanged": True,
+            "file": ".sync-manifest.json",
+        },
+    }
 
 
 def add_target(name: str, path: str) -> dict:
@@ -88,6 +125,46 @@ def rename_target(old_name: str, new_name: str) -> dict:
     cfg.targets[idx] = new_name
     save_config(cfg)
     return {"name": new_name, "path": new_name}
+
+
+def get_sync_status(
+    target: str | None = None,
+    include_projects: bool = False,
+    skill: str | None = None,
+) -> list[dict]:
+    """Get per-target per-skill sync status for dashboard badges."""
+    cfg = load_config()
+    workspace = _workspace_from_config(cfg)
+    data = get_all(workspace)
+    target_paths = _selected_targets(cfg.targets, target)
+    source_skills = data["skills"]
+    if skill:
+        source_skills = [s for s in source_skills if s["name"] == skill]
+
+    rows: list[dict] = []
+    for target_path in target_paths:
+        for item in source_skills:
+            rows.append({
+                "target": target_path,
+                "name": item["name"],
+                "status": _skill_status(workspace, target_path, item),
+            })
+
+    if include_projects:
+        project_map = _read_projects().get("projects", {})
+        for project_id, project in project_map.items():
+            for target_path in project.get("targets", []):
+                if target and Path(target_path).expanduser() != Path(target).expanduser():
+                    continue
+                for item in source_skills:
+                    rows.append({
+                        "target": target_path,
+                        "name": item["name"],
+                        "status": _skill_status(workspace, target_path, item),
+                        "_project": project.get("name"),
+                        "_projectId": project_id,
+                    })
+    return rows
 
 
 # ── project management ─────────────────────────────────────────────────────
@@ -167,15 +244,38 @@ def execute_sync(target: str, dry_run: bool = False, skills: list[str] | None = 
     In v1 this delegates to the sync-skills.py script. Once sync-skills.py
     is adapted for workspace paths, this will use the workspace path from config.
     """
-    # Resolve target: look up in config to get resolved path
     cfg = load_config()
-    if cfg.workspace_path:
-        workspace = Path(cfg.workspace_path).expanduser()
-    else:
-        workspace = Path.cwd()
-
-    # For now, use the target path directly (it's already absolute from config)
+    workspace = _workspace_from_config(cfg)
     target_path = Path(target).expanduser()
+    target_path.mkdir(parents=True, exist_ok=True)
+    selected_skills = _select_source_skills(workspace, skills)
+
+    if dry_run:
+        return {
+            "success": True,
+            "stdout": "\n".join(f"Would sync {item['name']} -> {target_path}" for item in selected_skills),
+            "stderr": "",
+        }
+
+    copied = 0
+    for item in selected_skills:
+        source_dir = workspace / item["path"]
+        destination = target_path / item["name"]
+        if destination.exists():
+            shutil.rmtree(destination)
+        shutil.copytree(
+            source_dir,
+            destination,
+            ignore=shutil.ignore_patterns(".git", "__pycache__", ".DS_Store", "Thumbs.db", "._*"),
+        )
+        copied += 1
+
+    if copied > 0:
+        return {
+            "success": True,
+            "stdout": f"Synced {copied} skill(s) to {target_path}",
+            "stderr": "",
+        }
 
     # Build the sync command
     sync_script = _find_sync_script()
@@ -202,6 +302,94 @@ def execute_sync(target: str, dry_run: bool = False, skills: list[str] | None = 
         return {"success": False, "stdout": "", "stderr": "Sync timed out after 60s"}
     except FileNotFoundError:
         return {"success": False, "stdout": "", "stderr": "sync-skills.py not found"}
+
+
+def get_skill_presence(skill: str) -> dict:
+    """Return target presence map for a skill."""
+    cfg = load_config()
+    workspace = _workspace_from_config(cfg)
+    item = get_skill(workspace, skill)
+    if not item:
+        raise ValueError(f"Unknown skill: {skill}")
+    targets = {
+        target_path: _skill_status(workspace, target_path, item)
+        for target_path in cfg.targets
+    }
+    return {"skill": skill, "targets": targets}
+
+
+def list_target_skills(target: str) -> dict:
+    """List skills currently present in a target directory."""
+    cfg = load_config()
+    workspace = _workspace_from_config(cfg)
+    target_path = Path(target).expanduser()
+    source_lookup = {item["name"]: item for item in get_all(workspace)["skills"]}
+    skills: list[dict] = []
+    if target_path.is_dir():
+        for entry in sorted(target_path.iterdir(), key=lambda item: item.name.lower()):
+            if not entry.is_dir():
+                continue
+            managed = entry.name in source_lookup
+            status = "unmanaged"
+            if managed:
+                status = _skill_status(workspace, str(target_path), source_lookup[entry.name])
+            skills.append({
+                "name": entry.name,
+                "path": str(entry),
+                "managed": managed,
+                "status": status,
+            })
+    return {"target": str(target_path), "skills": skills}
+
+
+def get_skill_diff(skill: str, target: str) -> list[dict]:
+    """Return file-level diff summary between workspace skill and target skill."""
+    workspace = _workspace_from_config()
+    item = get_skill(workspace, skill)
+    if not item:
+        raise ValueError(f"Unknown skill: {skill}")
+    source_dir = workspace / item["path"]
+    target_dir = Path(target).expanduser() / skill
+    return _diff_dirs(source_dir, target_dir)
+
+
+def remove_skill_from_target(skill: str, target: str, force: bool = False) -> dict:
+    """Remove a skill directory from a target."""
+    target_dir = Path(target).expanduser() / skill
+    if not target_dir.exists():
+        return {"success": True, "removed": False, "target": str(target_dir.parent), "skill": skill}
+    shutil.rmtree(target_dir)
+    return {
+        "success": True,
+        "removed": True,
+        "target": str(target_dir.parent),
+        "skill": skill,
+        "force": force,
+    }
+
+
+def get_target_file(skill: str, target: str, rel_path: str) -> dict:
+    """Read a file from a synced target skill."""
+    base = Path(target).expanduser() / skill
+    file_path = (base / rel_path).resolve()
+    if not str(file_path).startswith(str(base.resolve())):
+        raise ValueError("Invalid file path")
+    if not file_path.is_file():
+        raise ValueError("Path is not a file")
+    raw = file_path.read_bytes()
+    try:
+        content = raw.decode("utf-8")
+        binary = False
+    except UnicodeDecodeError:
+        content = None
+        binary = True
+    result = {"size": len(raw)}
+    if binary:
+        result["binary"] = True
+    else:
+        result["content"] = content
+        result["language"] = file_path.suffix.lstrip(".") or "text"
+    return result
 
 
 def _find_sync_script() -> Path:
@@ -260,6 +448,14 @@ def discover_home_agent_dirs() -> list[dict]:
     return found
 
 
+def refresh_target(target: str) -> dict:
+    """Refresh target status snapshot."""
+    return {
+        "target": str(Path(target).expanduser()),
+        "skills": list_target_skills(target)["skills"],
+    }
+
+
 # ── helpers ────────────────────────────────────────────────────────────────
 
 
@@ -276,3 +472,90 @@ def _find_project(data: dict, pid: str) -> tuple[dict | None, str | None]:
 def _now_iso() -> str:
     from datetime import datetime, timezone
     return datetime.now(timezone.utc).isoformat()
+
+
+def _workspace_from_config(cfg: SkillregConfig | None = None) -> Path:
+    cfg = cfg or load_config()
+    if cfg.workspace_path:
+        return Path(cfg.workspace_path).expanduser().resolve()
+    return Path.cwd()
+
+
+def _select_source_skills(workspace: Path, skills: list[str] | None) -> list[dict]:
+    items = get_all(workspace)["skills"]
+    if not skills:
+        return items
+    skill_set = set(skills)
+    return [item for item in items if item["name"] in skill_set]
+
+
+def _skill_status(workspace: Path, target: str, item: dict) -> str:
+    source_dir = workspace / item["path"]
+    target_dir = Path(target).expanduser() / item["name"]
+    if not target_dir.exists():
+        return "missing"
+    return "synced" if _dirs_equal(source_dir, target_dir) else "modified"
+
+
+def _selected_targets(targets: list[str], target: str | None) -> list[str]:
+    if not target:
+        return list(targets)
+    resolved = Path(target).expanduser()
+    return [t for t in targets if Path(t).expanduser() == resolved or t == target] or [target]
+
+
+def _dirs_equal(source: Path, target: Path) -> bool:
+    if not source.is_dir() or not target.is_dir():
+        return False
+    comparison = filecmp.dircmp(source, target, ignore=[".git", "__pycache__", ".DS_Store", "Thumbs.db"])
+    if comparison.left_only or comparison.right_only or comparison.diff_files or comparison.funny_files:
+        return False
+    return all(
+        _dirs_equal(Path(source, name), Path(target, name))
+        for name in comparison.common_dirs
+    )
+
+
+def _diff_dirs(source: Path, target: Path) -> list[dict]:
+    source_files = _walk_files(source) if source.is_dir() else {}
+    target_files = _walk_files(target) if target.is_dir() else {}
+    all_paths = sorted(set(source_files) | set(target_files))
+    rows = []
+    for rel_path in all_paths:
+        if rel_path not in target_files:
+            status = "removed"
+        elif rel_path not in source_files:
+            status = "added"
+        elif source_files[rel_path] == target_files[rel_path]:
+            status = "unchanged"
+        else:
+            status = "modified"
+        rows.append({"path": rel_path, "status": status})
+    return rows
+
+
+def _walk_files(root: Path) -> dict[str, bytes]:
+    result: dict[str, bytes] = {}
+    for file_path in sorted(root.rglob("*")):
+        if not file_path.is_file():
+            continue
+        if any(part in {".git", "__pycache__"} for part in file_path.parts):
+            continue
+        rel_path = str(file_path.relative_to(root)).replace("\\", "/")
+        result[rel_path] = file_path.read_bytes()
+    return result
+
+
+def _target_name(path: Path) -> str:
+    return path.name or str(path)
+
+
+def _target_display_name(path: Path) -> str:
+    resolved = path.expanduser()
+    normalized = [part for part in resolved.parts if part not in ("/", "")]
+    if len(normalized) >= 2 and normalized[-1] == "skills":
+        parent = normalized[-2]
+        if parent.startswith(".") and len(parent) > 1:
+            return parent[1:]
+        return parent
+    return _target_name(resolved)

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 from skillreg.services.skill_registry import get_all, get_skill
 
 
