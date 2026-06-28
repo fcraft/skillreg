@@ -81,9 +81,24 @@ skillreg dashboard open --no-browser
 git clone https://github.com/fcraft/skillreg.git
 cd skillreg
 uv sync --extra dev
+scripts/install-git-hooks.sh
 uv run pytest -q
 uv run --with ruff ruff check src/ tests/ scripts/
 ```
+
+版本号由 `pyproject.toml`、`src/skillreg/__init__.py` 和内置
+`skillreg-skill` 共同校验。安装 git hook 后，在 `main` 分支提交时会自动
+bump `x.y.z` 版本：`feat:` 提交使 `y + 1`，其他提交使 `z + 1`，并把
+`x` 固定为 `1`。
+
+本地发版：
+
+```bash
+scripts/release.sh
+```
+
+脚本会读取当前版本，创建并推送 `v<version>` tag，随后由 GitHub Actions
+发布到 GitHub Release 和 PyPI。
 
 ## Contributors
 

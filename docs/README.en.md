@@ -61,9 +61,24 @@ skillreg dashboard open --no-browser
 git clone https://github.com/fcraft/skillreg.git
 cd skillreg
 uv sync --extra dev
+scripts/install-git-hooks.sh
 uv run pytest -q
 uv run --with ruff ruff check src/ tests/ scripts/
 ```
+
+Version metadata is checked across `pyproject.toml`,
+`src/skillreg/__init__.py`, and the built-in `skillreg-skill`. After installing
+the git hook, commits on `main` automatically bump `x.y.z`: `feat:` increments
+`y`, other commits increment `z`, and `x` is fixed to `1`.
+
+Local release:
+
+```bash
+scripts/release.sh
+```
+
+The script reads the current version, creates and pushes `v<version>`, and lets
+GitHub Actions publish the GitHub Release and PyPI package.
 
 ## License
 

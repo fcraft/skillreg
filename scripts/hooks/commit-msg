@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+commit_msg_file="${1:?commit message file is required}"
+
+python3 "$repo_root/scripts/versioning.py" bump --commit-msg-file "$commit_msg_file"
+
+git add \
+  "$repo_root/pyproject.toml" \
+  "$repo_root/src/skillreg/__init__.py" \
+  "$repo_root/src/skillreg/builtin/skillreg-skill/SKILL.md"

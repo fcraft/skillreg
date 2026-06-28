@@ -1,6 +1,8 @@
 ---
 name: skillreg-skill
 description: 当用户要注册、导入、转换或同步本地 skill 时使用。用户可能在任意项目里对 agent 说“注册这个 skill”；优先把当前项目或用户给定路径中 agent/用户写好的 SKILL.md 注册到当前 skillreg workspace，而不是要求用户理解产品仓、workspace 仓等实现细节。
+metadata:
+  version: "1.2.0"
 ---
 
 # skillreg-skill
