@@ -47,15 +47,15 @@ def test_register_list_convert_and_diff(tmp_path, monkeypatch):
     registered = runner.invoke(cli, ["register", str(source)])
 
     assert registered.exit_code == 0, registered.output
-    assert "Registered skill: demo-skill" in registered.output
-    assert "skillreg context after register" in registered.output
+    assert "已注册 skill: demo-skill" in registered.output
+    assert "注册后的 skillreg 上下文" in registered.output
     assert (workspace / "skills" / "demo-skill" / "SKILL.md").exists()
 
     listed = runner.invoke(cli, ["list"])
 
     assert listed.exit_code == 0, listed.output
     assert "demo-skill" in listed.output
-    assert "Total: 1 skill(s)" in listed.output
+    assert "总计: 1 个 skill" in listed.output
 
     synced = runner.invoke(cli, ["sync", "execute", "--target", str(target)])
 
@@ -73,7 +73,7 @@ def test_register_list_convert_and_diff(tmp_path, monkeypatch):
     converted = runner.invoke(cli, ["convert", "demo-skill"])
 
     assert converted.exit_code == 0, converted.output
-    assert "Converted skill: demo-skill" in converted.output
+    assert "已转换 skill: demo-skill" in converted.output
     assert (workspace / "repos" / "demo-skill-cli" / "skill" / "demo-skill" / "SKILL.md").exists()
 
 
@@ -87,7 +87,7 @@ def test_target_and_sync_status_commands(tmp_path, monkeypatch):
 
     added = runner.invoke(cli, ["target", "add", str(target), "--name", "codex"])
     assert added.exit_code == 0, added.output
-    assert "Added target: codex" in added.output
+    assert "已添加同步目标: codex" in added.output
 
     targets = runner.invoke(cli, ["target", "list"])
     assert targets.exit_code == 0, targets.output
@@ -104,7 +104,7 @@ def test_target_and_sync_status_commands(tmp_path, monkeypatch):
 
     removed = runner.invoke(cli, ["target", "remove", str(target)])
     assert removed.exit_code == 0, removed.output
-    assert "Removed target" in removed.output
+    assert "已移除同步目标" in removed.output
 
 
 def test_project_commands_and_project_sync(tmp_path, monkeypatch):
@@ -120,7 +120,7 @@ def test_project_commands_and_project_sync(tmp_path, monkeypatch):
         ["project", "create", "--name", "demo-project", "--target", str(target)],
     )
     assert created.exit_code == 0, created.output
-    assert "Created project: demo-project" in created.output
+    assert "已创建项目组: demo-project" in created.output
 
     listed = runner.invoke(cli, ["project", "list"])
     assert listed.exit_code == 0, listed.output
@@ -128,12 +128,12 @@ def test_project_commands_and_project_sync(tmp_path, monkeypatch):
 
     synced = runner.invoke(cli, ["sync", "execute", "--project", "demo-project"])
     assert synced.exit_code == 0, synced.output
-    assert "Synced project: demo-project" in synced.output
+    assert "已同步项目组: demo-project" in synced.output
     assert (target / "project-skill" / "SKILL.md").exists()
 
     deleted = runner.invoke(cli, ["project", "delete", "demo-project"])
     assert deleted.exit_code == 0, deleted.output
-    assert "Deleted project: demo-project" in deleted.output
+    assert "已删除项目组: demo-project" in deleted.output
 
 
 def test_workspace_switch_and_current(tmp_path, monkeypatch):
@@ -146,12 +146,12 @@ def test_workspace_switch_and_current(tmp_path, monkeypatch):
     switched = runner.invoke(cli, ["workspace", "switch", str(other)])
 
     assert switched.exit_code == 0, switched.output
-    assert f"Workspace switched to {other}" in switched.output
+    assert f"已切换 workspace: {other}" in switched.output
 
     current = runner.invoke(cli, ["workspace", "current"])
 
     assert current.exit_code == 0, current.output
-    assert f"current workspace : {other}" in current.output
+    assert f"当前 workspace : {other}" in current.output
 
 
 def test_submodule_list_without_submodules(tmp_path, monkeypatch):
@@ -187,16 +187,16 @@ def test_dashboard_lifecycle_commands_are_exposed(tmp_path, monkeypatch):
     runner = CliRunner()
     started = runner.invoke(cli, ["dashboard", "start", "--port", "9999"])
     assert started.exit_code == 0, started.output
-    assert "Dashboard started" in started.output
+    assert "Dashboard 已启动" in started.output
     assert pid_file.read_text(encoding="utf-8") == "12345"
 
     status = runner.invoke(cli, ["dashboard", "status"])
     assert status.exit_code == 0, status.output
-    assert "Dashboard running" in status.output
+    assert "Dashboard 运行中" in status.output
 
     stopped = runner.invoke(cli, ["dashboard", "stop"])
     assert stopped.exit_code == 0, stopped.output
-    assert "Dashboard stopped" in stopped.output
+    assert "Dashboard 已停止" in stopped.output
     assert seen_kills
 
 
@@ -215,4 +215,5 @@ def test_help_short_option_is_available_at_all_levels():
     command = runner.invoke(cli, ["sync", "execute", "-h"])
     assert command.exit_code == 0, command.output
     assert "--target" in command.output
+    assert "要同步到的目标目录" in command.output
     assert "-h, --help" in command.output

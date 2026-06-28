@@ -85,6 +85,6 @@ def test_workspace_create_prints_current_workspace_context(tmp_path, monkeypatch
     result = CliRunner().invoke(cli, ["workspace", "create", str(ws)])
 
     assert result.exit_code == 0
-    assert f"Workspace created at {ws}" in result.output
-    assert "skillreg context after workspace create" in result.output
-    assert f"current workspace : {ws}" in result.output
+    assert f"已创建 workspace: {ws}" in result.output
+    assert "创建 workspace 后的 skillreg 上下文" in result.output
+    assert f"当前 workspace : {ws}" in result.output

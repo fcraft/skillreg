@@ -70,7 +70,7 @@
             <span class="workspace-meta-label">当前 Workspace</span>
             <code class="workspace-meta-value">{{ workspacePath || '未配置' }}</code>
           </div>
-          <QInput v-model="workspaceDraft" label="Workspace 路径" placeholder="例如: ~/Code/project_kex/agent-hub-kex" />
+          <QInput v-model="workspaceDraft" label="Workspace 路径" placeholder="例如: ~/skills-workspace" />
           <div v-if="workspaceError" class="workspace-error">{{ workspaceError }}</div>
         </div>
         <template #footer>

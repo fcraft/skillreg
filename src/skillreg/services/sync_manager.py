@@ -394,11 +394,9 @@ def get_target_file(skill: str, target: str, rel_path: str) -> dict:
 
 def _find_sync_script() -> Path:
     """Find the sync-skills.py script."""
-    # Check in agent-hub infra/
     candidates = [
-        Path.home() / "Code/project_kex/agent-hub/infra/sync-skills.py",
-        Path(__file__).resolve().parents[4] / "infra" / "sync-skills.py",  # agent-hub-kex
-        Path(__file__).resolve().parents[3] / "agent-hub" / "infra" / "sync-skills.py",
+        Path(__file__).resolve().parents[3] / "infra" / "sync-skills.py",
+        Path.cwd() / "infra" / "sync-skills.py",
     ]
     for path in candidates:
         if path.exists():

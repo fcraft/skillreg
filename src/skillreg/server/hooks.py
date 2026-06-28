@@ -25,8 +25,8 @@ class HookActionBody(BaseModel):
 def _find_hooks_script() -> Path:
     """Find the hooks.py script."""
     candidates = [
-        Path(__file__).resolve().parents[4] / "infra" / "hooks.py",  # agent-hub-kex
-        Path.home() / "Code/project_kex/agent-hub/infra/hooks.py",
+        Path(__file__).resolve().parents[3] / "infra" / "hooks.py",
+        Path.cwd() / "infra" / "hooks.py",
     ]
     for p in candidates:
         if p.exists():
