@@ -10,8 +10,8 @@
 
 ## Capabilities
 
-- **CLI**: create a workspace, inspect current config, and start the dashboard.
-- **Skill**: includes the built-in `skillreg-skill` so agents know how to register, import, sync, and troubleshoot skills.
+- **CLI**: create/switch workspaces, register/convert skills, manage targets/projects, run sync, inspect diffs, and start the dashboard.
+- **Skill**: includes the built-in `skillreg-skill` so agents can find a local `SKILL.md` from any project and register it into the current workspace.
 - **Dashboard**: import skills, switch workspaces, manage sync targets, inspect diffs, batch sync by project, and view repository status, dependency graph, and Git history.
 
 ## Install
@@ -19,6 +19,9 @@
 ```bash
 uv tool install skillreg
 skillreg workspace create ~/my-skills
+skillreg register /path/to/my-skill
+skillreg target add ~/.codex/skills
+skillreg sync execute --target ~/.codex/skills
 skillreg dashboard open
 ```
 
@@ -33,6 +36,22 @@ Common commands:
 ```bash
 skillreg config
 skillreg workspace create <path>
+skillreg workspace current
+skillreg workspace switch <path>
+skillreg register <path> [--force] [--name name]
+skillreg list
+skillreg convert <name>
+skillreg target list
+skillreg target add <path>
+skillreg sync status
+skillreg sync execute --target <path> [--skill name]
+skillreg project create --name <name> --target <path>
+skillreg sync execute --project <name>
+skillreg diff <skill> --target <path>
+skillreg submodule list
+skillreg dashboard start
+skillreg dashboard status
+skillreg dashboard stop
 skillreg dashboard open --no-browser
 ```
 
@@ -45,8 +64,6 @@ uv sync --extra dev
 uv run pytest -q
 uv run --with ruff ruff check src/ tests/ scripts/
 ```
-
-See [release-process.md](release-process.md) for release notes.
 
 ## License
 

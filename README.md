@@ -30,8 +30,8 @@
 
 ## 能力
 
-- **CLI**：创建 workspace、查看当前配置、启动 dashboard。
-- **Skill**：内置 `skillreg-skill`，让 agent 知道如何注册、导入、同步和排障。
+- **CLI**：创建/切换 workspace，注册/转换 skill，管理 targets/projects，执行 sync，查看 diff，启动 dashboard。
+- **Skill**：内置 `skillreg-skill`，让 agent 在任意项目里识别本地 `SKILL.md` 并注册到当前 workspace。
 - **Dashboard**：提供图形入口，可导入 skill、切换 workspace、管理同步目标、查看 Diff、按项目组批量同步、查看仓库状态/依赖图/Git 记录。
 
 ## 安装与使用
@@ -39,6 +39,9 @@
 ```bash
 uv tool install skillreg
 skillreg workspace create ~/my-skills
+skillreg register /path/to/my-skill
+skillreg target add ~/.codex/skills
+skillreg sync execute --target ~/.codex/skills
 skillreg dashboard open
 ```
 
@@ -53,6 +56,22 @@ http://127.0.0.1:8787
 ```bash
 skillreg config
 skillreg workspace create <path>
+skillreg workspace current
+skillreg workspace switch <path>
+skillreg register <path> [--force] [--name name]
+skillreg list
+skillreg convert <name>
+skillreg target list
+skillreg target add <path>
+skillreg sync status
+skillreg sync execute --target <path> [--skill name]
+skillreg project create --name <name> --target <path>
+skillreg sync execute --project <name>
+skillreg diff <skill> --target <path>
+skillreg submodule list
+skillreg dashboard start
+skillreg dashboard status
+skillreg dashboard stop
 skillreg dashboard open --no-browser
 ```
 
@@ -65,8 +84,6 @@ uv sync --extra dev
 uv run pytest -q
 uv run --with ruff ruff check src/ tests/ scripts/
 ```
-
-发版流程见 [docs/release-process.md](docs/release-process.md)。
 
 ## Contributors
 

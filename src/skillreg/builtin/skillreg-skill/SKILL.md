@@ -40,12 +40,13 @@ description: 当用户要注册、导入、转换或同步本地 skill 时使用
 | 场景 | 操作 |
 |------|------|
 | 新建 workspace | `skillreg workspace create ~/my-skills` |
-| 已有 workspace | 确认它至少包含 `skills/` 目录 |
-| 需要图形操作 | `skillreg dashboard open` |
+| 查看当前 workspace | `skillreg workspace current` |
+| 切换已有 workspace | `skillreg workspace switch /path/to/workspace` |
+| 需要图形操作 | `skillreg dashboard open` 或 `skillreg dashboard start` |
 
 说明：
-- workspace 切换主要在 dashboard 中完成。
-- CLI 更适合做"确认配置、创建 workspace、启动 dashboard"这几个入口动作。
+- workspace 只需要包含 `skills/` 目录；用户不需要理解产品仓和 workspace 仓的区别。
+- CLI 适合 agent 从任意项目完成注册、同步、状态确认；dashboard 适合人类批量管理和查看细节。
 
 ### 2. 把本地 skill 纳入 workspace
 
@@ -53,10 +54,11 @@ description: 当用户要注册、导入、转换或同步本地 skill 时使用
 
 | 目标 | 入口 |
 |------|------|
-| 把当前目录或给定路径里的 skill 注册进 workspace | dashboard 的 import 流程或 `/api/registry/register` |
-| 保留原目录内容并注册进 workspace | dashboard 的 import 流程 |
-| 已有 registry 风格调用面 | `/api/registry/register` |
-| 把 file skill 变成 repo/CLI 骨架 | `/api/registry/convert` |
+| 把当前目录或给定路径里的 skill 注册进 workspace | `skillreg register <path>` |
+| 覆盖同名 skill | `skillreg register <path> --force` |
+| 注册时改名 | `skillreg register <path> --name <name>` |
+| 查看 workspace skills | `skillreg list` |
+| 把 file skill 变成 repo/CLI 骨架 | `skillreg convert <name>` |
 
 要点：
 - `register` → 把 skill 放进 `skills/<name>/`
@@ -66,8 +68,23 @@ description: 当用户要注册、导入、转换或同步本地 skill 时使用
 
 ### 3. 同步到 agent 目标目录
 
-1. 在 dashboard 的 Sync 页面配置 targets。
-2. 执行同步，检查状态。
+常用 CLI：
+
+```bash
+skillreg target add ~/.codex/skills
+skillreg target list
+skillreg sync status
+skillreg sync execute --target ~/.codex/skills
+skillreg sync execute --target ~/.codex/skills --skill my-skill
+skillreg diff my-skill --target ~/.codex/skills
+```
+
+项目组同步：
+
+```bash
+skillreg project create --name my-project --target ~/.codex/skills --target ~/.claude/skills
+skillreg sync execute --project my-project
+```
 
 状态含义（不要混淆）：
 
@@ -76,7 +93,6 @@ description: 当用户要注册、导入、转换或同步本地 skill 时使用
 | `synced` | workspace 和 target 一致 |
 | `modified` | target 里有本地改动或差异 |
 | `missing` | 配置里有这个 skill，但目标缺失 |
-| `not-installed` | 该 target 当前还没有安装这个 skill |
 
 ## agent 行为约束
 

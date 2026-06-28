@@ -63,7 +63,7 @@ python -m uvicorn skillreg.server:app --host 127.0.0.1 --port 8787
 
 ```bash
 skillreg workspace create ~/my-skills
-skillreg dashboard open --no-browser
+skillreg workspace current
 ```
 
 然后确认：
@@ -72,19 +72,54 @@ skillreg dashboard open --no-browser
 - `workspace_path` 指向新建 workspace
 - workspace 下至少有 `skills/` 和 `repos/`
 
-## 5. 常用命令
+## 5. 注册和同步闭环
+
+如果当前目录或用户给定目录包含 `SKILL.md`：
+
+```bash
+skillreg register .
+skillreg list
+skillreg target add ~/.codex/skills
+skillreg sync status
+skillreg sync execute --target ~/.codex/skills
+```
+
+如果同名 skill 已存在：
+
+```bash
+skillreg register . --force
+```
+
+如果需要把 `skills/<name>` 转成 CLI 子仓骨架：
+
+```bash
+skillreg convert <name>
+```
+
+## 6. 常用命令
 
 ```bash
 skillreg config
 skillreg workspace create <path>
+skillreg workspace current
+skillreg workspace switch <path>
+skillreg register <path>
+skillreg list
+skillreg target list
+skillreg target add <path>
+skillreg sync status
+skillreg sync execute --target <path>
+skillreg diff <skill> --target <path>
 skillreg dashboard open
+skillreg dashboard start
+skillreg dashboard status
+skillreg dashboard stop
 skillreg dashboard open --no-browser
 ```
 
 当前 agent 应该把 CLI 看成：
 
-- `config`：确认配置和当前 workspace
-- `workspace create`：创建新的 workspace
-- `dashboard open`：进入主要操作入口
-
-workspace 切换、导入、sync target 管理，目前主要还是通过 dashboard 完成。
+- `config / workspace current`：确认配置和当前 workspace
+- `register / list / convert`：完成 skill 纳入 workspace 的闭环
+- `target / sync / diff / project`：完成同步和状态确认
+- `dashboard open`：进入人类可视化管理入口

@@ -41,8 +41,12 @@ ls <workspace>/skills
 
 如果用户已经有 workspace，但 CLI 当前没指向它：
 
-- 打开 dashboard
-- 在 header 中切换到正确 workspace
+```bash
+skillreg workspace switch <workspace>
+skillreg workspace current
+```
+
+如果更适合人类确认，也可以打开 dashboard 后在 header 中切换。
 
 ## 3. dashboard 起不来
 
@@ -86,7 +90,15 @@ python -m uvicorn skillreg.server:app --host 127.0.0.1 --port 8787
 常见冲突：
 
 - `skills/<name>` 已存在
-- 没有传 `force=true`
+- 没有传 `--force`
+
+推荐命令：
+
+```bash
+skillreg register <path>
+skillreg register <path> --force
+skillreg register <path> --name <new-name>
+```
 
 ### convert 失败
 
@@ -107,13 +119,28 @@ python -m uvicorn skillreg.server:app --host 127.0.0.1 --port 8787
 - `synced`：一致
 - `modified`：目标侧有差异
 - `missing`：配置/期望存在，但目标缺失
-- `not-installed`：当前 target 还没安装这个 skill
 
 如果用户说“怎么全是 missing / not-installed”，先检查：
 
 - 当前 target 路径是不是对的
 - target 目录是否真的存在
 - workspace 当前选中的 skill 是否在目标里出现
+
+推荐命令：
+
+```bash
+skillreg target list
+skillreg sync status
+skillreg sync execute --target <target> --dry-run
+skillreg sync execute --target <target>
+skillreg diff <skill> --target <target>
+```
+
+如果 target 没配置：
+
+```bash
+skillreg target add <target>
+```
 
 ## 6. builtin skill 没注入
 
