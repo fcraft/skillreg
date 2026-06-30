@@ -215,7 +215,7 @@ def test_dashboard_start_auto_uses_next_available_port(tmp_path, monkeypatch):
     monkeypatch.setattr(climod, "DASHBOARD_PID_FILE", tmp_path / "dashboard.pid")
     monkeypatch.setattr(climod, "DASHBOARD_META_FILE", tmp_path / "dashboard.json")
     monkeypatch.setattr(climod, "DASHBOARD_LOG_FILE", tmp_path / "dashboard.log")
-    monkeypatch.setattr(climod, "_is_port_available", lambda host, port: port == 8788)
+    monkeypatch.setattr(climod, "_is_port_available", lambda host, port: port == 28788)
     monkeypatch.setattr(climod, "_wait_for_dashboard", lambda url, proc: True)
 
     seen_cmd = {}
@@ -232,12 +232,45 @@ def test_dashboard_start_auto_uses_next_available_port(tmp_path, monkeypatch):
 
     monkeypatch.setattr(climod.subprocess, "Popen", fake_popen)
 
-    result = CliRunner().invoke(cli, ["dashboard", "start", "--port", "8787"])
+    result = CliRunner().invoke(cli, ["dashboard", "start"])
 
     assert result.exit_code == 0, result.output
-    assert "http://127.0.0.1:8788" in result.output
-    assert seen_cmd["cmd"][-1] == "8788"
-    assert '"port": 8788' in climod.DASHBOARD_META_FILE.read_text(encoding="utf-8")
+    assert "http://127.0.0.1:28788" in result.output
+    assert seen_cmd["cmd"][-1] == "28788"
+    assert '"port": 28788' in climod.DASHBOARD_META_FILE.read_text(encoding="utf-8")
+
+
+def test_dashboard_start_uses_default_port(tmp_path, monkeypatch):
+    _configure(tmp_path, monkeypatch)
+
+    import skillreg.cli as climod
+
+    monkeypatch.setattr(climod, "DASHBOARD_PID_FILE", tmp_path / "dashboard.pid")
+    monkeypatch.setattr(climod, "DASHBOARD_META_FILE", tmp_path / "dashboard.json")
+    monkeypatch.setattr(climod, "DASHBOARD_LOG_FILE", tmp_path / "dashboard.log")
+    monkeypatch.setattr(climod, "_find_available_port", lambda host, port: port)
+    monkeypatch.setattr(climod, "_wait_for_dashboard", lambda url, proc: True)
+
+    seen_cmd = {}
+
+    class FakeProc:
+        pid = 24681
+
+        def poll(self):
+            return None
+
+    def fake_popen(cmd, **kwargs):
+        seen_cmd["cmd"] = cmd
+        return FakeProc()
+
+    monkeypatch.setattr(climod.subprocess, "Popen", fake_popen)
+
+    result = CliRunner().invoke(cli, ["dashboard", "start"])
+
+    assert result.exit_code == 0, result.output
+    assert "http://127.0.0.1:28787" in result.output
+    assert seen_cmd["cmd"][-1] == "28787"
+    assert '"port": 28787' in climod.DASHBOARD_META_FILE.read_text(encoding="utf-8")
 
 
 def test_dashboard_open_starts_background_service_without_blocking(tmp_path, monkeypatch):
@@ -262,7 +295,7 @@ def test_dashboard_open_starts_background_service_without_blocking(tmp_path, mon
     monkeypatch.setattr(climod.subprocess, "Popen", lambda *args, **kwargs: FakeProc())
     monkeypatch.setattr(climod.webbrowser, "open", lambda url: opened.append(url))
 
-    result = CliRunner().invoke(cli, ["dashboard", "open", "--port", "8787"])
+    result = CliRunner().invoke(cli, ["dashboard", "open", "--port", "28787"])
 
     assert result.exit_code == 0, result.output
     assert "Dashboard 已后台启动" in result.output
@@ -294,7 +327,7 @@ def test_dashboard_start_ignores_stale_non_dashboard_pid(tmp_path, monkeypatch):
     monkeypatch.setattr(climod.os, "kill", lambda pid, sig: None)
     monkeypatch.setattr(climod.subprocess, "Popen", lambda *args, **kwargs: FakeProc())
 
-    result = CliRunner().invoke(cli, ["dashboard", "start", "--port", "8787"])
+    result = CliRunner().invoke(cli, ["dashboard", "start", "--port", "28787"])
 
     assert result.exit_code == 0, result.output
     assert "Dashboard 已启动" in result.output

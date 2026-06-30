@@ -48,7 +48,7 @@ skillreg dashboard open
 Dashboard 默认打开：
 
 ```text
-http://127.0.0.1:8787
+http://127.0.0.1:28787
 ```
 
 常用命令：

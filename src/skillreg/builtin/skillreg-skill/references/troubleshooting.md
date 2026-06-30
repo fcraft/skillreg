@@ -68,7 +68,7 @@ skillreg config
 可直接用开发命令确认后端是否可起：
 
 ```bash
-python -m uvicorn skillreg.server:app --host 127.0.0.1 --port 8787
+python -m uvicorn skillreg.server:app --host 127.0.0.1 --port 28787
 ```
 
 再检查：

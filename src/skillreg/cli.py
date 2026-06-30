@@ -25,7 +25,7 @@ from . import __version__
 from .config import CONFIG_FILE, load_config, save_config
 
 DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 8787
+DEFAULT_PORT = 28787
 DASHBOARD_PID_FILE = Path.home() / ".skillreg" / "dashboard.pid"
 DASHBOARD_META_FILE = Path.home() / ".skillreg" / "dashboard.json"
 DASHBOARD_LOG_FILE = Path.home() / ".skillreg" / "dashboard.log"

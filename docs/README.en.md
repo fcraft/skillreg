@@ -28,7 +28,7 @@ skillreg dashboard open
 The dashboard opens at:
 
 ```text
-http://127.0.0.1:8787
+http://127.0.0.1:28787
 ```
 
 Common commands:

@@ -54,7 +54,7 @@ skillreg dashboard open --no-browser
 如果用户是在当前仓库里直接联调，也可以直接起服务：
 
 ```bash
-python -m uvicorn skillreg.server:app --host 127.0.0.1 --port 8787
+python -m uvicorn skillreg.server:app --host 127.0.0.1 --port 28787
 ```
 
 ## 4. 初始化最小可用闭环
