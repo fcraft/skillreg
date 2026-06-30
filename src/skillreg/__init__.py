@@ -5,4 +5,4 @@ syncs skills to agent install targets. See ``README.md`` and ``docs/`` for the
 current product docs.
 """
 
-__version__ = "1.3.0"
+__version__ = "1.3.1"
