@@ -14,10 +14,6 @@
       >
         {{ refreshingAll ? '检查中...' : '检查全部远程' }}
       </QButton>    </div>
-    <div class="remote-scope-hint">
-      <span><strong>远程检查</strong> 只读 fetch 仓库，更新 ahead / behind / dirty / 指针状态。</span>
-      <span><strong>Sync 检查</strong> 对比 workspace skill 与 agent 目标目录的文件差异。</span>
-    </div>
     <div v-if="lastBatchCheckAt" class="refresh-summary">
       <span class="refresh-summary-time">上次检查: {{ relativeTime(new Date(lastBatchCheckAt).toISOString()) }}</span>
       <template v-if="refreshSummary.behind || refreshSummary.ahead || refreshSummary.diverged || refreshSummary.unknown || refreshSummary.dirty">
