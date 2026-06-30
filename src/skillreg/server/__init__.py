@@ -23,6 +23,11 @@ def dashboard_dir() -> Optional[Path]:
         p = Path(env)
         if p.is_dir():
             return p
+    # 1. 包内打包的构建产物（pip install 场景）
+    packaged = Path(__file__).resolve().parent.parent / "dashboard_dist"
+    if packaged.is_dir():
+        return packaged
+    # 2. 源码仓库中的构建产物（开发 / uv run 场景）
     dashboard_root = Path(__file__).resolve().parents[3] / "dashboard"
     dist = dashboard_root / "dist"
     if dist.is_dir():

@@ -826,8 +826,12 @@ def _kill_orphan_dashboard_processes() -> list[int]:
 
 
 def _find_dashboard_dir() -> Path | None:
-    """查找 dashboard 静态文件目录（dist 优先于源码目录）。"""
-    # 1. 相对于 CLI 源码位置查找（开发模式 / uv run）
+    """查找 dashboard 静态文件目录（包内产物优先，源码 dist 次之）。"""
+    # 1. 包内打包的构建产物（pip install / uv tool install 场景）
+    packaged = Path(__file__).resolve().parent / "dashboard_dist"
+    if packaged.is_dir():
+        return packaged
+    # 2. 相对于 CLI 源码位置查找（开发模式 / uv run）
     cli_file = Path(__file__).resolve()
     for parent in cli_file.parents:
         candidate = parent / "dashboard" / "dist"
@@ -836,15 +840,6 @@ def _find_dashboard_dir() -> Path | None:
         candidate = parent / "dashboard"
         if candidate.is_dir() and (candidate / "index.html").is_file():
             return candidate
-    # 2. 常见源码仓库路径（uv tool install 场景）
-    common_roots = [
-        Path.home() / "Code" / "project_kex" / "skillreg",
-        Path.home() / "Code" / "skillreg",
-    ]
-    for root in common_roots:
-        dist = root / "dashboard" / "dist"
-        if dist.is_dir():
-            return dist
     return None
 
 

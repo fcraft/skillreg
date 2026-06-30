@@ -24,6 +24,14 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra dev
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build dashboard
+        run: cd dashboard && npm ci && npm run build
+
       - name: Check version and tag
         run: uv run python scripts/check_version.py --require-tag
 
