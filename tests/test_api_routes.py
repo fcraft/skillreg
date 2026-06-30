@@ -60,6 +60,50 @@ def test_skills_list_lite(tmp_path, monkeypatch):
     assert "repoNodes" not in data  # lite mode
 
 
+def test_skills_list_uses_cache_and_refresh_bypasses_it(tmp_path, monkeypatch):
+    workspace = _make_workspace(tmp_path, monkeypatch)
+    client = _client()
+
+    first = client.get("/api/skills")
+    assert first.status_code == 200
+    assert [s["name"] for s in first.json()["skills"]] == ["my-skill", "other-skill"]
+
+    added = workspace / "skills" / "cached-skill"
+    added.mkdir()
+    (added / "SKILL.md").write_text(
+        "---\nname: cached-skill\ndescription: Cached\n---\n\n# cached\n",
+        encoding="utf-8",
+    )
+
+    cached = client.get("/api/skills")
+    assert cached.status_code == 200
+    assert "cached-skill" not in [s["name"] for s in cached.json()["skills"]]
+
+    refreshed = client.get("/api/skills/refresh")
+    assert refreshed.status_code == 200
+    assert "cached-skill" in [s["name"] for s in refreshed.json()["skills"]]
+
+
+def test_register_invalidates_skill_cache(tmp_path, monkeypatch):
+    _make_workspace(tmp_path, monkeypatch)
+    client = _client()
+    assert client.get("/api/skills").status_code == 200
+
+    source = tmp_path / "external"
+    source.mkdir()
+    (source / "SKILL.md").write_text(
+        "---\nname: external-skill\ndescription: External\n---\n\n# external\n",
+        encoding="utf-8",
+    )
+
+    registered = client.post("/api/registry/register", json={"sourcePath": str(source)})
+    assert registered.status_code == 200, registered.text
+
+    listed = client.get("/api/skills")
+    assert listed.status_code == 200
+    assert "external-skill" in [s["name"] for s in listed.json()["skills"]]
+
+
 def test_skills_list_full(tmp_path, monkeypatch):
     """GET /api/skills?full=1 returns complete data."""
     _make_workspace(tmp_path, monkeypatch)

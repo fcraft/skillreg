@@ -47,6 +47,9 @@ _AGENT_HUB_CONVENTIONS: list[tuple[str, str]] = [
     (".agent/skills", "agent"),
 ]
 
+_CACHE_TTL_SECONDS = 30.0
+_GET_ALL_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
+
 
 # ── helpers ----------------------------------------------------------------
 
@@ -284,6 +287,14 @@ def _get_remote_url(workspace: Path, submodule_path: str) -> str | None:
         return None
 
 
+def clear_cache(workspace: Path | None = None) -> None:
+    """Clear cached registry data after workspace content changes."""
+    if workspace is None:
+        _GET_ALL_CACHE.clear()
+        return
+    _GET_ALL_CACHE.pop(str(workspace.resolve()), None)
+
+
 def _get_submodule_index_ref(workspace: Path, submodule_path: str) -> str | None:
     try:
         output = _run(f"git ls-files -s -- {submodule_path}", cwd=str(workspace))
@@ -428,91 +439,167 @@ def _get_skill_directory(skill_md_path: str) -> str:
     return "/".join(parts)
 
 
-def get_all(workspace: Path) -> dict[str, Any]:
+def _build_skill_item(
+    workspace: Path,
+    skill_md_path: str,
+    parsed: dict[str, Any],
+    submodule_paths: list[str] | None = None,
+    remote_url_cache: dict[str, str | None] | None = None,
+) -> dict[str, Any]:
+    name = parsed["name"]
+    skill_dir = _get_skill_directory(skill_md_path)
+    skill_type = _classify_skill_type(workspace, skill_dir)
+
+    parent_submodule = None
+    for sp in sorted(submodule_paths or [], key=len, reverse=True):
+        if skill_dir == sp or skill_dir.startswith(f"{sp}/"):
+            parent_submodule = sp
+            break
+
+    if parent_submodule is None:
+        parts = skill_dir.split("/")
+        if len(parts) >= 2 and parts[0] == "repos":
+            candidate = "/".join(parts[:2])
+            if (workspace / candidate / ".git").exists():
+                parent_submodule = candidate
+
+    graph_type = "isolated-skill"
+    parent_node = None
+    if parent_submodule:
+        relative_path = skill_dir[len(parent_submodule) + 1:]
+        if relative_path.startswith("skill/"):
+            graph_type = "cli-skill"
+            parent_node = parent_submodule
+        else:
+            graph_type = "repo-cli" if skill_type == "CLI" else "repo-skill"
+            parent_node = parent_submodule
+
+    def remote_url(path: str | None) -> str | None:
+        if not path:
+            return None
+        if remote_url_cache is None:
+            return None
+        if path not in remote_url_cache:
+            remote_url_cache[path] = _get_remote_url(workspace, path)
+        return remote_url_cache[path]
+
+    skill_root = workspace / skill_dir.replace("/", os.sep)
+    file_count = _count_skill_files(skill_root) if skill_root.is_dir() else 0
+
+    return {
+        "id": name,
+        "name": name,
+        "description": parsed.get("description"),
+        "type": skill_type,
+        "graphType": graph_type,
+        "parentNode": parent_node,
+        "path": skill_dir,
+        "skillFilePath": skill_md_path,
+        "fileCount": file_count,
+        "remoteUrl": remote_url(parent_submodule or skill_dir),
+        "parentSkill": None,
+        "isSubmodule": parent_submodule is not None,
+        "submodulePath": parent_submodule,
+    }
+
+
+def _find_skill_lightweight(workspace: Path, skill_id: str) -> dict[str, Any] | None:
+    matches: list[dict[str, Any]] = []
+    for skill_md_path in _discover_skill_paths(workspace):
+        full_skill_md = workspace / skill_md_path.replace("/", os.sep)
+        parsed = _parse_frontmatter(full_skill_md)
+        if not parsed or not parsed.get("name"):
+            continue
+        if parsed["name"] == skill_id:
+            matches.append(_build_skill_item(workspace, skill_md_path, parsed))
+    return _dedupe_skills(matches)[0] if matches else None
+
+
+def _skill_priority(item: dict[str, Any]) -> tuple[int, int, str]:
+    path = item.get("path") or ""
+    name = item.get("name") or ""
+    if path == f"skills/{name}":
+        group = 0
+    elif path.startswith("skills/"):
+        group = 1
+    elif item.get("isSubmodule"):
+        group = 2
+    elif path.startswith("repos/"):
+        group = 3
+    else:
+        group = 4
+    return (group, path.count("/"), path)
+
+
+def _dedupe_skills(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    selected: dict[str, dict[str, Any]] = {}
+    for item in items:
+        name = item["name"]
+        current = selected.get(name)
+        if current is None or _skill_priority(item) < _skill_priority(current):
+            selected[name] = item
+    return sorted(selected.values(), key=lambda item: item["name"].lower())
+
+
+def get_all(workspace: Path, *, force: bool = False) -> dict[str, Any]:
     """Return ``{ skills, repoNodes, submodules, relationships, generatedAt }``.
 
     This is the frozen contract from skill-registry.js getAll().
-    Callers should cache the result (e.g. 30s) at the route level.
     """
+    workspace = workspace.resolve()
+    cache_key = str(workspace)
+    now = time.monotonic()
+    if not force:
+        cached = _GET_ALL_CACHE.get(cache_key)
+        if cached and now - cached[0] <= _CACHE_TTL_SECONDS:
+            return cached[1]
+
     submodule_configs = read_submodule_configs(workspace)
     submodule_paths = [s["path"] for s in submodule_configs]
+    remote_url_cache: dict[str, str | None] = {}
+
+    def remote_url(path: str | None) -> str | None:
+        if not path:
+            return None
+        if path not in remote_url_cache:
+            remote_url_cache[path] = _get_remote_url(workspace, path)
+        return remote_url_cache[path]
 
     submodules = []
     for sub in submodule_configs:
         status = get_submodule_status(workspace, sub["path"], sub["branch"])
-        remote_url = _get_remote_url(workspace, sub["path"])
         submodules.append({
             "path": sub["path"],
             "branch": sub["branch"],
             "description": sub["description"],
-            "remoteUrl": remote_url,
+            "remoteUrl": remote_url(sub["path"]),
             "status": status,
         })
 
     skill_paths = _discover_skill_paths(workspace)
-    skills: list[dict[str, Any]] = []
-    relationships: list[dict[str, str]] = []
+    discovered_skills: list[dict[str, Any]] = []
 
     for skill_md_path in skill_paths:
         full_skill_md = workspace / skill_md_path.replace("/", os.sep)
         parsed = _parse_frontmatter(full_skill_md)
         if not parsed or not parsed.get("name"):
             continue
-        name = parsed["name"]
-
-        skill_dir = _get_skill_directory(skill_md_path)
-        skill_type = _classify_skill_type(workspace, skill_dir)
-
-        # Find parent submodule
-        parent_submodule = None
-        for sp in sorted(submodule_paths, key=len, reverse=True):
-            if skill_dir == sp or skill_dir.startswith(f"{sp}/"):
-                parent_submodule = sp
-                break
-
-        is_submodule = parent_submodule is not None
-
-        # Determine graphType and parentNode
-        graph_type = "isolated-skill"
-        parent_node = None
-        if parent_submodule:
-            relative_path = skill_dir[len(parent_submodule) + 1:]
-            if relative_path.startswith("skill/"):
-                graph_type = "cli-skill"
-                parent_node = parent_submodule
-            else:
-                graph_type = "repo-cli" if skill_type == "CLI" else "repo-skill"
-                parent_node = parent_submodule
-
-        if parent_submodule and skill_dir != parent_submodule:
-            relationships.append({
-                "from": parent_submodule, "to": name, "type": "contains",
-            })
-
-        skill_remote_url = (
-            _get_remote_url(workspace, parent_submodule)
-            if parent_submodule
-            else _get_remote_url(workspace, skill_dir)
+        skill = _build_skill_item(
+            workspace,
+            skill_md_path,
+            parsed,
+            submodule_paths,
+            remote_url_cache,
         )
+        discovered_skills.append(skill)
 
-        skill_root = workspace / skill_dir.replace("/", os.sep)
-        file_count = _count_skill_files(skill_root) if skill_root.is_dir() else 0
-
-        skills.append({
-            "id": name,
-            "name": name,
-            "description": parsed.get("description"),
-            "type": skill_type,
-            "graphType": graph_type,
-            "parentNode": parent_node,
-            "path": skill_dir,
-            "skillFilePath": skill_md_path,
-            "fileCount": file_count,
-            "remoteUrl": skill_remote_url,
-            "parentSkill": None,
-            "isSubmodule": is_submodule,
-            "submodulePath": parent_submodule,
-        })
+    skills = _dedupe_skills(discovered_skills)
+    relationships: list[dict[str, str]] = []
+    for skill in skills:
+        if skill["submodulePath"] and skill["path"] != skill["submodulePath"]:
+            relationships.append({
+                "from": skill["submodulePath"], "to": skill["name"], "type": "contains",
+            })
 
     # Synthesize repo root nodes
     repo_nodes = []
@@ -543,19 +630,30 @@ def get_all(workspace: Path) -> dict[str, Any]:
 
     relationships.extend(_KNOWN_DEPENDENCIES)
 
-    return {
+    result = {
         "skills": skills,
         "repoNodes": repo_nodes,
         "submodules": submodules,
         "relationships": relationships,
         "generatedAt": time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime()),
     }
+    _GET_ALL_CACHE[cache_key] = (now, result)
+    return result
 
 
 def get_skill(workspace: Path, skill_id: str) -> dict[str, Any] | None:
     """Get a single skill by id/name."""
     if not skill_id:
         return None
+    workspace = workspace.resolve()
+    cached = _GET_ALL_CACHE.get(str(workspace))
+    if cached and time.monotonic() - cached[0] <= _CACHE_TTL_SECONDS:
+        for s in cached[1]["skills"]:
+            if s["id"] == skill_id or s["name"] == skill_id:
+                return s
+    lightweight = _find_skill_lightweight(workspace, skill_id)
+    if lightweight:
+        return lightweight
     data = get_all(workspace)
     for s in data["skills"]:
         if s["id"] == skill_id or s["name"] == skill_id:

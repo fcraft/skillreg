@@ -103,6 +103,23 @@ def test_get_all_multiple_skills(tmp_path):
     assert names == {"skill-a", "skill-b", "skill-c"}
 
 
+def test_get_all_dedupes_duplicate_skill_names_and_prefers_skills_dir(tmp_path):
+    """A skill name is the dashboard/API identity, so duplicate sources collapse."""
+    _make_skill_md(tmp_path / "repos" / "demo-skill" / "SKILL.md", "demo-skill", "Repo copy")
+    _make_skill_md(tmp_path / "skills" / "demo-skill" / "SKILL.md", "demo-skill", "Workspace copy")
+
+    data = get_all(tmp_path)
+
+    matches = [s for s in data["skills"] if s["name"] == "demo-skill"]
+    assert len(matches) == 1
+    assert matches[0]["path"] == "skills/demo-skill"
+    assert matches[0]["description"] == "Workspace copy"
+
+    found = get_skill(tmp_path, "demo-skill")
+    assert found is not None
+    assert found["path"] == "skills/demo-skill"
+
+
 def test_submodule_index_status_prefers_staged_gitlink(tmp_path, monkeypatch):
     """A staged parent gitlink should be treated as the current pointer."""
     submodule = tmp_path / "repos" / "demo"

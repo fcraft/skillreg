@@ -133,6 +133,36 @@ def test_dashboard_migration_sync_workflow_e2e(tmp_path, monkeypatch):
     assert any(row.get("_project") == "demo-project" for row in project_status_resp.json())
 
 
+def test_sync_status_diff_and_execute_dedupe_duplicate_skill_sources(tmp_path, monkeypatch):
+    workspace, target_path = _make_workspace(tmp_path, monkeypatch)
+    repo_skill = workspace / "repos" / "demo-skill"
+    repo_skill.mkdir(parents=True)
+    (repo_skill / "SKILL.md").write_text(
+        "---\nname: demo-skill\ndescription: Duplicate repo copy\n---\n\n# repo demo\n",
+        encoding="utf-8",
+    )
+    (repo_skill / "notes.md").write_text("repo copy\n", encoding="utf-8")
+    client = _client()
+
+    status_before = client.get("/api/sync/status", params={"target": str(target_path)})
+    assert status_before.status_code == 200
+    demo_rows = [row for row in status_before.json() if row["name"] == "demo-skill"]
+    assert len(demo_rows) == 1
+    assert demo_rows[0]["status"] == "missing"
+
+    sync_resp = client.post(
+        "/api/sync/execute",
+        json={"target": str(target_path), "skills": ["demo-skill"]},
+    )
+    assert sync_resp.status_code == 200
+    assert sync_resp.json()["success"] is True
+    assert (target_path / "demo-skill" / "notes.md").read_text(encoding="utf-8") == "hello dashboard migration\n"
+
+    diff_resp = client.get("/api/sync/diff", params={"skill": "demo-skill", "target": str(target_path)})
+    assert diff_resp.status_code == 200
+    assert diff_resp.json()["summary"].get("modified", 0) == 0
+
+
 def test_sync_target_rename_and_remove_support_absolute_paths(tmp_path, monkeypatch):
     _workspace, target_path = _make_workspace(tmp_path, monkeypatch)
     client = _client()

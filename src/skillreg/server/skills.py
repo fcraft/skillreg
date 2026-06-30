@@ -43,9 +43,7 @@ def list_skills(full: str = Query("0", alias="full")):
 def refresh_skills():
     """Force refresh the skill registry."""
     ws = _workspace()
-    # clear cache is not directly supported on get_all since it's not cached here;
-    # but we can just re-call it
-    data = get_all(ws)
+    data = get_all(ws, force=True)
     data["gitLogs"] = git_logs(scope="all", path=None)
     return data
 

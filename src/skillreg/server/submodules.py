@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from ..config import load_config
 from ..services.skill_registry import (
+    clear_cache,
     get_submodule_status,
     read_submodule_configs,
     _get_submodule_branch,
@@ -260,6 +261,7 @@ def sync_submodule(body: SyncBody):
     except RuntimeError as e:
         raise HTTPException(400, str(e))
 
+    clear_cache(ws)
     return {
         "success": True,
         "path": path,
@@ -330,6 +332,7 @@ def fix_detached(body: SubmodulePathBody):
     before = _run("git rev-parse --short HEAD", cwd)
     _run(f"git checkout {branch}", cwd)
     after = _run("git rev-parse --short HEAD", cwd)
+    clear_cache(ws)
     return {"fixed": True, "branch": branch, "before": before, "after": after}
 
 

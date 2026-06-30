@@ -256,6 +256,7 @@ def import_skill(
 
     # Git commit in workspace
     _git_add_commit(ws, f"skills/{name}", f"skillreg: register '{name}'")
+    _clear_registry_cache(ws)
 
     # Cleanup temp
     if temp_path:
@@ -459,6 +460,7 @@ def convert_skill(name: str) -> dict:
     except subprocess.CalledProcessError:
         pass
 
+    _clear_registry_cache(ws)
     return {
         "name": name,
         "repoPath": f"repos/{repo_name}",
@@ -562,6 +564,7 @@ def git_import_skills(
     # Git commit
     changed = " ".join(f"skills/{normalized + '/' if normalized else ''}{s}" for s in selected_skills)
     _git_add_commit(ws, changed, f"skillreg: import {len(imported)} skill(s) from git")
+    _clear_registry_cache(ws)
 
     cleanup_temp(temp_path)
     commit = _get_head_commit(ws)
@@ -588,6 +591,7 @@ def git_import_as_submodule(
     try:
         subprocess.run(args, cwd=str(ws), capture_output=True, text=True, check=True)
         _git_add_commit(ws, f"{target_path} .gitmodules", f"skillreg: add submodule '{target_path}'")
+        _clear_registry_cache(ws)
     except subprocess.CalledProcessError as e:
         shutil.rmtree(full_path, ignore_errors=True)
         raise ValueError(f"Submodule add failed: {e.stderr.strip()}")
@@ -608,6 +612,12 @@ def cleanup_temp(temp_path: str) -> None:
     if not str(p).startswith(str(tmp)):
         raise ValueError("cleanup_temp: path is not in tmpdir")
     shutil.rmtree(p, ignore_errors=True)
+
+
+def _clear_registry_cache(workspace: Path) -> None:
+    from .skill_registry import clear_cache
+
+    clear_cache(workspace)
 
 
 # ── helpers ─────────────────────────────────────────────────────────────

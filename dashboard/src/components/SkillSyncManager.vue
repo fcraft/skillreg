@@ -83,7 +83,7 @@
           <h3>已安装 ({{ installedSkills.length }})</h3>
         </div>
         <div class="skill-list">
-          <div v-for="entry in installedSkills" :key="entry.name" class="skill-list-row">
+          <div v-for="entry in installedSkills" :key="entry.key" class="skill-list-row">
             <span class="skill-list-name" @click="showSkillDetail(entry.name)">{{ entry.name }}</span>
             <span class="skill-list-status" :class="entry.status">{{ entry.status }}</span>
             <div class="skill-list-actions">
@@ -111,7 +111,7 @@
           <h3>可安装 ({{ availableSkills.length }})</h3>
         </div>
         <div v-if="availableSkills.length" class="skill-list">
-          <div v-for="entry in availableSkills" :key="entry.name" class="skill-list-row">
+          <div v-for="entry in availableSkills" :key="entry.key" class="skill-list-row">
             <span class="skill-list-name" @click="showSkillDetail(entry.name)">{{ entry.name }}</span>
             <span class="skill-list-status not-installed">未安装</span>
             <div class="skill-list-actions">
@@ -498,8 +498,7 @@ import {
 } from '../api/index.js'
 
 const toast = useToast()
-const { state: bridgeState, forceRefresh: bridgeForceRefresh } = useSyncBridge()
-const { refresh: dataRefresh } = useData()
+const { state: bridgeState } = useSyncBridge()
 const route = useRoute()
 const router = useRouter()
 
@@ -549,9 +548,7 @@ async function syncProject(proj) {
       totalFiles += fileCount
       totalSkills += skillCount
     }
-    await loadAll(true)
-    dataRefresh()
-    bridgeForceRefresh()
+    await refreshTargets(proj.targets || [])
     toast.success(`同步完成: ${totalSkills} 个 skill · ${totalFiles} 个文件`)
   } catch (e) {
     toast.error('同步失败: ' + e.message)
@@ -567,9 +564,7 @@ async function syncProjectTarget(proj, targetPath) {
   try {
     const data = await executeSync(targetPath)
     const { skillCount, fileCount } = parseSyncCount(data.stdout || '')
-    await loadAll(true)
-    dataRefresh()
-    bridgeForceRefresh()
+    await refreshTargets([targetPath])
     toast.success(`同步 ${getTargetLabel(targetPath)}: ${skillCount} skill · ${fileCount} 文件`)
   } catch (e) {
     toast.error(`同步失败: ${e.message}`)
@@ -583,9 +578,7 @@ async function installProjectSkill(skillName, targetPath) {
   try {
     const data = await executeSync(targetPath, { skills: [skillName] })
     const { fileCount } = parseSyncCount(data.stdout || '')
-    await loadAll(true)
-    dataRefresh()
-    bridgeForceRefresh()
+    await refreshTargets([targetPath])
     toast.success(`已安装 ${skillName} → ${getTargetLabel(targetPath)} (${fileCount} 文件)`)
   } catch (e) {
     toast.error(`安装失败: ${e.message}`)
@@ -606,9 +599,7 @@ async function installProjectAll(proj) {
       totalFiles += fileCount
       totalSkills += skillCount
     }
-    await loadAll(true)
-    dataRefresh()
-    bridgeForceRefresh()
+    await refreshTargets(proj.targets || [])
     toast.success(`安装完成: ${totalSkills} 个 skill · ${totalFiles} 个文件`)
   } catch (e) {
     toast.error('安装失败: ' + e.message)
@@ -927,6 +918,7 @@ async function loadAll(fullRefresh = false) {
       // Only load status for the active target on mount (lazy load the rest)
       await loadStatusForTarget(activeTarget.value)
     }
+    syncToBridge()
   } catch (e) {
     error.value = '加载失败: ' + e.message
   } finally {
@@ -971,6 +963,12 @@ async function refreshStatus() {
   if (activeTarget.value) {
     await loadStatusForTarget(activeTarget.value)
   }
+}
+
+async function refreshTargets(targetNames) {
+  const uniqueTargets = [...new Set((targetNames || []).filter(Boolean))]
+  await Promise.all(uniqueTargets.map(t => loadStatusForTarget(t)))
+  syncToBridge()
 }
 
 /** Switch active target, lazy-load status if not cached */
@@ -1019,6 +1017,7 @@ const installedSkills = computed(() => {
   let list = skills.value
     .filter(s => isSkillInstalled(s.name, activeTarget.value))
     .map(s => ({
+      key: s.path || s.skillFilePath || s.name,
       name: s.name,
       status: getCellStatus(s.name, activeTarget.value),
     }))
@@ -1036,7 +1035,7 @@ const availableSkills = computed(() => {
   if (!activeTarget.value) return []
   let list = skills.value
     .filter(s => !isSkillInstalled(s.name, activeTarget.value))
-    .map(s => ({ name: s.name }))
+    .map(s => ({ key: s.path || s.skillFilePath || s.name, name: s.name }))
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
     list = list.filter(s => s.name.toLowerCase().includes(q))
@@ -1257,17 +1256,7 @@ async function executeSyncAll() {
   syncAllRunning.value = false
   syncAllCurrent.value = ''
 
-  // Reload all status data
-  await loadAll(true)
-  dataRefresh()
-  bridgeForceRefresh()
-  await loadProjects()
-  for (const p of projects.value) {
-    for (const t of (p.targets || [])) {
-      await loadStatusForTarget(t)
-    }
-  }
-  syncToBridge()
+  await refreshTargets(plan.map(item => item.key))
 
   syncAllConfirmOpen.value = false
 
@@ -1561,8 +1550,6 @@ async function doRenameTarget() {
       activeTarget.value = newPath
     }
     await loadAll(true)
-    dataRefresh()
-    bridgeForceRefresh()
     toast.success(`已更新目标路径: ${renameTargetLabel.value}`)
   } catch (e) {
     if (e.status === 409) {
@@ -1594,8 +1581,6 @@ async function doDeleteTarget() {
       activeTarget.value = targets.value.find(t => t.path !== deleteTargetPath.value)?.path || ''
     }
     await loadAll(true)
-    dataRefresh()
-    bridgeForceRefresh()
     toast.success(`已删除目标: ${deleteTargetLabel.value}`)
   } catch (e) {
     deleteTargetError.value = e.message
