@@ -82,6 +82,12 @@ export function fetchSkillDetail(id) {
   return get(`/api/skills/${encodeURIComponent(id)}`)
 }
 
+// Delete a standalone skill (skills/<name>). Repo-owned skills are rejected by
+// the backend — remove the whole repo instead. Renaming skills is unsupported.
+export function deleteSkill(id) {
+  return del(`/api/skills/${encodeURIComponent(id)}`)
+}
+
 export function fetchSkillTree(id) {
   return get(`/api/skills/${encodeURIComponent(id)}/tree`)
 }
@@ -196,6 +202,16 @@ export function fixDetachedHead(path) {
 // touching the working tree / committing / pushing. Omit `path` to refresh all.
 export function refreshSubmodule(path) {
   return post('/api/submodules/refresh', path ? { path } : {})
+}
+
+// Remove a repo/submodule from the workspace.
+export function removeSubmodule(path) {
+  return post('/api/submodules/remove', { path })
+}
+
+// Rename a repo/submodule directory (leaf name only; prefix preserved).
+export function renameSubmodule(path, newName) {
+  return post('/api/submodules/rename', { path, newName })
 }
 
 // --- Files ---

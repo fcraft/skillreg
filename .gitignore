@@ -38,3 +38,4 @@ dashboard/playwright-report/
 .DS_Store
 .idea/
 .vscode/
+.workbuddy/

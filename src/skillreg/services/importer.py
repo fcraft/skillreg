@@ -468,6 +468,240 @@ def convert_skill(name: str) -> dict:
     }
 
 
+# ── deletion / rename ───────────────────────────────────────────────────
+
+
+def delete_skill(name: str) -> dict:
+    """Delete a standalone skill from ``skills/<name>``.
+
+    Only standalone skills (those living directly under ``skills/``) can be
+    deleted here. Skills that belong to a submodule/repo must be removed by
+    deleting the whole repo, so we refuse those to avoid corrupting submodules.
+    """
+    if not name:
+        raise ValueError("missing name parameter")
+    if not _is_valid_skill_name(name):
+        raise ValueError(
+            f"invalid skill name '{name}': must match [A-Za-z0-9][A-Za-z0-9_-]*"
+        )
+
+    ws = _resolve_workspace()
+    skill_dir = ws / "skills" / name
+    if not skill_dir.is_dir():
+        raise FileNotFoundError(f"skill '{name}' not found at skills/{name}")
+
+    shutil.rmtree(skill_dir)
+    _git_add_commit(ws, f"skills/{name}", f"skillreg: remove '{name}'")
+    _clear_registry_cache(ws)
+
+    commit = _get_head_commit(ws)
+    return {"name": name, "removedPath": f"skills/{name}", "commit": commit}
+
+
+def _is_initialized_submodule(ws: Path, path: str) -> bool:
+    """A submodule registered in .gitmodules with a tracked gitlink."""
+    gitmodules = ws / ".gitmodules"
+    if not gitmodules.exists():
+        return False
+    try:
+        output = subprocess.run(
+            ["git", "config", "-f", ".gitmodules", "--get-regexp", r"submodule\..*\.path"],
+            cwd=str(ws), capture_output=True, text=True,
+        ).stdout
+    except OSError:
+        return False
+    return any(line.strip().endswith(f" {path}") for line in output.split("\n") if line.strip())
+
+
+def remove_submodule(path: str) -> dict:
+    """Remove a repo/submodule from the workspace.
+
+    Handles two cases:
+
+    1. A proper git submodule registered in ``.gitmodules`` — uses the standard
+       deinit + ``git rm`` flow and cleans ``.git/modules/<path>``.
+    2. A directory that merely contains a nested ``.git`` (auto-discovered as a
+       repo but never registered as a submodule) — removes the directory and,
+       if present, strips its ``.gitmodules`` entry.
+    """
+    if not path:
+        raise ValueError("missing path parameter")
+    ws = _resolve_workspace()
+    full_path = ws / path
+    if not full_path.exists():
+        raise FileNotFoundError(f"repo not found: {path}")
+    # Safety: must stay inside the workspace
+    try:
+        full_path.resolve().relative_to(ws.resolve())
+    except ValueError:
+        raise ValueError("repo path escapes workspace")
+
+    git_env = {**os.environ, **GIT_AUTHOR_ENV}
+    is_submodule = _is_initialized_submodule(ws, path)
+    # Resolve the submodule's registered name (may differ from its path) so we
+    # can clean the stored git dir under .git/modules/<name>.
+    submodule_name = _submodule_name_for_path(ws, path) if is_submodule else None
+
+    if is_submodule:
+        # Standard submodule removal flow.
+        subprocess.run(
+            ["git", "submodule", "deinit", "-f", path],
+            cwd=str(ws), capture_output=True, text=True,
+        )
+        rm = subprocess.run(
+            ["git", "rm", "-f", path],
+            cwd=str(ws), capture_output=True, text=True,
+        )
+        if rm.returncode != 0:
+            # Fall back to plain directory removal + .gitmodules cleanup.
+            shutil.rmtree(full_path, ignore_errors=True)
+            _strip_gitmodules_entry(ws, path)
+        # Clean the stored git dir for the submodule (keyed by name, falling
+        # back to path for older layouts).
+        for key in {submodule_name, path}:
+            if not key:
+                continue
+            modules_dir = ws / ".git" / "modules" / key
+            if modules_dir.exists():
+                shutil.rmtree(modules_dir, ignore_errors=True)
+        try:
+            subprocess.run(
+                ["git", "add", "-A"],
+                cwd=str(ws), capture_output=True, text=True, check=True,
+            )
+            subprocess.run(
+                ["git", "commit", "-m", f"skillreg: remove submodule '{path}'"],
+                cwd=str(ws), capture_output=True, text=True, check=True, env=git_env,
+            )
+        except subprocess.CalledProcessError:
+            pass
+    else:
+        # Nested .git directory that is not a registered submodule.
+        shutil.rmtree(full_path, ignore_errors=True)
+        _strip_gitmodules_entry(ws, path)
+        _git_add_commit(ws, ".", f"skillreg: remove repo '{path}'")
+
+    _clear_registry_cache(ws)
+    commit = _get_head_commit(ws)
+    return {"removedPath": path, "wasSubmodule": is_submodule, "commit": commit}
+
+
+def rename_submodule(path: str, new_name: str) -> dict:
+    """Rename a repo/submodule directory (leaf name only).
+
+    The parent prefix (e.g. ``repos/`` or ``repos/third/``) is preserved; only
+    the final path component changes. For registered submodules the
+    ``.gitmodules`` path/name and ``.git/config`` are updated via ``git mv``.
+    """
+    if not path:
+        raise ValueError("missing path parameter")
+    if not _is_valid_skill_name(new_name):
+        raise ValueError(
+            f"invalid name '{new_name}': must match [A-Za-z0-9][A-Za-z0-9_-]*"
+        )
+    ws = _resolve_workspace()
+    full_path = ws / path
+    if not full_path.is_dir():
+        raise FileNotFoundError(f"repo not found: {path}")
+    # Safety: must stay inside the workspace.
+    try:
+        full_path.resolve().relative_to(ws.resolve())
+    except ValueError:
+        raise ValueError("repo path escapes workspace")
+
+    parts = path.split("/")
+    parts[-1] = new_name
+    new_path = "/".join(parts)
+    if new_path == path:
+        return {"oldPath": path, "newPath": new_path, "commit": _get_head_commit(ws)}
+    if (ws / new_path).exists():
+        raise FileExistsError(f"target path already exists: {new_path}")
+
+    git_env = {**os.environ, **GIT_AUTHOR_ENV}
+    moved = subprocess.run(
+        ["git", "mv", path, new_path],
+        cwd=str(ws), capture_output=True, text=True,
+    )
+    if moved.returncode != 0:
+        # Fall back to a plain rename when git mv can't handle it.
+        (ws / path).rename(ws / new_path)
+
+    # Update .gitmodules path/name for registered submodules.
+    if _is_initialized_submodule(ws, path) or _is_initialized_submodule(ws, new_path):
+        _rename_gitmodules_entry(ws, path, new_path)
+
+    try:
+        subprocess.run(
+            ["git", "add", "-A"],
+            cwd=str(ws), capture_output=True, text=True, check=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-m", f"skillreg: rename '{path}' -> '{new_path}'"],
+            cwd=str(ws), capture_output=True, text=True, check=True, env=git_env,
+        )
+    except subprocess.CalledProcessError:
+        pass
+
+    _clear_registry_cache(ws)
+    return {"oldPath": path, "newPath": new_path, "commit": _get_head_commit(ws)}
+
+
+def _submodule_name_for_path(ws: Path, path: str) -> str | None:
+    """Return the ``.gitmodules`` section name whose path matches ``path``."""
+    gitmodules = ws / ".gitmodules"
+    if not gitmodules.exists():
+        return None
+    try:
+        output = subprocess.run(
+            ["git", "config", "-f", ".gitmodules", "--get-regexp", r"submodule\..*\.path"],
+            cwd=str(ws), capture_output=True, text=True,
+        ).stdout
+    except OSError:
+        return None
+    for line in output.split("\n"):
+        line = line.strip()
+        if line.endswith(f" {path}"):
+            key = line.split(" ", 1)[0]
+            # key looks like submodule.<name>.path
+            return key[len("submodule."):-len(".path")]
+    return None
+
+
+def _strip_gitmodules_entry(ws: Path, path: str) -> None:
+    """Remove the ``[submodule]`` section that references ``path``."""
+    gitmodules = ws / ".gitmodules"
+    if not gitmodules.exists():
+        return
+    # Find the submodule name whose path matches.
+    name = _submodule_name_for_path(ws, path)
+    if name:
+        subprocess.run(
+            ["git", "config", "-f", ".gitmodules", "--remove-section", f"submodule.{name}"],
+            cwd=str(ws), capture_output=True, text=True,
+        )
+    # Drop an empty .gitmodules entirely.
+    try:
+        if not gitmodules.read_text(encoding="utf-8").strip():
+            gitmodules.unlink()
+    except OSError:
+        pass
+
+
+def _rename_gitmodules_entry(ws: Path, old_path: str, new_path: str) -> None:
+    """Update the submodule section's path value for the matching section."""
+    gitmodules = ws / ".gitmodules"
+    if not gitmodules.exists():
+        return
+    old_name = _submodule_name_for_path(ws, old_path)
+    if not old_name:
+        return
+    # Update the path value (the section name itself is left unchanged).
+    subprocess.run(
+        ["git", "config", "-f", ".gitmodules", f"submodule.{old_name}.path", new_path],
+        cwd=str(ws), capture_output=True, text=True,
+    )
+
+
 # ── git import ──────────────────────────────────────────────────────────
 
 
@@ -658,6 +892,7 @@ def _build_file_map(directory: Path) -> dict[str, str]:
 
 def _git_add_commit(ws: Path, paths: str, message: str) -> None:
     """Run git add + commit in workspace (non-fatal on failure)."""
+    git_env = {**os.environ, **GIT_AUTHOR_ENV}
     try:
         subprocess.run(
             ["git", "add", *paths.split()],
@@ -665,7 +900,7 @@ def _git_add_commit(ws: Path, paths: str, message: str) -> None:
         )
         subprocess.run(
             ["git", "commit", "-m", message],
-            cwd=str(ws), capture_output=True, text=True, check=True,
+            cwd=str(ws), capture_output=True, text=True, check=True, env=git_env,
         )
     except subprocess.CalledProcessError:
         pass  # Nothing to commit is OK

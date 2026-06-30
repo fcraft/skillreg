@@ -13,6 +13,7 @@ from fastapi import APIRouter, Body, HTTPException
 from pydantic import BaseModel
 
 from ..config import load_config
+from ..services import importer
 from ..services.skill_registry import (
     clear_cache,
     get_submodule_status,
@@ -27,6 +28,11 @@ router = APIRouter(prefix="/api/submodules", tags=["submodules"])
 
 class SubmodulePathBody(BaseModel):
     path: str
+
+
+class RenameSubmoduleBody(BaseModel):
+    path: str
+    newName: str
 
 
 class SyncBody(BaseModel):
@@ -66,6 +72,30 @@ def list_submodules():
             "status": status,
         })
     return result
+
+
+@router.post("/remove")
+def remove_submodule(body: SubmodulePathBody):
+    """Remove a repo/submodule from the workspace."""
+    try:
+        return {"success": True, **importer.remove_submodule(body.path)}
+    except FileNotFoundError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.post("/rename")
+def rename_submodule(body: RenameSubmoduleBody):
+    """Rename a repo/submodule directory (leaf name only)."""
+    try:
+        return {"success": True, **importer.rename_submodule(body.path, body.newName)}
+    except FileNotFoundError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except FileExistsError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 @router.post("/sync-preview")
@@ -280,6 +310,7 @@ def refresh_submodule(body: dict | None = Body(default=None)):
     ws = _ws()
     configs = read_submodule_configs(ws)
     path = body.get("path") if isinstance(body, dict) else None
+    checked_at = int(time.time() * 1000)
 
     if path:
         sm = next((s for s in configs if s["path"] == path), None)
@@ -290,9 +321,12 @@ def refresh_submodule(body: dict | None = Body(default=None)):
             _run("git fetch origin", cwd)
         except RuntimeError:
             pass
+        status = get_submodule_status(ws, path, sm["branch"])
+        status["checkedAt"] = checked_at
         return {
             "path": path,
-            "status": get_submodule_status(ws, path, sm["branch"]),
+            "status": status,
+            "checkedAt": checked_at,
             "error": None,
         }
 
@@ -305,15 +339,17 @@ def refresh_submodule(body: dict | None = Body(default=None)):
             _run("git fetch origin", cwd)
         except RuntimeError as exc:
             error = str(exc)
+        status = get_submodule_status(ws, sub_path, sm["branch"])
+        status["checkedAt"] = checked_at
         results.append({
             "path": sub_path,
-            "status": get_submodule_status(ws, sub_path, sm["branch"]),
+            "status": status,
             "error": error,
         })
 
     return {
         "results": results,
-        "checkedAt": int(time.time() * 1000),
+        "checkedAt": checked_at,
     }
 
 

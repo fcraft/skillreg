@@ -258,6 +258,8 @@ def test_submodule_refresh_single(tmp_path, monkeypatch):
     data = r.json()
     assert data["path"] == "repos/demo"
     assert data["status"]["syncState"] == "synced"
+    assert isinstance(data["checkedAt"], int)
+    assert data["status"]["checkedAt"] == data["checkedAt"]
     assert data["error"] is None
 
 
@@ -283,6 +285,7 @@ def test_submodule_refresh_all_without_path(tmp_path, monkeypatch):
     data = r.json()
     assert isinstance(data["checkedAt"], int)
     assert [item["path"] for item in data["results"]] == ["repos/a", "repos/b"]
+    assert all(item["status"]["checkedAt"] == data["checkedAt"] for item in data["results"])
     assert all(item["error"] is None for item in data["results"])
 
 
@@ -466,3 +469,162 @@ def test_registry_convert_missing_skill_returns_404(tmp_path, monkeypatch):
 
     assert r.status_code == 404
     assert "not found" in r.json()["detail"]
+
+
+# ── skill deletion ─────────────────────────────────────────────────────
+
+
+def test_delete_standalone_skill(tmp_path, monkeypatch):
+    """DELETE /api/skills/:id removes a standalone skill from skills/."""
+    ws = _make_workspace(tmp_path, monkeypatch)
+    client = _client()
+
+    assert (ws / "skills" / "my-skill").is_dir()
+    r = client.delete("/api/skills/my-skill")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["success"] is True
+    assert body["removedPath"] == "skills/my-skill"
+    assert not (ws / "skills" / "my-skill").exists()
+
+    # And it's gone from the listing.
+    listed = client.get("/api/skills/refresh")
+    assert "my-skill" not in [s["name"] for s in listed.json()["skills"]]
+
+
+def test_delete_unknown_skill_returns_404(tmp_path, monkeypatch):
+    """DELETE /api/skills/:id returns 404 for an unknown skill."""
+    _make_workspace(tmp_path, monkeypatch)
+    client = _client()
+    r = client.delete("/api/skills/nonexistent")
+    assert r.status_code == 404
+
+
+def test_delete_submodule_skill_rejected(tmp_path, monkeypatch):
+    """A skill that belongs to a repo cannot be deleted individually (400)."""
+    ws = _make_workspace(tmp_path, monkeypatch)
+    # Build a repo with a nested .git and a skill inside it.
+    repo = ws / "repos" / "demo-repo"
+    (repo / ".git").mkdir(parents=True)
+    skill_dir = repo / "nested-skill"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(
+        "---\nname: nested-skill\ndescription: Nested\n---\n\n# nested\n",
+        encoding="utf-8",
+    )
+
+    client = _client()
+    # Refresh so the registry picks up the new repo skill.
+    listed = client.get("/api/skills/refresh").json()["skills"]
+    nested = next((s for s in listed if s["name"] == "nested-skill"), None)
+    assert nested is not None
+    assert nested["isSubmodule"] is True
+
+    r = client.delete("/api/skills/nested-skill")
+    assert r.status_code == 400
+    assert "repo" in r.json()["detail"].lower()
+    # Skill is untouched.
+    assert (skill_dir / "SKILL.md").exists()
+
+
+# ── repo (submodule) removal / rename ──────────────────────────────────
+
+
+def _init_git_workspace(tmp_path):
+    """Init a real git workspace so submodule ops have a repo to commit into."""
+    import subprocess
+
+    env = {
+        "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@e.invalid",
+        "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@e.invalid",
+    }
+    import os
+    full_env = {**os.environ, **env}
+    (tmp_path / "skills").mkdir(exist_ok=True)
+    (tmp_path / "repos").mkdir(exist_ok=True)
+    subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init", "--allow-empty"],
+        cwd=tmp_path, capture_output=True, check=True, env=full_env,
+    )
+
+
+def test_remove_nested_repo(tmp_path, monkeypatch):
+    """POST /api/submodules/remove deletes a nested-.git repo directory."""
+    ws = _make_workspace(tmp_path, monkeypatch)
+    _init_git_workspace(ws)
+    repo = ws / "repos" / "demo-repo"
+    (repo / ".git").mkdir(parents=True)
+    (repo / "SKILL.md").write_text(
+        "---\nname: demo-skill\ndescription: D\n---\n\n# d\n", encoding="utf-8",
+    )
+
+    client = _client()
+    r = client.post("/api/submodules/remove", json={"path": "repos/demo-repo"})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["success"] is True
+    assert body["removedPath"] == "repos/demo-repo"
+    assert not repo.exists()
+
+
+def test_remove_unknown_repo_returns_404(tmp_path, monkeypatch):
+    ws = _make_workspace(tmp_path, monkeypatch)
+    _init_git_workspace(ws)
+    client = _client()
+    r = client.post("/api/submodules/remove", json={"path": "repos/nope"})
+    assert r.status_code == 404
+
+
+def test_rename_nested_repo(tmp_path, monkeypatch):
+    """POST /api/submodules/rename renames the leaf dir, preserving prefix."""
+    ws = _make_workspace(tmp_path, monkeypatch)
+    _init_git_workspace(ws)
+    repo = ws / "repos" / "old-name"
+    (repo / ".git").mkdir(parents=True)
+    (repo / "SKILL.md").write_text(
+        "---\nname: r-skill\ndescription: R\n---\n\n# r\n", encoding="utf-8",
+    )
+
+    client = _client()
+    r = client.post(
+        "/api/submodules/rename",
+        json={"path": "repos/old-name", "newName": "new-name"},
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["success"] is True
+    assert body["newPath"] == "repos/new-name"
+    assert not (ws / "repos" / "old-name").exists()
+    assert (ws / "repos" / "new-name" / "SKILL.md").exists()
+
+
+def test_rename_repo_invalid_name_returns_400(tmp_path, monkeypatch):
+    ws = _make_workspace(tmp_path, monkeypatch)
+    _init_git_workspace(ws)
+    repo = ws / "repos" / "ok-name"
+    (repo / ".git").mkdir(parents=True)
+    client = _client()
+    r = client.post(
+        "/api/submodules/rename",
+        json={"path": "repos/ok-name", "newName": "bad/name"},
+    )
+    assert r.status_code == 400
+
+
+def test_rename_repo_path_escape_rejected(tmp_path, monkeypatch):
+    """A repo path that escapes the workspace must be rejected."""
+    ws = _make_workspace(tmp_path, monkeypatch)
+    _init_git_workspace(ws)
+    # Create a sibling dir outside the workspace to target via traversal.
+    outside = tmp_path.parent / "outside-repo"
+    outside.mkdir(exist_ok=True)
+    client = _client()
+    r = client.post(
+        "/api/submodules/rename",
+        json={"path": "../outside-repo", "newName": "pwned"},
+    )
+    # Either the dir is not found (relative to ws) or the escape guard trips —
+    # both are acceptable rejections (never a 200 success).
+    assert r.status_code in (400, 404)

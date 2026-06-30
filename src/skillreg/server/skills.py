@@ -12,7 +12,7 @@ from fastapi.responses import StreamingResponse
 from ..config import load_config
 from .git import git_logs
 from ..services.skill_registry import get_all, get_skill
-from ..services import file_browser
+from ..services import file_browser, importer
 
 router = APIRouter(prefix="/api/skills", tags=["skills"])
 
@@ -56,6 +56,33 @@ def skill_detail(skill_id: str):
     if not skill:
         raise HTTPException(404, "Unknown skill")
     return skill
+
+
+@router.delete("/{skill_id}")
+def delete_skill(skill_id: str):
+    """Delete a standalone skill from the workspace ``skills/`` directory.
+
+    Skills that belong to a submodule/repo cannot be deleted here — remove the
+    whole repo instead. Renaming skills is intentionally unsupported to avoid
+    name collisions.
+    """
+    ws = _workspace()
+    skill = get_skill(ws, skill_id)
+    if not skill:
+        raise HTTPException(404, "Unknown skill")
+    if skill.get("isSubmodule"):
+        raise HTTPException(
+            400,
+            "This skill belongs to a repo/submodule and cannot be deleted "
+            "individually. Remove the whole repo instead.",
+        )
+    try:
+        result = importer.delete_skill(skill["name"])
+        return {"success": True, **result}
+    except FileNotFoundError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 @router.get("/{skill_id}/relationships")

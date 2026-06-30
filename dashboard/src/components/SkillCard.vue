@@ -64,6 +64,13 @@
           <DownloadIcon :size="16" />
           <span>导出</span>
         </button>
+        <template v-if="!skill.isSubmodule">
+          <div class="ctx-sep"></div>
+          <button class="ctx-item ctx-item--danger" @click="handleDelete">
+            <Trash2Icon :size="16" />
+            <span>删除</span>
+          </button>
+        </template>
         <div class="ctx-sep"></div>
         <button class="ctx-item" @click="handleClick">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -82,22 +89,50 @@
       :existing-skill-name="skill.name"
       @imported="onUpdateComplete"
     />
+
+    <!-- Delete confirmation -->
+    <QModal v-model="showDeleteModal" title="删除 Skill" width="440px">
+      <div class="delete-confirm-body">
+        <div class="delete-warn-icon"><TriangleAlertIcon :size="34" /></div>
+        <p class="delete-warn-text">
+          确认从 workspace 删除 <strong>{{ skill.name }}</strong>？
+          此操作会删除磁盘上的 <code>{{ skill.path }}</code> 目录并提交，无法通过本工具恢复。
+        </p>
+        <p class="delete-warn-hint">已安装到各 target 的副本不受影响。</p>
+        <div v-if="deleteError" class="delete-error">{{ deleteError }}</div>
+      </div>
+      <template #footer>
+        <QButton type="secondary" size="small" @click="showDeleteModal = false">取消</QButton>
+        <QButton type="danger" size="small" :disabled="deleting" @click="doDelete">
+          {{ deleting ? '删除中...' : '确认删除' }}
+        </QButton>
+      </template>
+    </QModal>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { RefreshCw as RefreshCwIcon, Download as DownloadIcon, Terminal as TerminalIcon, BookOpen as BookOpenIcon, GitBranch as GitBranchIcon } from 'lucide-vue-next'
+import { RefreshCw as RefreshCwIcon, Download as DownloadIcon, Terminal as TerminalIcon, BookOpen as BookOpenIcon, GitBranch as GitBranchIcon, Trash2 as Trash2Icon, TriangleAlert as TriangleAlertIcon } from 'lucide-vue-next'
 import { useSkillDetail } from '../composables/useSkillDetail.js'
 import { useData } from '../composables/useData.js'
-import { exportSkill } from '../api/index.js'
+import { useToast } from '../composables/useToast.js'
+import { exportSkill, deleteSkill } from '../api/index.js'
 import SubmoduleBadge from './SubmoduleBadge.vue'
 import SkillImportModal from './SkillImportModal.vue'
+import QModal from './QModal.vue'
+import QButton from './QButton.vue'
 
 const { show: showDetail } = useSkillDetail()
 const { refresh } = useData()
+const toast = useToast()
 const pressed = ref(false)
 const showUpdateModal = ref(false)
+
+// Delete state
+const showDeleteModal = ref(false)
+const deleting = ref(false)
+const deleteError = ref('')
 
 const props = defineProps({
   skill: { type: Object, required: true }
@@ -105,6 +140,28 @@ const props = defineProps({
 
 function handleClick() {
   showDetail(props.skill.name)
+}
+
+function handleDelete() {
+  menuVisible.value = false
+  deleteError.value = ''
+  deleting.value = false
+  showDeleteModal.value = true
+}
+
+async function doDelete() {
+  deleting.value = true
+  deleteError.value = ''
+  try {
+    await deleteSkill(props.skill.name)
+    showDeleteModal.value = false
+    toast.success(`已删除 ${props.skill.name}`)
+    refresh()
+  } catch (e) {
+    deleteError.value = e.message || '删除失败'
+  } finally {
+    deleting.value = false
+  }
 }
 
 function handleInstall() {
@@ -367,6 +424,48 @@ const typeColor = computed(() => TYPE_COLORS[props.skill.type] || '#6b7280')
   gap: 6px;
   flex-wrap: wrap;
 }
+
+/* Delete confirmation */
+.delete-confirm-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--qqx-space-sm);
+}
+
+.delete-warn-icon {
+  color: #ef4444;
+}
+
+.delete-warn-text {
+  font-size: var(--qqx-font-size-body);
+  color: var(--qqx-text-primary);
+  line-height: 1.6;
+}
+
+.delete-warn-text code {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  background: var(--qqx-bg-elevated);
+  padding: 1px 6px;
+  border-radius: var(--qqx-radius-xs);
+  color: var(--qqx-text-secondary);
+}
+
+.delete-warn-hint {
+  font-size: var(--qqx-font-size-small);
+  color: var(--qqx-text-tertiary);
+}
+
+.delete-error {
+  font-size: var(--qqx-font-size-small);
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+  padding: var(--qqx-space-sm) var(--qqx-space-md);
+  border-radius: var(--qqx-radius-sm);
+  align-self: stretch;
+}
 </style>
 
 <!-- Context menu styles (unscoped — teleported to body) -->
@@ -421,6 +520,14 @@ const typeColor = computed(() => TYPE_COLORS[props.skill.type] || '#6b7280')
 
 .ctx-item--primary:hover {
   background: var(--qqx-brand-light);
+}
+
+.ctx-item--danger {
+  color: #ef4444;
+}
+
+.ctx-item--danger:hover {
+  background: rgba(239, 68, 68, 0.1);
 }
 
 .ctx-sep {

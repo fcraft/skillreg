@@ -808,7 +808,7 @@ wheels = [
 
 [[package]]
 name = "skillreg"
-version = "1.3.7"
+version = "1.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "click", version = "8.1.8", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },

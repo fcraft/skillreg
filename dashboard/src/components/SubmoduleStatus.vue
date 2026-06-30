@@ -14,6 +14,10 @@
       >
         {{ refreshingAll ? '检查中...' : '检查全部远程' }}
       </QButton>    </div>
+    <div class="remote-scope-hint">
+      <span><strong>远程检查</strong> 只读 fetch 仓库，更新 ahead / behind / dirty / 指针状态。</span>
+      <span><strong>Sync 检查</strong> 对比 workspace skill 与 agent 目标目录的文件差异。</span>
+    </div>
     <div v-if="lastBatchCheckAt" class="refresh-summary">
       <span class="refresh-summary-time">上次检查: {{ relativeTime(new Date(lastBatchCheckAt).toISOString()) }}</span>
       <template v-if="refreshSummary.behind || refreshSummary.ahead || refreshSummary.diverged || refreshSummary.unknown || refreshSummary.dirty">
@@ -154,6 +158,29 @@
             @click.stop="navToSkillsFiltered(sub.path)">
             {{ skillsBySubmodule[sub.path].length }} skills
           </span>
+
+          <!-- Repo management dropdown -->
+          <div class="repo-more-wrapper" @click.stop>
+            <button
+              class="repo-more-btn"
+              :class="{ 'repo-more-btn--open': repoMenuOpen === sub.path }"
+              title="管理仓库"
+              @click.stop="toggleRepoMenu(sub.path)"
+            >
+              <MoreHorizontal :size="14" />
+            </button>
+            <div v-if="repoMenuOpen === sub.path" class="repo-dropdown">
+              <button class="repo-dropdown-item" @click="openInstallRepo(sub)">
+                <Download :size="13" /> 一键安装到目标
+              </button>
+              <button class="repo-dropdown-item" @click="openRenameRepo(sub)">
+                <Pencil :size="13" /> 重命名仓库
+              </button>
+              <button class="repo-dropdown-item repo-dropdown-item--danger" @click="openRemoveRepo(sub)">
+                <Trash2 :size="13" /> 删除仓库
+              </button>
+            </div>
+          </div>
         </div>
         <div v-show="expanded[sub.path]" class="commit-panel">
           <!-- Skills section -->
@@ -239,6 +266,94 @@
     </template>
   </QModal>
 
+  <!-- Install repo skills to target modal -->
+  <QModal v-model="installRepo.show" :title="`安装仓库到目标 — ${displayPath(installRepo.path || '')}`" width="520px">
+    <div class="repo-install-body">
+      <p class="repo-install-desc">
+        将 <strong>{{ installRepo.skills.length }}</strong> 个 skill 安装到选定目标目录：
+      </p>
+      <div v-if="!targets.length" class="sync-error">未配置任何目标目录，请先在 Sync 工具中添加。</div>
+      <div v-else class="repo-install-targets">
+        <label
+          v-for="t in targets"
+          :key="t.path"
+          class="repo-install-target-row"
+          :class="{ 'repo-install-target-row--selected': installRepo.target === t.path }"
+        >
+          <input type="radio" name="install-target" :value="t.path" v-model="installRepo.target" />
+          <div class="repo-install-target-info">
+            <span class="repo-install-target-name">{{ t.label || t.name }}</span>
+            <span class="repo-install-target-path" :title="t.path">{{ displayPath(t.path) }}</span>
+          </div>
+        </label>
+      </div>
+      <div v-if="installRepo.skills.length" class="repo-install-skill-hint">
+        包含: {{ installRepo.skills.map(s => s.name).join(', ') }}
+      </div>
+      <div v-if="installRepo.error" class="sync-error">{{ installRepo.error }}</div>
+    </div>
+    <template #footer>
+      <QButton type="ghost" @click="installRepo.show = false">取消</QButton>
+      <QButton type="primary" :disabled="installRepo.running || !installRepo.target" @click="confirmInstallRepo">
+        {{ installRepo.running ? '安装中...' : `安装 ${installRepo.skills.length} 个 skill` }}
+      </QButton>
+    </template>
+  </QModal>
+
+  <!-- Rename repo modal -->
+  <QModal v-model="renameRepo.show" title="重命名仓库" width="440px">
+    <div class="repo-rename-body">
+      <div class="form-field">
+        <label class="form-label">当前路径</label>
+        <div class="form-static-value">{{ renameRepo.path }}</div>
+      </div>
+      <div class="form-field">
+        <label class="form-label">新名称（仅末级目录名）</label>
+        <QInput
+          v-model="renameRepo.newName"
+          placeholder="例如 my-skills"
+          @keyup.enter="confirmRenameRepo"
+        />
+        <div class="form-hint">将重命名为 <code>{{ renamePreviewPath }}</code></div>
+      </div>
+      <div v-if="renameRepo.error" class="sync-error">{{ renameRepo.error }}</div>
+    </div>
+    <template #footer>
+      <QButton type="ghost" @click="renameRepo.show = false">取消</QButton>
+      <QButton type="primary" :disabled="renameRepo.running || !renameRepo.newName.trim()" @click="confirmRenameRepo">
+        {{ renameRepo.running ? '处理中...' : '确认重命名' }}
+      </QButton>
+    </template>
+  </QModal>
+
+  <!-- Remove repo modal -->
+  <QModal v-model="removeRepo.show" title="删除仓库" width="480px">
+    <div class="repo-remove-body">
+      <div class="repo-remove-warn-icon">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+      <p class="repo-remove-text">
+        确认从 workspace 删除仓库 <strong>{{ displayPath(removeRepo.path || '') }}</strong>？
+        此操作会卸载子模块/删除目录并提交，其中 <strong>{{ removeRepo.skillCount }}</strong> 个 skill 将一并移除。
+      </p>
+      <p class="repo-remove-hint">已安装到各 target 的副本不受影响。此操作无法通过本工具恢复。</p>
+      <QInput
+        v-model="removeRepo.confirmText"
+        :placeholder="`输入仓库名 ${removeRepo.leafName} 以确认`"
+      />
+      <div v-if="removeRepo.error" class="sync-error">{{ removeRepo.error }}</div>
+    </div>
+    <template #footer>
+      <QButton type="ghost" @click="removeRepo.show = false">取消</QButton>
+      <QButton type="danger" :disabled="removeRepo.running || removeRepo.confirmText !== removeRepo.leafName" @click="confirmRemoveRepo">
+        {{ removeRepo.running ? '删除中...' : '确认删除' }}
+      </QButton>
+    </template>
+  </QModal>
+
   <!-- Tooltip portaled to body to escape overflow:hidden -->
   <Teleport to="body">
     <Transition name="qqx-tooltip">
@@ -255,11 +370,21 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useData } from '../composables/useData.js'
 import { useSkillDetail } from '../composables/useSkillDetail.js'
-import { syncSubmodule as syncSubmoduleApi, previewSyncSubmodule as previewSyncApi, fixDetachedHead as fixDetachedHeadApi, refreshSubmodule as refreshSubmoduleApi, fetchSubmoduleDiff as fetchSubmoduleDiffApi } from '../api/index.js'
+import { useToast } from '../composables/useToast.js'
+import {
+  syncSubmodule as syncSubmoduleApi, previewSyncSubmodule as previewSyncApi,
+  fixDetachedHead as fixDetachedHeadApi, refreshSubmodule as refreshSubmoduleApi,
+  fetchSubmoduleDiff as fetchSubmoduleDiffApi,
+  removeSubmodule as removeSubmoduleApi, renameSubmodule as renameSubmoduleApi,
+  fetchSyncConfig, executeSync,
+} from '../api/index.js'
+import { MoreHorizontal, Pencil, Trash2, Download } from 'lucide-vue-next'
+import QModal from './QModal.vue'
+import QButton from './QButton.vue'
 import QInput from './QInput.vue'
 
 function displayPath(p) {
@@ -270,6 +395,7 @@ const { state, remoteUrlMap, refresh } = useData()
 const route = useRoute()
 const router = useRouter()
 const { show } = useSkillDetail()
+const toast = useToast()
 
 const syncing = ref(null)
 const fixingDetached = ref(null)
@@ -280,6 +406,143 @@ const refreshing = ref(null)       // path currently being refreshed, or 'all' d
 const refreshingAll = ref(false)
 const lastBatchCheckAt = ref(null)  // timestamp(ms) of the last batch check
 const tooltip = reactive({ sub: null, top: 0, left: 0, transform: '' })
+
+// ── Repo management (rename / remove / install-to-target) ──
+const repoMenuOpen = ref(null)        // sub.path whose dropdown is open
+const targets = ref([])               // configured sync targets
+
+const installRepo = reactive({ show: false, path: null, skills: [], target: '', running: false, error: '' })
+const renameRepo = reactive({ show: false, path: null, newName: '', running: false, error: '' })
+const removeRepo = reactive({ show: false, path: null, leafName: '', skillCount: 0, confirmText: '', running: false, error: '' })
+
+const renamePreviewPath = computed(() => {
+  if (!renameRepo.path) return ''
+  const parts = renameRepo.path.split('/')
+  parts[parts.length - 1] = renameRepo.newName.trim() || parts[parts.length - 1]
+  return parts.join('/')
+})
+
+async function loadTargets() {
+  try {
+    const config = await fetchSyncConfig()
+    targets.value = (config.targets || []).map(t => ({
+      name: t.name, path: t.path, label: t.label || t.name,
+    }))
+  } catch {
+    targets.value = []
+  }
+}
+
+function toggleRepoMenu(path) {
+  repoMenuOpen.value = repoMenuOpen.value === path ? null : path
+}
+
+function closeRepoMenu() {
+  repoMenuOpen.value = null
+}
+
+function onDocumentClick(e) {
+  if (!e.target.closest('.repo-more-wrapper')) closeRepoMenu()
+}
+
+// ── Install repo skills to a target ──
+function openInstallRepo(sub) {
+  closeRepoMenu()
+  installRepo.path = sub.path
+  installRepo.skills = (skillsBySubmodule.value[sub.path] || []).slice()
+  installRepo.target = targets.value[0]?.path || ''
+  installRepo.error = ''
+  installRepo.running = false
+  installRepo.show = true
+}
+
+async function confirmInstallRepo() {
+  if (!installRepo.target || !installRepo.skills.length) return
+  installRepo.running = true
+  installRepo.error = ''
+  try {
+    const names = installRepo.skills.map(s => s.name)
+    const result = await executeSync(installRepo.target, { skills: names })
+    if (!result.success) throw new Error(result.stderr || '同步失败')
+    installRepo.show = false
+    toast.success(`已安装 ${names.length} 个 skill → ${displayPath(installRepo.target)}`)
+  } catch (e) {
+    installRepo.error = e.message
+  } finally {
+    installRepo.running = false
+  }
+}
+
+// ── Rename repo ──
+function openRenameRepo(sub) {
+  closeRepoMenu()
+  renameRepo.path = sub.path
+  renameRepo.newName = sub.path.split('/').pop()
+  renameRepo.error = ''
+  renameRepo.running = false
+  renameRepo.show = true
+}
+
+async function confirmRenameRepo() {
+  const newName = renameRepo.newName.trim()
+  if (!newName) return
+  if (newName === renameRepo.path.split('/').pop()) {
+    renameRepo.show = false
+    return
+  }
+  renameRepo.running = true
+  renameRepo.error = ''
+  try {
+    const result = await renameSubmoduleApi(renameRepo.path, newName)
+    if (!result.success) throw new Error(result.error || '重命名失败')
+    renameRepo.show = false
+    toast.success(`已重命名为 ${displayPath(result.newPath)}`)
+    refresh()
+  } catch (e) {
+    if (e.status === 409) renameRepo.error = `目标名称已存在`
+    else renameRepo.error = e.message
+  } finally {
+    renameRepo.running = false
+  }
+}
+
+// ── Remove repo ──
+function openRemoveRepo(sub) {
+  closeRepoMenu()
+  removeRepo.path = sub.path
+  removeRepo.leafName = sub.path.split('/').pop()
+  removeRepo.skillCount = (skillsBySubmodule.value[sub.path] || []).length
+  removeRepo.confirmText = ''
+  removeRepo.error = ''
+  removeRepo.running = false
+  removeRepo.show = true
+}
+
+async function confirmRemoveRepo() {
+  if (removeRepo.confirmText !== removeRepo.leafName) return
+  removeRepo.running = true
+  removeRepo.error = ''
+  try {
+    const result = await removeSubmoduleApi(removeRepo.path)
+    if (!result.success) throw new Error(result.error || '删除失败')
+    removeRepo.show = false
+    toast.success(`已删除仓库 ${displayPath(removeRepo.path)}`)
+    refresh()
+  } catch (e) {
+    removeRepo.error = e.message
+  } finally {
+    removeRepo.running = false
+  }
+}
+
+onMounted(() => {
+  loadTargets()
+  document.addEventListener('click', onDocumentClick)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', onDocumentClick)
+})
 
 // Preview modal state
 const previewModal = reactive({ show: false, loading: false, data: null, submodulePath: null, title: '同步确认', confirmLabel: '确认同步' })
@@ -662,6 +925,20 @@ async function handleFixDetached(sub) {
   font-size: var(--qqx-font-size-title);
   font-weight: var(--qqx-font-semibold);
   color: var(--qqx-text-primary);
+}
+
+.remote-scope-hint {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--qqx-space-sm) var(--qqx-space-lg);
+  margin: calc(-1 * var(--qqx-space-sm)) 0 var(--qqx-space-md);
+  color: var(--qqx-text-secondary);
+  font-size: var(--qqx-font-size-small);
+}
+
+.remote-scope-hint strong {
+  color: var(--qqx-text-primary);
+  font-weight: var(--qqx-font-medium);
 }
 
 .count {
@@ -1185,6 +1462,193 @@ async function handleFixDetached(sub) {
   background: var(--qqx-bg-elevated);
   padding: 0 4px;
   border-radius: var(--qqx-radius-full);
+}
+
+/* Repo management dropdown */
+.repo-more-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.repo-more-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--qqx-text-tertiary);
+  border-radius: var(--qqx-radius-xs);
+  cursor: pointer;
+  transition: background var(--qqx-transition), color var(--qqx-transition);
+}
+
+.repo-more-btn:hover,
+.repo-more-btn--open {
+  background: var(--qqx-bg-elevated);
+  color: var(--qqx-brand);
+}
+
+.repo-dropdown {
+  position: absolute;
+  top: 28px;
+  right: 0;
+  z-index: var(--z-dropdown, 200);
+  min-width: 168px;
+  padding: 4px;
+  background: var(--qqx-bg-card);
+  border: 1px solid var(--qqx-border-color);
+  border-radius: var(--qqx-radius-sm);
+  box-shadow: var(--qqx-shadow-dropdown);
+  animation: repo-menu-in 0.12s ease-out;
+}
+
+@keyframes repo-menu-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.repo-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--qqx-text-primary);
+  font-size: var(--qqx-font-size-small);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s ease;
+}
+
+.repo-dropdown-item:hover {
+  background: var(--qqx-bg-hover);
+}
+
+.repo-dropdown-item--danger {
+  color: #ef4444;
+}
+
+.repo-dropdown-item--danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Repo install / rename / remove modal bodies */
+.repo-install-desc,
+.repo-remove-text {
+  font-size: var(--qqx-font-size-body);
+  color: var(--qqx-text-primary);
+  line-height: 1.6;
+  margin-bottom: var(--qqx-space-md);
+}
+
+.repo-install-targets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qqx-space-xs);
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.repo-install-target-row {
+  display: flex;
+  align-items: center;
+  gap: var(--qqx-space-sm);
+  padding: var(--qqx-space-sm) var(--qqx-space-md);
+  border: 1px solid var(--qqx-border-color);
+  border-radius: var(--qqx-radius-sm);
+  cursor: pointer;
+  transition: all var(--qqx-transition);
+}
+
+.repo-install-target-row--selected {
+  border-color: var(--qqx-brand);
+  background: var(--qqx-brand-light);
+}
+
+.repo-install-target-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.repo-install-target-name {
+  font-size: var(--qqx-font-size-label);
+  font-weight: var(--qqx-font-medium);
+  color: var(--qqx-text-primary);
+}
+
+.repo-install-target-path {
+  font-size: 11px;
+  color: var(--qqx-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repo-install-skill-hint {
+  margin-top: var(--qqx-space-md);
+  font-size: var(--qqx-font-size-small);
+  color: var(--qqx-text-tertiary);
+  line-height: 1.5;
+}
+
+.repo-rename-body,
+.repo-remove-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qqx-space-md);
+}
+
+.repo-remove-body {
+  align-items: center;
+  text-align: center;
+}
+
+.repo-remove-warn-icon {
+  color: #ef4444;
+}
+
+.repo-remove-hint {
+  font-size: var(--qqx-font-size-small);
+  color: var(--qqx-text-tertiary);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qqx-space-xs);
+}
+
+.form-label {
+  font-size: var(--qqx-font-size-small);
+  color: var(--qqx-text-secondary);
+}
+
+.form-static-value {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  color: var(--qqx-text-primary);
+  background: var(--qqx-bg-elevated);
+  padding: 6px 10px;
+  border-radius: var(--qqx-radius-xs);
+  word-break: break-all;
+}
+
+.form-hint {
+  font-size: 11px;
+  color: var(--qqx-text-tertiary);
+}
+
+.form-hint code {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: var(--qqx-brand);
 }
 
 /* Sync preview modal body content */
