@@ -50,7 +50,11 @@ def compat_target_file(
 @router.get("/api/skill-diff")
 def compat_skill_diff(skill: str = Query(...), target: str = Query(...)):
     try:
-        return sync_manager.get_skill_diff(skill, target)
+        files = sync_manager.get_skill_diff(skill, target)
+        summary = {}
+        for f in files:
+            summary[f["status"]] = summary.get(f["status"], 0) + 1
+        return {"files": files, "summary": summary}
     except ValueError as e:
         raise HTTPException(400, str(e))
 

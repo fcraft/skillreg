@@ -96,7 +96,9 @@ def test_dashboard_migration_sync_workflow_e2e(tmp_path, monkeypatch):
     (target_path / "demo-skill" / "notes.md").write_text("drifted content\n", encoding="utf-8")
     diff_resp = client.get("/api/sync/diff", params={"skill": "demo-skill", "target": str(target_path)})
     assert diff_resp.status_code == 200
-    assert {"path": "notes.md", "status": "modified"} in diff_resp.json()
+    diff_data = diff_resp.json()
+    assert {"path": "notes.md", "status": "modified"} in diff_data["files"]
+    assert diff_data["summary"].get("modified") == 1
 
     status_after_drift = client.get("/api/sync/status", params={"skill": "demo-skill"})
     assert status_after_drift.status_code == 200

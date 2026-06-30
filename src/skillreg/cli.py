@@ -12,6 +12,7 @@ import webbrowser
 import os
 import signal
 import subprocess
+import sys
 import json
 import socket
 import urllib.request
@@ -614,7 +615,12 @@ def stop_dashboard() -> None:
     """停止后台 dashboard 进程。"""
     running_pid = _dashboard_running_pid()
     if not running_pid:
-        click.echo("Dashboard 未运行")
+        # 即使 PID 文件不存在，也尝试清理残留的 dashboard open 进程
+        cleaned = _kill_orphan_dashboard_processes()
+        if cleaned:
+            click.echo(f"✓ 已清理 {len(cleaned)} 个残留 dashboard 进程: {cleaned}")
+        else:
+            click.echo("Dashboard 未运行")
         return
     try:
         os.kill(running_pid, signal.SIGTERM)
@@ -624,6 +630,10 @@ def stop_dashboard() -> None:
     DASHBOARD_PID_FILE.unlink(missing_ok=True)
     DASHBOARD_META_FILE.unlink(missing_ok=True)
     click.echo(f"✓ Dashboard 已停止 (PID: {running_pid})")
+    # 清理可能残留的 dashboard open 调用进程
+    cleaned = _kill_orphan_dashboard_processes()
+    if cleaned:
+        click.echo(f"  已清理 {len(cleaned)} 个残留进程: {cleaned}")
     _echo_workspace_summary(heading="dashboard 停止后的 skillreg 上下文")
 
 
@@ -673,9 +683,16 @@ def _ensure_dashboard_started(host: str, requested_port: int) -> dict:
     url = f"http://{host}:{port}"
     DASHBOARD_PID_FILE.parent.mkdir(parents=True, exist_ok=True)
     log = DASHBOARD_LOG_FILE.open("w", encoding="utf-8")
+
+    # 查找 dashboard 静态文件目录，传递给子进程
+    env = os.environ.copy()
+    dashboard_dir = _find_dashboard_dir()
+    if dashboard_dir:
+        env["SKILLREG_DASHBOARD_DIR"] = str(dashboard_dir)
+
     proc = subprocess.Popen(
         [
-            "python",
+            sys.executable,
             "-m",
             "uvicorn",
             "skillreg.server:app",
@@ -687,6 +704,7 @@ def _ensure_dashboard_started(host: str, requested_port: int) -> dict:
         stdout=log,
         stderr=log,
         start_new_session=True,
+        env=env,
     )
     log.close()
     DASHBOARD_PID_FILE.write_text(str(proc.pid), encoding="utf-8")
@@ -740,7 +758,7 @@ def _wait_for_dashboard(url: str, proc: subprocess.Popen, timeout: float = START
 
 
 def _dashboard_health_ok(url: str) -> bool:
-    health_url = f"{url.rstrip('/')}/health"
+    health_url = f"{url.rstrip('/')}/api/health"
     try:
         with urllib.request.urlopen(health_url, timeout=0.5) as response:
             return response.status < 500
@@ -766,6 +784,67 @@ def _pid_looks_like_dashboard(pid: int) -> bool:
 def _clear_dashboard_state() -> None:
     DASHBOARD_PID_FILE.unlink(missing_ok=True)
     DASHBOARD_META_FILE.unlink(missing_ok=True)
+    return None
+
+
+def _kill_orphan_dashboard_processes() -> list[int]:
+    """清理残留的 ``dashboard open`` 调用进程（含 ``uv run`` 父进程）。
+
+    这些进程在 uvicorn 后端被 stop 后可能仍然残留，导致端口占用或状态不一致。
+    返回被清理的 PID 列表。
+    """
+    cleaned: list[int] = []
+    try:
+        result = subprocess.run(
+            ["ps", "-eo", "pid,command"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return cleaned
+    for line in result.stdout.strip().splitlines():
+        parts = line.strip().split(None, 1)
+        if len(parts) < 2:
+            continue
+        pid_str, command = parts
+        try:
+            pid = int(pid_str)
+        except ValueError:
+            continue
+        if pid == os.getpid():
+            continue
+        # 匹配 "skillreg dashboard open" 或 "uv run skillreg dashboard open"
+        if "skillreg" in command and "dashboard" in command and "open" in command:
+            try:
+                os.kill(pid, signal.SIGTERM)
+                cleaned.append(pid)
+            except OSError:
+                pass
+    return cleaned
+
+
+def _find_dashboard_dir() -> Path | None:
+    """查找 dashboard 静态文件目录（dist 优先于源码目录）。"""
+    # 1. 相对于 CLI 源码位置查找（开发模式 / uv run）
+    cli_file = Path(__file__).resolve()
+    for parent in cli_file.parents:
+        candidate = parent / "dashboard" / "dist"
+        if candidate.is_dir():
+            return candidate
+        candidate = parent / "dashboard"
+        if candidate.is_dir() and (candidate / "index.html").is_file():
+            return candidate
+    # 2. 常见源码仓库路径（uv tool install 场景）
+    common_roots = [
+        Path.home() / "Code" / "project_kex" / "skillreg",
+        Path.home() / "Code" / "skillreg",
+    ]
+    for root in common_roots:
+        dist = root / "dashboard" / "dist"
+        if dist.is_dir():
+            return dist
     return None
 
 

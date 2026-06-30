@@ -154,7 +154,11 @@ def target_skills(target: str = Query(...)):
 def skill_diff(skill: str = Query(...), target: str = Query(...)):
     """Compare a workspace skill against the target copy."""
     try:
-        return sync_manager.get_skill_diff(skill, target)
+        files = sync_manager.get_skill_diff(skill, target)
+        summary = {}
+        for f in files:
+            summary[f["status"]] = summary.get(f["status"], 0) + 1
+        return {"files": files, "summary": summary}
     except ValueError as e:
         raise HTTPException(400, str(e))
 

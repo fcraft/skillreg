@@ -72,7 +72,9 @@ def test_compat_routes_cover_dashboard_legacy_paths(tmp_path, monkeypatch):
 
     diff_resp = client.get("/api/skill-diff", params={"skill": "my-skill", "target": str(target)})
     assert diff_resp.status_code == 200
-    assert all(row["status"] == "unchanged" for row in diff_resp.json())
+    diff_data = diff_resp.json()
+    assert all(row["status"] == "unchanged" for row in diff_data["files"])
+    assert diff_data["summary"].get("unchanged", 0) > 0
 
     target_skills_resp = client.get("/api/target-skills", params={"target": str(target)})
     assert target_skills_resp.status_code == 200

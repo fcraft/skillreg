@@ -116,6 +116,8 @@ def skill_file(skill_id: str, path: str = Query(...)):
     except file_browser.FileTooLargeError as e:
         raise HTTPException(413, detail={"error": str(e), "size": e.size})
     except ValueError as e:
+        if "Path is not a file" in str(e):
+            return {"exists": False, "path": path}
         raise HTTPException(400, str(e))
     except PermissionError as e:
         raise HTTPException(403, str(e))

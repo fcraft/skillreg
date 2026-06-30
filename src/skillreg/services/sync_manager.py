@@ -408,6 +408,8 @@ def get_target_file(skill: str, target: str, rel_path: str) -> dict:
     file_path = (base / rel_path).resolve()
     if not str(file_path).startswith(str(base.resolve())):
         raise ValueError("Invalid file path")
+    if not file_path.exists():
+        return {"exists": False, "path": rel_path}
     if not file_path.is_file():
         raise ValueError("Path is not a file")
     raw = file_path.read_bytes()
@@ -417,7 +419,7 @@ def get_target_file(skill: str, target: str, rel_path: str) -> dict:
     except UnicodeDecodeError:
         content = None
         binary = True
-    result = {"size": len(raw)}
+    result = {"exists": True, "size": len(raw)}
     if binary:
         result["binary"] = True
     else:

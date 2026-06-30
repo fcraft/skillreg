@@ -228,15 +228,30 @@ async function syncSkill(targetName, skillName) {
   font-size: 11px;
   padding: 2px 8px;
   border-radius: var(--qqx-radius-full);
-  background: var(--qqx-bg-elevated);
   flex-shrink: 0;
 }
 .skill-status.synced,
-.skill-status.unchanged { color: #10b981; }
-.skill-status.changed { color: #f59e0b; }
-.skill-status.missing { color: var(--qqx-text-tertiary); }
-.skill-status.deregistered { color: #ef4444; }
-.skill-status.syncing { color: #8b5cf6; }
+.skill-status.unchanged {
+  background: var(--qqx-success-light);
+  color: var(--qqx-success);
+}
+.skill-status.changed,
+.skill-status.modified {
+  background: var(--qqx-warning-light);
+  color: var(--qqx-warning);
+}
+.skill-status.missing {
+  background: var(--qqx-bg-elevated);
+  color: var(--qqx-text-tertiary);
+}
+.skill-status.deregistered {
+  background: var(--qqx-error-light);
+  color: var(--qqx-error);
+}
+.skill-status.syncing {
+  background: var(--qqx-brand-light);
+  color: var(--qqx-brand);
+}
 
 .sync-btn {
   font-size: 11px;

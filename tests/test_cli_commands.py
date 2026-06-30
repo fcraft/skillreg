@@ -181,6 +181,7 @@ def test_dashboard_lifecycle_commands_are_exposed(tmp_path, monkeypatch):
         pid = 12345
 
     monkeypatch.setattr(climod.subprocess, "Popen", lambda *args, **kwargs: FakeProc())
+    monkeypatch.setattr(climod, "_kill_orphan_dashboard_processes", lambda: [])
     seen_kills = []
 
     def fake_kill(pid, sig):

@@ -1356,18 +1356,18 @@ async function openFilePreview(file) {
     let repoPromise = Promise.resolve('')
     let targetPromise = Promise.resolve('')
 
-    // added: exists in repo, not in target → fetch repo only
-    // removed: exists in target, not in repo → fetch target only
+    // removed: exists in source, not in target → fetch source only
+    // added: exists in target, not in source → fetch target only
     // modified: both exist → fetch both
 
-    if (file.status !== 'removed') {
+    if (file.status !== 'added') {
       repoPromise = fetchSkillFile(skillName, filePath)
-        .then(data => data.content || '')
+        .then(data => data.exists === false ? '(文件不存在)' : (data.content || ''))
     }
 
-    if (file.status !== 'added') {
+    if (file.status !== 'removed') {
       targetPromise = fetchTargetFile(skillName, targetName, filePath)
-        .then(data => data.content || '')
+        .then(data => data.exists === false ? '(文件不存在)' : (data.content || ''))
     }
 
     const [repo, target] = await Promise.all([repoPromise, targetPromise])
@@ -1975,14 +1975,16 @@ async function addDiscoveredTargets() {
   flex-shrink: 0;
 }
 
-.skill-list-status.unchanged {
-  color: #10b981;
-  background: rgba(16, 185, 129, 0.08);
+.skill-list-status.unchanged,
+.skill-list-status.synced {
+  color: var(--qqx-success);
+  background: var(--qqx-success-light);
 }
 
-.skill-list-status.changed {
-  color: #f59e0b;
-  background: rgba(245, 158, 11, 0.08);
+.skill-list-status.changed,
+.skill-list-status.modified {
+  color: var(--qqx-warning);
+  background: var(--qqx-warning-light);
 }
 
 .skill-list-status.missing {
@@ -2020,23 +2022,23 @@ async function addDiscoveredTargets() {
 }
 
 .diff-stat.unchanged {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--qqx-diff-unchanged-tag-bg);
+  color: var(--qqx-diff-unchanged-tag-text);
 }
 
 .diff-stat.added {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--qqx-diff-added-tag-bg);
+  color: var(--qqx-diff-added-tag-text);
 }
 
 .diff-stat.modified {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--qqx-diff-modified-tag-bg);
+  color: var(--qqx-diff-modified-tag-text);
 }
 
 .diff-stat.removed {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--qqx-diff-removed-tag-bg);
+  color: var(--qqx-diff-removed-tag-text);
 }
 
 .diff-file-list {
@@ -2059,9 +2061,9 @@ async function addDiscoveredTargets() {
   filter: brightness(0.92);
 }
 
-.diff-file-row.added { background: #dbeafe; }
-.diff-file-row.modified { background: #fef3c7; }
-.diff-file-row.removed { background: #fee2e2; }
+.diff-file-row.added { background: var(--qqx-diff-added-row-bg); }
+.diff-file-row.modified { background: var(--qqx-diff-modified-row-bg); }
+.diff-file-row.removed { background: var(--qqx-diff-removed-row-bg); }
 
 .diff-file-status {
   font-size: 11px;
