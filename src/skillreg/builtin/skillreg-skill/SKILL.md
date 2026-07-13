@@ -2,7 +2,7 @@
 name: skillreg-skill
 description: 当用户需要使用 skillreg 管理本地 AI Agent Skills 时使用，包括创建或切换 workspace、注册包含 SKILL.md 的本地目录、转换 skill、配置同步目标、执行同步、查看差异、打开 dashboard 或排查 skillreg 相关问题。
 metadata:
-  version: "1.4.1"
+  version: "1.4.2"
 ---
 
 # skillreg-skill
