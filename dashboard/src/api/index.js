@@ -122,13 +122,18 @@ export function fetchSyncConfig() {
   return get('/api/sync/config')
 }
 
-export function fetchSyncStatus(target, includeProjects = false, skill = null) {
+export async function fetchSyncStatus(target, includeProjects = false, skill = null) {
   const params = []
   if (target) params.push(`target=${encodeURIComponent(target)}`)
   if (includeProjects) params.push('include_projects=true')
   if (skill) params.push(`skill=${encodeURIComponent(skill)}`)
   const qs = params.length ? `?${params.join('&')}` : ''
-  return get(`/api/sync/status${qs}`)
+  const rows = await get(`/api/sync/status${qs}`)
+  const statusMap = { synced: 'unchanged', modified: 'changed' }
+  return rows.map(row => ({
+    ...row,
+    status: statusMap[row.status] || row.status,
+  }))
 }
 
 export function fetchSyncTargets() {

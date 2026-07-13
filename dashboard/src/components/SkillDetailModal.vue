@@ -64,7 +64,7 @@
               <span class="im-row-name">{{ t.name }}</span>
               <span class="im-row-path">→ {{ t.path }}/{{ skill.name }}</span>
             </div>
-            <QButton v-if="isInstalled(t.name)" type="ghost" size="small" disabled>已安装</QButton>
+            <QButton v-if="isInstalled(t.path)" type="ghost" size="small" disabled>已安装</QButton>
               <QButton v-else type="secondary" tint="brand" size="small" :disabled="installing" @click="doInstall(t.name)">安装</QButton>
           </div>
         </div>
@@ -284,7 +284,7 @@ const allTargetsWithStatus = computed(() => {
       label: t.name,
       path: t.path,
       _project: false,
-      status: statusMap[t.name] || 'not-installed',
+      status: statusMap[t.path] || 'not-installed',
     })
   }
   // Project targets

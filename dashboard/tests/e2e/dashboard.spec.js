@@ -27,3 +27,20 @@ test('spa fallback supports direct route entry', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Sync 工具' })).toBeVisible()
   await expect(page.getByText('demo-skill')).toBeVisible()
 })
+
+test('skill detail shows installed target state', async ({ page }) => {
+  const syncResponse = await page.request.post('/api/sync/execute', {
+    data: { target: 'claude-skills', skills: ['demo-skill'] },
+  })
+  expect(syncResponse.ok()).toBeTruthy()
+
+  await page.goto('/')
+  await page.waitForURL('**/skills')
+
+  await page.getByRole('heading', { name: 'demo-skill', exact: true }).click()
+  await page.getByRole('button', { name: '安装', exact: true }).click()
+
+  const targetRow = page.locator('.im-row').filter({ hasText: 'claude-skills' })
+  await expect(targetRow.getByRole('button', { name: '已安装', exact: true })).toBeVisible()
+  await expect(targetRow.getByRole('button', { name: '安装', exact: true })).toHaveCount(0)
+})
