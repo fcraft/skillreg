@@ -14,6 +14,7 @@ import subprocess
 import tempfile
 import uuid
 import zipfile
+from collections.abc import Sequence
 from pathlib import Path
 
 from ..config import load_config
@@ -255,7 +256,7 @@ def import_skill(
     files_copied = _copy_skill_files(src, target_dir)
 
     # Git commit in workspace
-    _git_add_commit(ws, f"skills/{name}", f"skillreg: register '{name}'")
+    _git_add_commit(ws, [f"skills/{name}"], f"skillreg: register '{name}'")
     _clear_registry_cache(ws)
 
     # Cleanup temp
@@ -491,7 +492,7 @@ def delete_skill(name: str) -> dict:
         raise FileNotFoundError(f"skill '{name}' not found at skills/{name}")
 
     shutil.rmtree(skill_dir)
-    _git_add_commit(ws, f"skills/{name}", f"skillreg: remove '{name}'")
+    _git_add_commit(ws, [f"skills/{name}"], f"skillreg: remove '{name}'")
     _clear_registry_cache(ws)
 
     commit = _get_head_commit(ws)
@@ -536,8 +537,9 @@ def remove_submodule(path: str) -> dict:
     except ValueError:
         raise ValueError("repo path escapes workspace")
 
-    git_env = {**os.environ, **GIT_AUTHOR_ENV}
     is_submodule = _is_initialized_submodule(ws, path)
+    tracked_path = _is_tracked_path(ws, path)
+    had_gitmodules = (ws / ".gitmodules").exists()
     # Resolve the submodule's registered name (may differ from its path) so we
     # can clean the stored git dir under .git/modules/<name>.
     submodule_name = _submodule_name_for_path(ws, path) if is_submodule else None
@@ -564,22 +566,17 @@ def remove_submodule(path: str) -> dict:
             modules_dir = ws / ".git" / "modules" / key
             if modules_dir.exists():
                 shutil.rmtree(modules_dir, ignore_errors=True)
-        try:
-            subprocess.run(
-                ["git", "add", "-A"],
-                cwd=str(ws), capture_output=True, text=True, check=True,
-            )
-            subprocess.run(
-                ["git", "commit", "-m", f"skillreg: remove submodule '{path}'"],
-                cwd=str(ws), capture_output=True, text=True, check=True, env=git_env,
-            )
-        except subprocess.CalledProcessError:
-            pass
+        changed_paths = [path]
+        if had_gitmodules:
+            changed_paths.append(".gitmodules")
+        _git_add_commit(ws, changed_paths, f"skillreg: remove submodule '{path}'")
     else:
-        # Nested .git directory that is not a registered submodule.
         shutil.rmtree(full_path, ignore_errors=True)
         _strip_gitmodules_entry(ws, path)
-        _git_add_commit(ws, ".", f"skillreg: remove repo '{path}'")
+        changed_paths = [path] if tracked_path else []
+        if had_gitmodules:
+            changed_paths.append(".gitmodules")
+        _git_add_commit(ws, changed_paths, f"skillreg: remove repo '{path}'")
 
     _clear_registry_cache(ws)
     commit = _get_head_commit(ws)
@@ -617,7 +614,8 @@ def rename_submodule(path: str, new_name: str) -> dict:
     if (ws / new_path).exists():
         raise FileExistsError(f"target path already exists: {new_path}")
 
-    git_env = {**os.environ, **GIT_AUTHOR_ENV}
+    tracked_path = _is_tracked_path(ws, path)
+    had_gitmodules = (ws / ".gitmodules").exists()
     moved = subprocess.run(
         ["git", "mv", path, new_path],
         cwd=str(ws), capture_output=True, text=True,
@@ -630,17 +628,12 @@ def rename_submodule(path: str, new_name: str) -> dict:
     if _is_initialized_submodule(ws, path) or _is_initialized_submodule(ws, new_path):
         _rename_gitmodules_entry(ws, path, new_path)
 
-    try:
-        subprocess.run(
-            ["git", "add", "-A"],
-            cwd=str(ws), capture_output=True, text=True, check=True,
-        )
-        subprocess.run(
-            ["git", "commit", "-m", f"skillreg: rename '{path}' -> '{new_path}'"],
-            cwd=str(ws), capture_output=True, text=True, check=True, env=git_env,
-        )
-    except subprocess.CalledProcessError:
-        pass
+    changed_paths = [new_path]
+    if tracked_path:
+        changed_paths.append(path)
+    if had_gitmodules:
+        changed_paths.append(".gitmodules")
+    _git_add_commit(ws, changed_paths, f"skillreg: rename '{path}' -> '{new_path}'")
 
     _clear_registry_cache(ws)
     return {"oldPath": path, "newPath": new_path, "commit": _get_head_commit(ws)}
@@ -796,7 +789,7 @@ def git_import_skills(
         })
 
     # Git commit
-    changed = " ".join(f"skills/{normalized + '/' if normalized else ''}{s}" for s in selected_skills)
+    changed = [f"skills/{normalized + '/' if normalized else ''}{s}" for s in selected_skills]
     _git_add_commit(ws, changed, f"skillreg: import {len(imported)} skill(s) from git")
     _clear_registry_cache(ws)
 
@@ -824,7 +817,7 @@ def git_import_as_submodule(
 
     try:
         subprocess.run(args, cwd=str(ws), capture_output=True, text=True, check=True)
-        _git_add_commit(ws, f"{target_path} .gitmodules", f"skillreg: add submodule '{target_path}'")
+        _git_add_commit(ws, [target_path, ".gitmodules"], f"skillreg: add submodule '{target_path}'")
         _clear_registry_cache(ws)
     except subprocess.CalledProcessError as e:
         shutil.rmtree(full_path, ignore_errors=True)
@@ -890,16 +883,27 @@ def _build_file_map(directory: Path) -> dict[str, str]:
     return result
 
 
-def _git_add_commit(ws: Path, paths: str, message: str) -> None:
-    """Run git add + commit in workspace (non-fatal on failure)."""
+def _is_tracked_path(ws: Path, path: str) -> bool:
+    result = subprocess.run(
+        ["git", "ls-files", "--error-unmatch", "--", path],
+        cwd=str(ws), capture_output=True, text=True,
+    )
+    return result.returncode == 0
+
+
+def _git_add_commit(ws: Path, paths: Sequence[str], message: str) -> None:
+    """Commit only the requested workspace paths without consuming its index."""
+    pathspecs = list(dict.fromkeys(paths))
+    if not pathspecs:
+        return
     git_env = {**os.environ, **GIT_AUTHOR_ENV}
     try:
         subprocess.run(
-            ["git", "add", *paths.split()],
+            ["git", "add", "-A", "--", *pathspecs],
             cwd=str(ws), capture_output=True, text=True, check=True,
         )
         subprocess.run(
-            ["git", "commit", "-m", message],
+            ["git", "commit", "--only", "-m", message, "--", *pathspecs],
             cwd=str(ws), capture_output=True, text=True, check=True, env=git_env,
         )
     except subprocess.CalledProcessError:

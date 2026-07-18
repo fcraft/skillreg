@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import subprocess
+
 from click.testing import CliRunner
 
 import skillreg.config as cfgmod
+import skillreg.services.importer as importer
 import skillreg.services.sync_manager as sync_manager
 from skillreg.cli import cli
 
@@ -75,6 +78,42 @@ def test_register_list_convert_and_diff(tmp_path, monkeypatch):
     assert converted.exit_code == 0, converted.output
     assert "已转换 skill: demo-skill" in converted.output
     assert (workspace / "repos" / "demo-skill-cli" / "skill" / "demo-skill" / "SKILL.md").exists()
+
+
+def test_register_preserves_preexisting_staged_changes(tmp_path, monkeypatch):
+    cfg_path = tmp_path / "config.json"
+    monkeypatch.setattr(cfgmod, "CONFIG_FILE", cfg_path)
+    monkeypatch.setattr(cfgmod, "CONFIG_DIR", cfg_path.parent)
+    workspace = tmp_path / "workspace"
+    importer.create_workspace(str(workspace))
+
+    readme = workspace / "README.md"
+    readme.write_text(readme.read_text(encoding="utf-8") + "\nstaged change\n", encoding="utf-8")
+    subprocess.run(["git", "add", "README.md"], cwd=workspace, check=True)
+    (workspace / "scratch.txt").write_text("untracked\n", encoding="utf-8")
+
+    source = _make_source(tmp_path, "isolated-cli-skill")
+    result = CliRunner().invoke(cli, ["register", str(source)])
+
+    assert result.exit_code == 0, result.output
+    assert subprocess.run(
+        ["git", "show", "--pretty=", "--name-only", "HEAD"],
+        cwd=workspace,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.splitlines() == [
+        "skills/isolated-cli-skill/SKILL.md",
+        "skills/isolated-cli-skill/notes.md",
+    ]
+    assert subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
+        cwd=workspace,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.splitlines() == ["README.md"]
+    assert (workspace / "scratch.txt").exists()
 
 
 def test_target_and_sync_status_commands(tmp_path, monkeypatch):

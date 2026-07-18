@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tempfile
+import subprocess
 import zipfile
 from pathlib import Path
 
@@ -98,6 +99,60 @@ class TestImportValidation:
 
 
 class TestSkillImport:
+    def test_register_commits_only_new_skill_and_preserves_existing_changes(self, tmp_path, monkeypatch):
+        ws = tmp_path / "workspace"
+        importer.create_workspace(str(ws))
+
+        readme = ws / "README.md"
+        staged_content = readme.read_text(encoding="utf-8") + "\nstaged change\n"
+        readme.write_text(staged_content, encoding="utf-8")
+        subprocess.run(["git", "add", "README.md"], cwd=ws, check=True)
+        working_content = staged_content + "unstaged change\n"
+        readme.write_text(working_content, encoding="utf-8")
+        (ws / "scratch.txt").write_text("untracked\n", encoding="utf-8")
+
+        src = tmp_path / "source"
+        src.mkdir()
+        (src / "SKILL.md").write_text(
+            "---\nname: isolated-skill\n---\n\n# Isolated\n",
+            encoding="utf-8",
+        )
+
+        _configure_workspace(ws, monkeypatch)
+        importer.import_skill(str(src))
+
+        committed_paths = subprocess.run(
+            ["git", "show", "--pretty=", "--name-only", "HEAD"],
+            cwd=ws,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.splitlines()
+        assert committed_paths == ["skills/isolated-skill/SKILL.md"]
+        assert subprocess.run(
+            ["git", "diff", "--cached", "--name-only"],
+            cwd=ws,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.splitlines() == ["README.md"]
+        assert subprocess.run(
+            ["git", "diff", "--name-only"],
+            cwd=ws,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.splitlines() == ["README.md"]
+        assert subprocess.run(
+            ["git", "show", ":README.md"],
+            cwd=ws,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout == staged_content
+        assert readme.read_text(encoding="utf-8") == working_content
+        assert (ws / "scratch.txt").read_text(encoding="utf-8") == "untracked\n"
+
     def test_imports_skill_to_workspace(self, tmp_path, monkeypatch):
         ws = tmp_path / "workspace"
         importer.create_workspace(str(ws))
