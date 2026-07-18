@@ -130,44 +130,63 @@ watch(isServerDown, (down) => {
 })
 const { loadSyncStatus, forceRefresh } = useSyncBridge()
 const router = useRouter()
-const { registerCommand, unregisterCommandsBySection } = useCommands()
+const { registerCommand, replaceCommandsBySection } = useCommands()
 
-// Register page navigation commands
-registerCommand({ id: 'nav-skills', title: 'Skill 列表', description: '查看所有 Skills', icon: Zap, section: 'navigation', action: () => router.push('/skills') })
-registerCommand({ id: 'nav-repos', title: '仓库状态', description: '查看子模块状态', icon: Package, section: 'navigation', action: () => router.push('/repos') })
-registerCommand({ id: 'nav-sync', title: 'Sync 工具', description: '管理同步目标与状态', icon: RefreshCw, section: 'navigation', action: () => router.push('/sync') })
-registerCommand({ id: 'nav-projects', title: '项目组', description: '管理项目组', icon: FolderKanban, section: 'navigation', action: () => router.push('/projects') })
-registerCommand({ id: 'nav-graph', title: '依赖关系图', description: '查看 Skill 依赖图', icon: GitGraph, section: 'navigation', action: () => router.push('/graph') })
-registerCommand({ id: 'nav-logs', title: '提交记录', description: '查看 Git 提交历史', icon: GitCommit, section: 'navigation', action: () => router.push('/logs') })
-registerCommand({ id: 'nav-playground', title: '组件实验室', description: '浏览所有 UI 组件状态与交互', icon: Palette, section: 'navigation', action: () => router.push('/playground') })
+const navigationCommands = [
+  { id: 'nav-skills', title: 'Skill 列表', description: '查看所有 Skills', keywords: ['skill', '技能', '浏览'], icon: Zap, path: '/skills' },
+  { id: 'nav-repos', title: '仓库状态', description: '查看子模块状态', keywords: ['repo', 'repository', 'submodule', '子模块'], icon: Package, path: '/repos' },
+  { id: 'nav-sync', title: 'Sync 工具', description: '管理同步目标与状态', keywords: ['同步', '安装', 'target', '目标'], icon: RefreshCw, path: '/sync' },
+  { id: 'nav-projects', title: '项目组', description: '管理项目组', keywords: ['project', '分组'], icon: FolderKanban, path: '/projects' },
+  { id: 'nav-graph', title: '依赖关系图', description: '查看 Skill 依赖图', keywords: ['graph', '依赖', '关系', '拓扑'], icon: GitGraph, path: '/graph' },
+  { id: 'nav-logs', title: '提交记录', description: '查看 Git 提交历史', keywords: ['git', 'log', 'history', '历史'], icon: GitCommit, path: '/logs' },
+  { id: 'nav-playground', title: '组件实验室', description: '浏览所有 UI 组件状态与交互', keywords: ['playground', 'ui', '组件'], icon: Palette, path: '/playground' },
+]
 
-// Register quick action commands
-registerCommand({ id: 'action-refresh', title: '刷新数据', description: '刷新所有 Skill 和状态数据', icon: RefreshCw, section: 'action', shortcut: '⌘R', action: () => { refresh(); forceRefresh() } })
-
-// Dynamically register skill search commands
-function registerSkillCommands() {
-  unregisterCommandsBySection('skill')
-  for (const skill of state.skills) {
-    const skillName = skill.name
-    registerCommand({
-      id: `skill-${skillName}`,
-      title: skillName,
-      description: `${skill.type} - ${(skill.description || '').slice(0, 60)}`,
-      icon: Zap,
-      section: 'skill',
-      action: () => {
-        router.push({ path: '/skills', query: { skill: skillName } })
-      }
-    })
-  }
+for (const command of navigationCommands) {
+  const { path, ...definition } = command
+  registerCommand({
+    ...definition,
+    section: 'navigation',
+    action: () => router.push(path),
+  })
 }
 
-// Watch skills data and re-register commands when loaded
-watch(() => state.skills.length, () => {
-  if (state.skills.length > 0) {
-    registerSkillCommands()
-  }
+registerCommand({
+  id: 'action-refresh',
+  title: '刷新数据',
+  description: '刷新所有 Skill 和状态数据',
+  keywords: ['refresh', 'reload', '重新加载'],
+  icon: RefreshCw,
+  section: 'action',
+  shortcut: '⌘R',
+  action: () => { refresh(); forceRefresh() },
 })
+
+function registerSkillCommands() {
+  const skillCommands = state.skills.map((skill) => {
+    const skillName = skill.name
+    const summary = (skill.description || '').slice(0, 100)
+    const repository = (skill.submodulePath || '').replace(/^repos\//, '')
+    return {
+      id: `skill-${skillName}`,
+      title: skillName,
+      description: summary ? `${skill.type} · ${summary}` : skill.type,
+      keywords: [
+        skill.type,
+        skill.path,
+        repository,
+        skill.type === 'CLI' ? '命令行 工具' : '参考 文档',
+      ],
+      icon: Zap,
+      action: () => {
+        router.push({ path: '/skills', query: { skill: skillName } })
+      },
+    }
+  })
+  replaceCommandsBySection('skill', skillCommands)
+}
+
+watch(() => state.skills, registerSkillCommands, { immediate: true })
 
 watch(workspaceModalOpen, (open) => {
   if (open) {

@@ -1,10 +1,10 @@
 import { reactive } from 'vue'
+import { searchCommands as rankCommands } from '../search/searchCommands.js'
 
 const commands = reactive([])
 
 export function useCommands() {
   function registerCommand(cmd) {
-    // cmd: { id, title, description?, icon?, section: 'navigation'|'action'|'skill', shortcut?, action: () => void }
     const existing = commands.findIndex(c => c.id === cmd.id)
     if (existing >= 0) {
       commands[existing] = cmd
@@ -13,12 +13,10 @@ export function useCommands() {
     }
   }
 
-  function unregisterCommandsBySection(section) {
-    for (let i = commands.length - 1; i >= 0; i--) {
-      if (commands[i].section === section) {
-        commands.splice(i, 1)
-      }
-    }
+  function replaceCommandsBySection(section, replacements) {
+    const retained = commands.filter(command => command.section !== section)
+    const normalized = replacements.map(command => ({ ...command, section }))
+    commands.splice(0, commands.length, ...retained, ...normalized)
   }
 
   function getCommands() {
@@ -26,13 +24,8 @@ export function useCommands() {
   }
 
   function searchCommands(query) {
-    if (!query || !query.trim()) return commands
-    const q = query.toLowerCase()
-    return commands.filter(c =>
-      c.title.toLowerCase().includes(q) ||
-      (c.description && c.description.toLowerCase().includes(q))
-    )
+    return rankCommands(commands, query)
   }
 
-  return { registerCommand, unregisterCommandsBySection, getCommands, searchCommands }
+  return { registerCommand, replaceCommandsBySection, getCommands, searchCommands }
 }
