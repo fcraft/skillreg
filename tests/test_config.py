@@ -92,3 +92,20 @@ def test_workspace_create_prints_current_workspace_context(tmp_path, monkeypatch
     assert f"已创建 workspace: {ws}" in result.output
     assert "创建 workspace 后的 skillreg 上下文" in result.output
     assert f"当前 workspace : {ws}" in result.output
+    assert "初始提交" in result.output
+    assert "注册首个 Skill" in result.output
+    assert "不会自动 push" in result.output
+
+
+def test_config_guides_first_time_user_to_create_workspace(tmp_path, monkeypatch):
+    cfg_path = tmp_path / "config.json"
+    monkeypatch.setattr(cfgmod, "CONFIG_FILE", cfg_path)
+    monkeypatch.setattr(cfgmod, "CONFIG_DIR", cfg_path.parent)
+    monkeypatch.setattr(climod, "CONFIG_FILE", cfg_path)
+
+    result = CliRunner().invoke(cli, ["config"])
+
+    assert result.exit_code == 0
+    assert "workspace : (未配置)" in result.output
+    assert "skillreg workspace create ~/my-skills" in result.output
+    assert "skillreg workspace switch <path>" in result.output

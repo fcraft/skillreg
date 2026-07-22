@@ -860,6 +860,15 @@ watch(() => route.query.skill, (skillName) => {
   }
 }, { immediate: true })
 
+watch(() => route.query.onboarding, (value) => {
+  if (value !== 'target') return
+  activeView.value = 'targets'
+  addTargetOpen.value = true
+  const query = { ...route.query }
+  delete query.onboarding
+  router.replace({ query })
+}, { immediate: true })
+
 // Sync route query ↔ view state
 watch(() => route.query.view, (view) => {
   if (view === 'targets' || view === 'projects') {

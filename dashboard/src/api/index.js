@@ -4,9 +4,10 @@
  */
 
 class ApiError extends Error {
-  constructor(status, message) {
+  constructor(status, message, code = null) {
     super(message)
     this.status = status
+    this.code = code
     this.name = 'ApiError'
   }
 }
@@ -18,7 +19,10 @@ async function request(path, options = {}) {
   })
   if (!res.ok) {
     const data = await res.json().catch(() => ({ error: res.statusText }))
-    throw new ApiError(res.status, data.error || data.detail || res.statusText)
+    const detail = data.detail
+    const structuredDetail = detail && typeof detail === 'object' ? detail : null
+    const message = data.error || structuredDetail?.message || detail || res.statusText
+    throw new ApiError(res.status, message, data.code || structuredDetail?.code || null)
   }
   return res.json()
 }
@@ -48,8 +52,16 @@ export function fetchCurrentWorkspace() {
   return get('/api/workspace/current')
 }
 
+export function createWorkspace(path) {
+  return post('/api/workspace/create', { path })
+}
+
 export function switchWorkspace(path) {
   return post('/api/workspace/switch', { path })
+}
+
+export function selectWorkspaceDirectory(initialPath) {
+  return post('/api/workspace/select-directory', { initialPath: initialPath || null })
 }
 
 // --- Skills ---
@@ -286,6 +298,23 @@ export function importUploadZip(file) {
   return fetch('/api/import/upload', { method: 'POST', body: formData })
     .then(res => {
       if (!res.ok) return res.json().then(data => { throw new ApiError(res.status, data.error) })
+      return res.json()
+    })
+    .then(res => res.data)
+}
+
+export function importUploadDirectory(files) {
+  const formData = new FormData()
+  formData.append('paths', JSON.stringify(files.map(file => file.webkitRelativePath || file.name)))
+  files.forEach(file => formData.append('files', file, file.name))
+  return fetch('/api/import/upload-directory', { method: 'POST', body: formData })
+    .then(async res => {
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: res.statusText }))
+        const detail = data.detail
+        const message = data.error || (typeof detail === 'object' ? detail?.message : detail) || res.statusText
+        throw new ApiError(res.status, message)
+      }
       return res.json()
     })
     .then(res => res.data)

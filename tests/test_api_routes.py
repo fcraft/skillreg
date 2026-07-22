@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import skillreg.config as cfgmod
@@ -9,6 +10,7 @@ from skillreg.server import create_app
 from skillreg.server import health as health_api
 from skillreg.server import import_ as import_api
 from skillreg.server import submodules as submodules_api
+from skillreg.server import workspace as workspace_api
 
 
 def _client():
@@ -371,6 +373,71 @@ def test_workspace_current_and_switch(tmp_path, monkeypatch):
     assert current.json()["workspace_path"] == str(second_ws.resolve())
 
 
+def test_workspace_switch_missing_path_returns_typed_not_found(tmp_path, monkeypatch):
+    _use_temp_config(tmp_path, monkeypatch)
+    missing = tmp_path / "missing-workspace"
+    client = _client()
+
+    response = client.post("/api/workspace/switch", json={"path": str(missing)})
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == {
+        "code": "workspace_not_found",
+        "message": f"Workspace does not exist: {missing}",
+    }
+
+
+def test_workspace_create_initializes_git_and_selects_workspace(tmp_path, monkeypatch):
+    _use_temp_config(tmp_path, monkeypatch)
+    workspace = tmp_path / "created-workspace"
+    client = _client()
+
+    created = client.post("/api/workspace/create", json={"path": str(workspace)})
+
+    assert created.status_code == 200
+    data = created.json()
+    assert data["workspace_path"] == str(workspace.resolve())
+    assert data["initial_commit"]
+    assert data["remote_configured"] is False
+    assert (workspace / "skills" / ".gitkeep").exists()
+    assert (workspace / "repos" / ".gitkeep").exists()
+    current = client.get("/api/workspace/current")
+    assert current.json()["workspace_path"] == str(workspace.resolve())
+
+
+def test_workspace_directory_picker_returns_selected_path(tmp_path, monkeypatch):
+    selected = tmp_path / "selected-workspace"
+    selected.mkdir()
+    monkeypatch.setattr(workspace_api, "select_directory", lambda initial: str(selected))
+    client = _client()
+
+    response = client.post(
+        "/api/workspace/select-directory",
+        json={"initialPath": str(tmp_path)},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "success": True,
+        "cancelled": False,
+        "path": str(selected),
+    }
+
+
+def test_workspace_directory_picker_reports_cancellation(monkeypatch):
+    monkeypatch.setattr(workspace_api, "select_directory", lambda initial: None)
+    client = _client()
+
+    response = client.post("/api/workspace/select-directory", json={"initialPath": None})
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "success": True,
+        "cancelled": True,
+        "path": None,
+    }
+
+
 def test_registry_register_skill(tmp_path, monkeypatch):
     """POST /api/registry/register imports an external skill into workspace."""
     ws = _make_workspace(tmp_path, monkeypatch)
@@ -395,6 +462,46 @@ def test_registry_register_skill(tmp_path, monkeypatch):
     assert data["data"]["skillPath"] == "skills/external-skill"
     assert (ws / "skills" / "external-skill" / "SKILL.md").exists()
     assert (ws / "skills" / "external-skill" / "tool.sh").exists()
+
+
+def test_import_upload_directory(tmp_path, monkeypatch):
+    _make_workspace(tmp_path, monkeypatch)
+    client = _client()
+
+    response = client.post(
+        "/api/import/upload-directory",
+        data={"paths": json.dumps([
+            "picked-skill/SKILL.md",
+            "picked-skill/scripts/run.py",
+        ])},
+        files=[
+            ("files", ("SKILL.md", b"---\nname: picked-skill\n---\n", "text/markdown")),
+            ("files", ("run.py", b"print('ok')\n", "text/x-python")),
+        ],
+    )
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    try:
+        root = Path(data["extractedRoot"])
+        assert (root / "SKILL.md").exists()
+        assert (root / "scripts" / "run.py").exists()
+    finally:
+        import_api.importer.cleanup_temp(data["tempPath"])
+
+
+def test_import_upload_directory_rejects_path_traversal(tmp_path, monkeypatch):
+    _make_workspace(tmp_path, monkeypatch)
+    client = _client()
+
+    response = client.post(
+        "/api/import/upload-directory",
+        data={"paths": json.dumps(["picked-skill/../../SKILL.md"])},
+        files=[("files", ("SKILL.md", b"content", "text/markdown"))],
+    )
+
+    assert response.status_code == 400
+    assert "Invalid directory upload path" in response.json()["detail"]
 
 
 def test_registry_register_conflict_returns_409(tmp_path, monkeypatch):

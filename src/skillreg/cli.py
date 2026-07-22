@@ -117,6 +117,11 @@ def config() -> None:
         f"  agents     : "
         f"{', '.join(cfg.agents.keys()) if cfg.agents else '(none)'}"
     )
+    if not cfg.workspace_path:
+        click.echo()
+        click.echo("尚未配置 workspace")
+        click.echo("  新建 workspace : skillreg workspace create ~/my-skills")
+        click.echo("  使用已有目录   : skillreg workspace switch <path>")
 
 
 @cli.group()
@@ -280,9 +285,16 @@ def create_workspace(location: str) -> None:
         result = _create(location)
         click.echo(f"✓ 已创建 workspace: {result['workspace_path']}")
         click.echo(f"  git init  : {'✓' if result['has_git'] else '✗'}")
+        click.echo(f"  初始提交  : {result.get('initial_commit') or '(none)'}")
         click.echo(f"  skills/   : {'✓' if result['has_skills_dir'] else '✗'}")
         click.echo(f"  repos/    : {'✓' if result['has_repos_dir'] else '✗'}")
         _echo_workspace_summary(heading="创建 workspace 后的 skillreg 上下文")
+        click.echo()
+        click.echo("下一步")
+        click.echo("  1. 注册首个 Skill : skillreg register /path/to/my-skill")
+        click.echo("  2. 添加同步目标   : skillreg target add ~/.codex/skills")
+        click.echo("  3. 打开 Dashboard : skillreg dashboard open")
+        click.echo("  Git 提交已保存在本地，不会自动配置 remote，也不会自动 push")
     except ValueError as e:
         click.echo(f"✗ {e}", err=True)
         raise SystemExit(1)

@@ -35,11 +35,28 @@ class TestWorkspaceCreation:
         assert result["has_git"] is True
         assert result["has_skills_dir"] is True
         assert result["has_repos_dir"] is True
+        assert result["initial_commit"]
+        assert result["remote_configured"] is False
         assert (ws / ".git").exists()
         assert (ws / "skills").is_dir()
         assert (ws / "repos").is_dir()
+        assert (ws / "skills" / ".gitkeep").exists()
+        assert (ws / "repos" / ".gitkeep").exists()
         assert (ws / ".gitignore").exists()
         assert ".skillreg/builtin/" in (ws / ".gitignore").read_text()
+        committed_paths = subprocess.run(
+            ["git", "show", "--pretty=", "--name-only", "HEAD"],
+            cwd=ws,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.splitlines()
+        assert committed_paths == [
+            ".gitignore",
+            "README.md",
+            "repos/.gitkeep",
+            "skills/.gitkeep",
+        ]
 
     def test_rejects_nonempty_dir(self, tmp_path, monkeypatch):
         ws = tmp_path / "nonempty"
@@ -237,6 +254,46 @@ class TestZipImport:
         result = importer.extract_zip(buf)
         assert result["tempPath"]
         assert Path(result["extractedRoot"]).exists()
+
+
+class TestDirectoryUpload:
+    def test_stores_selected_folder(self):
+        result = importer.store_directory_upload([
+            ("chosen-skill/SKILL.md", b"---\nname: chosen-skill\n---\n"),
+            ("chosen-skill/scripts/run.py", b"print('ok')\n"),
+        ])
+
+        try:
+            root = Path(result["extractedRoot"])
+            assert root.name == "chosen-skill"
+            assert (root / "SKILL.md").read_bytes().startswith(b"---")
+            assert (root / "scripts" / "run.py").exists()
+        finally:
+            importer.cleanup_temp(result["tempPath"])
+
+    @pytest.mark.parametrize("path", [
+        "../SKILL.md",
+        "/tmp/SKILL.md",
+        "C:/temp/SKILL.md",
+        "skill/../../SKILL.md",
+    ])
+    def test_rejects_unsafe_paths(self, path):
+        with pytest.raises(ValueError, match="Invalid directory upload path"):
+            importer.store_directory_upload([(path, b"content")])
+
+    def test_wraps_files_without_browser_relative_paths(self):
+        result = importer.store_directory_upload([
+            ("SKILL.md", b"---\nname: selected\n---\n"),
+            ("tool.py", b"print('ok')\n"),
+        ])
+
+        try:
+            root = Path(result["extractedRoot"])
+            assert root.name == "selected-folder"
+            assert (root / "SKILL.md").exists()
+            assert (root / "tool.py").exists()
+        finally:
+            importer.cleanup_temp(result["tempPath"])
 
 
 class TestCleanup:

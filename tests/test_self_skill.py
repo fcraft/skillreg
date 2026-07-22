@@ -14,5 +14,6 @@ def test_inject_self_skill_copies_references_directory(tmp_path):
 
     assert target is not None
     assert (target / "SKILL.md").exists()
+    assert (target / "references" / "getting-started.md").exists()
     assert (target / "references" / "install.md").exists()
     assert (target / "references" / "troubleshooting.md").exists()

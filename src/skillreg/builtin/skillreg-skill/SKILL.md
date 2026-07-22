@@ -32,7 +32,7 @@ metadata:
    - 用户没给路径：从当前工作目录开始找 `SKILL.md`；如果当前目录本身就是 skill 目录，直接使用当前目录。
    - 如果找不到 `SKILL.md`，先告诉用户需要一个包含 `SKILL.md` 的目录，并说明当前检查过哪里。
 2. 跑 `skillreg config`，确认当前 `workspace_path`、targets 和配置文件位置。
-3. 如果 `workspace_path` 为空，先创建或引导选择 workspace；不要要求用户判断“产品仓/工作区仓”。
+3. 如果 `workspace_path` 为空，先读 `references/getting-started.md`，创建或引导选择 workspace；不要要求用户判断“产品仓/工作区仓”。
 4. 如果命令不存在或环境没装好，读 `references/install.md`。
 5. 如果命令能跑但行为异常（workspace 不对、dashboard/sync 出错），读 `references/troubleshooting.md`。
 
@@ -131,5 +131,6 @@ skillreg sync execute --project my-project
 
 | 问题类型 | 参考文档 |
 |----------|----------|
+| 首次使用、创建首个 workspace、理解本地提交与远端备份 | `references/getting-started.md` |
 | 安装、开发态启动、PATH/venv 问题 | `references/install.md` |
 | dashboard 起不来、workspace 不对、sync 异常、skill 没注入、命令行为不符合预期 | `references/troubleshooting.md` |
