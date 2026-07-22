@@ -10,6 +10,8 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
+(cd dashboard && npm ci && npm run build)
+
 uv run python scripts/check_version.py
 version="$(uv run python scripts/versioning.py current)"
 tag="v$version"

@@ -72,3 +72,10 @@ def test_bump_from_commit_message_updates_files(tmp_path):
 
     assert next_version == "1.2.0"
     assert versioning.check_versions(root) == []
+
+
+def test_release_builds_dashboard_before_python_metadata_check():
+    script = (Path(__file__).parents[1] / "scripts" / "release.sh").read_text(encoding="utf-8")
+
+    assert script.index("npm ci") < script.index("uv run python scripts/check_version.py")
+    assert script.index("npm run build") < script.index("uv run python scripts/check_version.py")
