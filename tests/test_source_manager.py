@@ -121,6 +121,8 @@ def test_repo_mode_initializes_independent_repo_and_preserves_unmanaged_files(tm
     assert (repo / "source-manifest.json").exists()
     assert imported["remoteConfigured"] is False
     (repo / "AGENTS.md").write_text("keep me\n")
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True)
     subprocess.run(["git", "add", "AGENTS.md"], cwd=repo, check=True)
     subprocess.run(["git", "commit", "-qm", "docs: add agent notes"], cwd=repo, check=True)
 
