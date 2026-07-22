@@ -9,4 +9,6 @@ python3 "$repo_root/scripts/versioning.py" bump --commit-msg-file "$commit_msg_f
 git add \
   "$repo_root/pyproject.toml" \
   "$repo_root/src/skillreg/__init__.py" \
-  "$repo_root/src/skillreg/builtin/skillreg-skill/SKILL.md"
+  "$repo_root/src/skillreg/builtin/skillreg-skill/SKILL.md" \
+  "$repo_root/npm/package.json" \
+  "$repo_root/npm/package-lock.json"

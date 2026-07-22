@@ -36,8 +36,24 @@
 
 ## 安装与使用
 
+使用 uv 安装：
+
 ```bash
 uv tool install skillreg
+```
+
+也可以通过 npm 安装：
+
+```bash
+npm install --global skillreg
+```
+
+npm 启动器会运行完全相同版本的 Python 包。系统有 `uv` 时直接使用；否则首次
+运行时会通过 Python 3.9+ 创建隔离环境，并从 PyPI 下载依赖。
+
+安装后：
+
+```bash
 skillreg workspace create ~/my-skills
 skillreg register /path/to/my-skill
 skillreg source npm import @scope/skill-pack --registry https://registry.npmjs.org/ --mode skill
@@ -98,10 +114,10 @@ uv run pytest -q
 uv run --with ruff ruff check src/ tests/ scripts/
 ```
 
-版本号由 `pyproject.toml`、`src/skillreg/__init__.py` 和内置
-`skillreg-skill` 共同校验。安装 git hook 后，在 `main` 分支提交时会自动
-bump `x.y.z` 版本：`feat:` 提交使 `y + 1`，其他提交使 `z + 1`，并把
-`x` 固定为 `1`。
+版本号由 `pyproject.toml`、`src/skillreg/__init__.py`、内置
+`skillreg-skill` 和 `npm/package.json` 共同校验。安装 git hook 后，在
+`main` 分支提交时会自动 bump `x.y.z` 版本：`feat:` 提交使 `y + 1`，其他
+提交使 `z + 1`，并把 `x` 固定为 `1`。
 
 本地发版：
 
@@ -110,7 +126,7 @@ scripts/release.sh
 ```
 
 脚本会读取当前版本，创建并推送 `v<version>` tag，随后由 GitHub Actions
-发布到 GitHub Release 和 PyPI。
+发布到 GitHub Release、PyPI 和 npm。
 
 ## Contributors
 

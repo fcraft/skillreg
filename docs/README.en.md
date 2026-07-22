@@ -16,8 +16,24 @@
 
 ## Install
 
+Install with uv:
+
 ```bash
 uv tool install skillreg
+```
+
+Or install through npm:
+
+```bash
+npm install --global skillreg
+```
+
+The npm launcher runs the exact matching Python package. It uses `uv` when
+available, or creates an isolated environment with Python 3.9+ on first use.
+
+Then:
+
+```bash
 skillreg workspace create ~/my-skills
 skillreg register /path/to/my-skill
 skillreg target add ~/.codex/skills
@@ -67,9 +83,10 @@ uv run --with ruff ruff check src/ tests/ scripts/
 ```
 
 Version metadata is checked across `pyproject.toml`,
-`src/skillreg/__init__.py`, and the built-in `skillreg-skill`. After installing
-the git hook, commits on `main` automatically bump `x.y.z`: `feat:` increments
-`y`, other commits increment `z`, and `x` is fixed to `1`.
+`src/skillreg/__init__.py`, the built-in `skillreg-skill`, and
+`npm/package.json`. After installing the git hook, commits on `main`
+automatically bump `x.y.z`: `feat:` increments `y`, other commits increment
+`z`, and `x` is fixed to `1`.
 
 Local release:
 
@@ -78,7 +95,7 @@ scripts/release.sh
 ```
 
 The script reads the current version, creates and pushes `v<version>`, and lets
-GitHub Actions publish the GitHub Release and PyPI package.
+GitHub Actions publish the GitHub Release, PyPI package, and npm package.
 
 ## License
 

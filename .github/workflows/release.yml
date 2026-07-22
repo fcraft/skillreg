@@ -19,10 +19,17 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Setup npm for trusted publishing
+        run: npm install --global npm@11
 
       - name: Build dashboard
         run: cd dashboard && npm ci && npm run build
+
+      - name: Test npm package
+        run: cd npm && npm ci && npm test && npm pack --dry-run
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -89,3 +96,7 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Publish to npm
+        working-directory: npm
+        run: npm publish --access public

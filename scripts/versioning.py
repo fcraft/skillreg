@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import json
 import os
 import re
 import subprocess
@@ -72,11 +73,22 @@ def read_builtin_skill_version(root: Path = ROOT) -> str:
     return match.group(1)
 
 
+def read_npm_package_version(root: Path = ROOT) -> str:
+    data = json.loads((root / "npm" / "package.json").read_text(encoding="utf-8"))
+    return str(data["version"])
+
+
+def read_npm_lock_versions(root: Path = ROOT) -> tuple[str, str]:
+    data = json.loads((root / "npm" / "package-lock.json").read_text(encoding="utf-8"))
+    return str(data["version"]), str(data["packages"][""]["version"])
+
+
 def sync_version(version: str, root: Path = ROOT) -> None:
     validate_release_version(version)
     _replace_pyproject_version(version, root)
     _replace_runtime_version(version, root)
     _replace_builtin_skill_version(version, root)
+    _replace_npm_versions(version, root)
 
 
 def bump_version_for_message(current: str, message: str) -> str:
@@ -100,6 +112,8 @@ def check_versions(root: Path = ROOT, require_tag: bool = False) -> list[str]:
     pyproject_version = read_pyproject_version(root)
     runtime_version = read_runtime_version(root)
     builtin_version = read_builtin_skill_version(root)
+    npm_version = read_npm_package_version(root)
+    npm_lock_version, npm_lock_root_version = read_npm_lock_versions(root)
     errors: list[str] = []
 
     if not VERSION_RE.match(pyproject_version):
@@ -114,6 +128,17 @@ def check_versions(root: Path = ROOT, require_tag: bool = False) -> list[str]:
         errors.append(
             "builtin skill version mismatch: "
             f"SKILL.md has {builtin_version}, pyproject.toml has {pyproject_version}"
+        )
+    if npm_version != pyproject_version:
+        errors.append(
+            "npm package version mismatch: "
+            f"npm/package.json has {npm_version}, pyproject.toml has {pyproject_version}"
+        )
+    if npm_lock_version != pyproject_version or npm_lock_root_version != pyproject_version:
+        errors.append(
+            "npm lock version mismatch: "
+            f"npm/package-lock.json has {npm_lock_version}/{npm_lock_root_version}, "
+            f"pyproject.toml has {pyproject_version}"
         )
 
     if require_tag:
@@ -209,6 +234,19 @@ def _replace_builtin_skill_version(version: str, root: Path) -> None:
             1,
         )
     path.write_text(updated, encoding="utf-8")
+
+
+def _replace_npm_versions(version: str, root: Path) -> None:
+    package_path = root / "npm" / "package.json"
+    package_data = json.loads(package_path.read_text(encoding="utf-8"))
+    package_data["version"] = version
+    package_path.write_text(json.dumps(package_data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    lock_path = root / "npm" / "package-lock.json"
+    lock_data = json.loads(lock_path.read_text(encoding="utf-8"))
+    lock_data["version"] = version
+    lock_data["packages"][""]["version"] = version
+    lock_path.write_text(json.dumps(lock_data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def _builtin_skill_path(root: Path) -> Path:

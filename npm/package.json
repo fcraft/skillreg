@@ -1,0 +1,44 @@
+{
+  "name": "skillreg",
+  "version": "1.7.0",
+  "description": "Local AI agent skill manager CLI",
+  "type": "module",
+  "bin": {
+    "skillreg": "bin/skillreg.js"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "pack:check": "npm pack --dry-run"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fcraft/skillreg.git",
+    "directory": "npm"
+  },
+  "homepage": "https://github.com/fcraft/skillreg",
+  "bugs": {
+    "url": "https://github.com/fcraft/skillreg/issues"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "skill",
+    "registry",
+    "cli"
+  ],
+  "author": "HJH201314 <fcraft@qq.com>",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}
