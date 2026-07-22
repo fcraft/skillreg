@@ -7,6 +7,7 @@
         <NavItem to="/sync" :icon="RefreshCw" label="Sync 工具" />
         <NavItem to="/projects" :icon="FolderKanban" label="项目组" />
         <NavItem to="/repos" :icon="Package" label="仓库状态" />
+        <NavItem to="/sources" :icon="PackageSearch" label="NPM 来源" />
       </div>
       <div class="sidebar-divider"></div>
       <div class="sidebar-section">
@@ -87,7 +88,7 @@
 <script setup>
 import { onMounted, watch, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Zap, Package, RefreshCw, GitGraph, GitCommit, FolderKanban, Palette } from 'lucide-vue-next'
+import { Zap, Package, PackageSearch, RefreshCw, GitGraph, GitCommit, FolderKanban, Palette } from 'lucide-vue-next'
 import QLayout from './components/QLayout.vue'
 import QButton from './components/QButton.vue'
 import QThemeSwitch from './components/QThemeSwitch.vue'
@@ -135,6 +136,7 @@ const { registerCommand, replaceCommandsBySection } = useCommands()
 const navigationCommands = [
   { id: 'nav-skills', title: 'Skill 列表', description: '查看所有 Skills', keywords: ['skill', '技能', '浏览'], icon: Zap, path: '/skills' },
   { id: 'nav-repos', title: '仓库状态', description: '查看子模块状态', keywords: ['repo', 'repository', 'submodule', '子模块'], icon: Package, path: '/repos' },
+  { id: 'nav-sources', title: 'NPM 来源', description: '检查和更新 NPM 来源', keywords: ['npm', 'source', '来源', '更新'], icon: PackageSearch, path: '/sources' },
   { id: 'nav-sync', title: 'Sync 工具', description: '管理同步目标与状态', keywords: ['同步', '安装', 'target', '目标'], icon: RefreshCw, path: '/sync' },
   { id: 'nav-projects', title: '项目组', description: '管理项目组', keywords: ['project', '分组'], icon: FolderKanban, path: '/projects' },
   { id: 'nav-graph', title: '依赖关系图', description: '查看 Skill 依赖图', keywords: ['graph', '依赖', '关系', '拓扑'], icon: GitGraph, path: '/graph' },

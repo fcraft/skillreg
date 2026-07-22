@@ -1,6 +1,6 @@
 ---
 name: skillreg-skill
-description: 当用户需要使用 skillreg 管理本地 AI Agent Skills 时使用，包括创建或切换 workspace、注册包含 SKILL.md 的本地目录、转换 skill、配置同步目标、执行同步、查看差异、打开 dashboard 或排查 skillreg 相关问题。
+description: 当用户需要使用 skillreg 管理本地 AI Agent Skills 时使用，包括创建或切换 workspace、注册本地目录、从 NPM 包导入并持续更新多个 Skill、转换 skill、配置同步目标、执行同步、查看差异、打开 dashboard 或排查 skillreg 相关问题。
 metadata:
   version: "1.5.0"
 ---
@@ -20,6 +20,7 @@ metadata:
 - 用户说"用 skillreg 管一下这个 skill"
 - 用户说"注册这个 skill"、"把这个 skill 注册一下"、"把这个目录注册成 skill"
 - 用户要把一个本地目录、zip、git 仓库注册进 workspace
+- 用户要预览 NPM 包中的多个 Skill，并以 standalone Skill 或独立 Repo 模式管理和更新
 - 用户要把 `skills/<name>` 转成 `repos/<name>-cli/skill/<name>`
 - 用户要把 workspace 中的 skills 同步到 Claude、Codex、`.agents/skills` 等目标目录
 - 用户反馈 `skillreg` 命令找不到、dashboard 起不来、workspace 不生效、sync 结果不对
@@ -61,6 +62,9 @@ metadata:
 | 注册时改名 | `skillreg register <path> --name <name>` |
 | 查看 workspace skills | `skillreg list` |
 | 把 file skill 变成 repo/CLI 骨架 | `skillreg convert <name>` |
+| 预览 NPM 包中的全部 Skill | `skillreg source npm preview <package> --registry <url>` |
+| 选择多个 Skill 导入到 `skills/` | `skillreg source npm import <package> --skill <name> --skill <name>` |
+| 把 NPM 包管理为独立集合仓 | `skillreg source npm import <package> --mode repo --target-path repos/<name>` |
 
 要点：
 - `register` → 把 skill 放进 `skills/<name>/`
@@ -68,7 +72,23 @@ metadata:
 - “注册”默认不是注册当前代码仓库本身，而是注册其中包含 `SKILL.md` 的 skill 目录。
 - 如果用户在任意业务项目里说“注册 skill”，agent 应主动定位该项目中的 `SKILL.md` 或询问具体 skill 目录。
 
-### 3. 同步到 agent 目标目录
+### 3. 管理 NPM 来源
+
+```bash
+skillreg source npm preview @scope/skill-pack --registry https://registry.npmjs.org/
+skillreg source npm import @scope/skill-pack --registry https://registry.npmjs.org/ --mode skill
+skillreg source list
+skillreg source check scope-skill-pack
+skillreg source update-preview scope-skill-pack
+skillreg source update scope-skill-pack --dry-run
+skillreg source update scope-skill-pack
+```
+
+NPM 来源按包管理，一条来源可以包含多个 Skill。目录名与 `SKILL.md` 的
+frontmatter `name` 不一致时，以预览返回的显式映射为准。Repo 模式没有 remote
+也会创建本地独立 Git 仓库；配置 remote 时不会自动 push。
+
+### 4. 同步到 agent 目标目录
 
 常用 CLI：
 
@@ -95,6 +115,9 @@ skillreg sync execute --project my-project
 | `synced` | workspace 和 target 一致 |
 | `modified` | target 里有本地改动或差异 |
 | `missing` | 配置里有这个 skill，但目标缺失 |
+
+来源更新的 `up-to-date`、`update-available`、`check-failed` 与上述 target
+同步状态彼此独立。
 
 ## agent 行为约束
 

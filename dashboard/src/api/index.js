@@ -18,7 +18,7 @@ async function request(path, options = {}) {
   })
   if (!res.ok) {
     const data = await res.json().catch(() => ({ error: res.statusText }))
-    throw new ApiError(res.status, data.error || res.statusText)
+    throw new ApiError(res.status, data.error || data.detail || res.statusText)
   }
   return res.json()
 }
@@ -317,6 +317,32 @@ export function importGitClone(url, branch) {
 
 export function importGitExecute(body) {
   return post('/api/import/git-import', body).then(res => res.data)
+}
+
+// --- Managed sources ---
+
+export function previewNpmSource(body) {
+  return post('/api/sources/npm/preview', body).then(res => res.data)
+}
+
+export function importNpmSource(body) {
+  return post('/api/sources/npm/import', body).then(res => res.data)
+}
+
+export function fetchSources() {
+  return get('/api/sources').then(res => res.data)
+}
+
+export function checkSource(id) {
+  return post(`/api/sources/${encodeURIComponent(id)}/check`, {}).then(res => res.data)
+}
+
+export function previewSourceUpdate(id, versionSpec) {
+  return post(`/api/sources/${encodeURIComponent(id)}/update-preview`, { versionSpec }).then(res => res.data)
+}
+
+export function updateSource(id, token, options = {}) {
+  return post(`/api/sources/${encodeURIComponent(id)}/update`, { token, ...options }).then(res => res.data)
 }
 
 // --- Hooks ---

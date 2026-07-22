@@ -115,6 +115,73 @@
           </div>
         </div>
       </div>
+
+      <div v-show="sourceType === 'npm'" class="source-panel">
+        <div class="form-group">
+          <label class="form-label">NPM 包名</label>
+          <input v-model="npmPackage" class="qqx-input" placeholder="例如: @scope/design-skills" @keyup.enter="previewNpm" />
+        </div>
+        <div class="npm-source-grid">
+          <div class="form-group">
+            <label class="form-label">Registry</label>
+            <input v-model="npmRegistry" class="qqx-input" placeholder="https://registry.npmjs.org/" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">版本</label>
+            <input v-model="npmVersionSpec" class="qqx-input" placeholder="latest" @keyup.enter="previewNpm" />
+          </div>
+        </div>
+        <div class="npm-preview-action">
+          <QButton type="primary" size="small" :disabled="!npmPackage.trim() || npmLoading" @click="previewNpm">
+            {{ npmLoading ? '验证中...' : '验证并预览' }}
+          </QButton>
+        </div>
+        <div v-if="npmError" class="state-card state-card--error"><div class="state-card__inner"><XCircleIcon :size="20" /><span>{{ npmError }}</span></div></div>
+
+        <div v-if="npmPreview" class="npm-preview">
+          <div class="npm-resolution">
+            <strong>{{ npmPreview.package }}@{{ npmPreview.resolvedVersion }}</strong>
+            <code>{{ npmPreview.integrity }}</code>
+          </div>
+          <div class="git-section-label">发现 {{ npmPreview.skills.length }} 个 Skill</div>
+          <div v-for="skill in npmPreview.skills" :key="skill.name" class="git-skill-row" :class="{ 'git-skill-row--selected': npmSelected.includes(skill.name) }" @click="toggleNpmSkill(skill.name)">
+            <div class="git-skill-check"><div class="check-box" :class="{ 'check-box--checked': npmSelected.includes(skill.name) }"><CheckIcon v-if="npmSelected.includes(skill.name)" :size="12" /></div></div>
+            <div class="git-skill-info">
+              <div class="git-skill-name">{{ skill.name }} <span v-if="skill.conflict" class="npm-conflict">目标已存在</span></div>
+              <div class="git-skill-desc">{{ skill.description || '无描述' }}</div>
+              <div class="git-skill-path">{{ skill.sourceDirectory }} → {{ skill.defaultTargetDirectory }}</div>
+            </div>
+          </div>
+          <div class="git-section-label">管理方式</div>
+          <div class="git-mode-group">
+            <QRadio v-model="npmMode" value="skill" label="导入为 Skill" />
+            <QRadio v-model="npmMode" value="repo" label="管理为 Repo" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">目标路径（可选）</label>
+            <input v-model="npmTargetPath" class="qqx-input" :placeholder="npmMode === 'repo' ? `repos/${npmDefaultRepoName}` : 'skills'" />
+          </div>
+          <div v-if="npmMode === 'repo'" class="npm-source-grid">
+            <div class="form-group">
+              <label class="form-label">Git remote（可选）</label>
+              <input v-model="npmRemote" class="qqx-input" placeholder="留空时创建本地独立仓库" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">分支（可选）</label>
+              <input v-model="npmBranch" class="qqx-input" placeholder="使用远端默认分支" />
+            </div>
+          </div>
+          <label v-if="npmSelectedHasConflict && npmMode === 'skill'" class="npm-force-confirm">
+            <input v-model="npmForce" type="checkbox" />
+            我已确认覆盖所选的同名 Skill
+          </label>
+          <div class="npm-preview-action">
+            <QButton type="primary" :disabled="npmSelected.length === 0 || npmImporting || (npmSelectedHasConflict && npmMode === 'skill' && !npmForce)" @click="executeNpmImport">
+              {{ npmImporting ? '导入中...' : `导入 ${npmSelected.length} 个 Skill` }}
+            </QButton>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Step: validate -->
@@ -318,6 +385,8 @@ import {
   importCleanup,
   importGitClone,
   importGitExecute,
+  previewNpmSource,
+  importNpmSource,
 } from '../api/index.js'
 import QDiffViewer from './QDiffViewer.vue'
 
@@ -369,6 +438,23 @@ const gitTargetDir = ref('third')
 const gitSubmodulePath = ref('')
 const gitTempPath = ref('')
 
+const npmPackage = ref('')
+const npmRegistry = ref('https://registry.npmjs.org/')
+const npmVersionSpec = ref('latest')
+const npmPreview = ref(null)
+const npmSelected = ref([])
+const npmMode = ref('skill')
+const npmTargetPath = ref('')
+const npmRemote = ref('')
+const npmBranch = ref('')
+const npmLoading = ref(false)
+const npmImporting = ref(false)
+const npmError = ref('')
+const npmForce = ref(false)
+
+const npmDefaultRepoName = computed(() => npmPackage.value.trim().replace(/^@/, '').replace(/\//g, '-').toLowerCase() || 'npm-skills')
+const npmSelectedHasConflict = computed(() => Boolean(npmPreview.value?.skills.some(skill => npmSelected.value.includes(skill.name) && skill.conflict)))
+
 const gitSubmoduleDefaultName = computed(() => {
   const url = gitUrl.value.trim()
   if (!url) return 'repo'
@@ -417,6 +503,7 @@ const sourceTabs = computed(() => [
   { key: 'folder', label: '本地文件夹' },
   { key: 'zip', label: 'ZIP 文件' },
   { key: 'git', label: 'Git URL' },
+  { key: 'npm', label: 'NPM 包' },
 ])
 
 const sourcePath = computed(() => {
@@ -473,6 +560,19 @@ function resetState() {
   gitTargetDir.value = 'third'
   gitSubmodulePath.value = ''
   gitTempPath.value = ''
+  npmPackage.value = ''
+  npmRegistry.value = 'https://registry.npmjs.org/'
+  npmVersionSpec.value = 'latest'
+  npmPreview.value = null
+  npmSelected.value = []
+  npmMode.value = 'skill'
+  npmTargetPath.value = ''
+  npmRemote.value = ''
+  npmBranch.value = ''
+  npmLoading.value = false
+  npmImporting.value = false
+  npmError.value = ''
+  npmForce.value = false
 }
 
 function goBackToSource() {
@@ -712,6 +812,62 @@ async function executeGitImport() {
   }
 }
 
+async function previewNpm() {
+  if (!npmPackage.value.trim()) return
+  npmLoading.value = true
+  npmError.value = ''
+  npmPreview.value = null
+  try {
+    npmPreview.value = await previewNpmSource({
+      package: npmPackage.value.trim(),
+      registry: npmRegistry.value.trim(),
+      versionSpec: npmVersionSpec.value.trim() || 'latest',
+    })
+    npmSelected.value = npmPreview.value.skills.map(skill => skill.name)
+    npmForce.value = false
+  } catch (err) {
+    npmError.value = err.message || 'NPM 来源验证失败'
+  } finally {
+    npmLoading.value = false
+  }
+}
+
+function toggleNpmSkill(name) {
+  const index = npmSelected.value.indexOf(name)
+  if (index >= 0) npmSelected.value.splice(index, 1)
+  else npmSelected.value.push(name)
+}
+
+async function executeNpmImport() {
+  if (!npmPreview.value || npmSelected.value.length === 0) return
+  npmImporting.value = true
+  npmError.value = ''
+  try {
+    const body = {
+      token: npmPreview.value.token,
+      mode: npmMode.value,
+      selectedSkills: npmSelected.value,
+      force: npmForce.value,
+    }
+    if (npmTargetPath.value.trim()) body.targetPath = npmTargetPath.value.trim()
+    if (npmMode.value === 'repo' && npmRemote.value.trim()) body.remote = npmRemote.value.trim()
+    if (npmMode.value === 'repo' && npmBranch.value.trim()) body.branch = npmBranch.value.trim()
+    const result = await importNpmSource(body)
+    importResult.value = {
+      name: `${result.imported.length} 个 Skill`,
+      skillPath: result.source.targetPath,
+      filesCopied: result.imported.reduce((total, item) => total + Object.keys(item.fileHashes || {}).length, 0),
+    }
+    step.value = 'result'
+    success(`已导入 ${result.imported.length} 个 Skill`)
+    emit('imported')
+  } catch (err) {
+    npmError.value = err.message || 'NPM 来源导入失败'
+  } finally {
+    npmImporting.value = false
+  }
+}
+
 function toggleFile(file) {
   if (expandedFile.value === file.path) {
     expandedFile.value = null
@@ -760,6 +916,49 @@ watch(() => props.modelValue, (val) => {
 
 .source-panel {
   margin-top: var(--qqx-space-md);
+}
+
+.npm-source-grid {
+  display: grid;
+  grid-template-columns: 1fr 180px;
+  gap: var(--qqx-space-md);
+  margin-top: var(--qqx-space-md);
+}
+
+.npm-preview-action {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--qqx-space-md);
+}
+
+.npm-preview {
+  margin-top: var(--qqx-space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--qqx-space-md);
+}
+
+.npm-resolution {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--qqx-space-md);
+  border-radius: var(--qqx-radius-md);
+  background: var(--qqx-bg-subtle);
+  overflow-wrap: anywhere;
+}
+
+.npm-conflict {
+  color: var(--qqx-warning);
+  font-size: var(--qqx-font-size-small);
+}
+
+.npm-force-confirm {
+  display: flex;
+  align-items: center;
+  gap: var(--qqx-space-sm);
+  color: var(--qqx-warning);
+  font-size: var(--qqx-font-size-small);
 }
 
 .form-group {

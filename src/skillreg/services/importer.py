@@ -893,21 +893,9 @@ def _is_tracked_path(ws: Path, path: str) -> bool:
 
 def _git_add_commit(ws: Path, paths: Sequence[str], message: str) -> None:
     """Commit only the requested workspace paths without consuming its index."""
-    pathspecs = list(dict.fromkeys(paths))
-    if not pathspecs:
-        return
-    git_env = {**os.environ, **GIT_AUTHOR_ENV}
-    try:
-        subprocess.run(
-            ["git", "add", "-A", "--", *pathspecs],
-            cwd=str(ws), capture_output=True, text=True, check=True,
-        )
-        subprocess.run(
-            ["git", "commit", "--only", "-m", message, "--", *pathspecs],
-            cwd=str(ws), capture_output=True, text=True, check=True, env=git_env,
-        )
-    except subprocess.CalledProcessError:
-        pass  # Nothing to commit is OK
+    from .git_ops import commit_exact
+
+    commit_exact(ws, paths, message)
 
 
 def _get_head_commit(ws: Path) -> str | None:
