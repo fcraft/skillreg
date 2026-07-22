@@ -1,6 +1,6 @@
 {
   "name": "skillreg",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "Local AI agent skill manager CLI",
   "type": "module",
   "bin": {
