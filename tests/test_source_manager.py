@@ -287,6 +287,24 @@ def test_existing_repo_manifest_is_explicitly_validated_and_unmanaged_files_surv
 
 
 def test_exact_commit_does_not_include_file_staged_by_hook(tmp_path, workspace):
+    readme = workspace / "README.md"
+    readme.write_text("staged content\n")
+    subprocess.run(["git", "add", "README.md"], cwd=workspace, check=True)
+    readme.write_text("unstaged content\n")
+    staged_before = subprocess.run(
+        ["git", "diff", "--cached", "--binary", "--", "README.md"],
+        cwd=workspace,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout
+    unstaged_before = subprocess.run(
+        ["git", "diff", "--binary", "--", "README.md"],
+        cwd=workspace,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout
     hooks = workspace / ".git/hooks"
     hook = hooks / "pre-commit"
     hook.write_text("#!/bin/sh\nprintf 'hook edit\\n' >> README.md\ngit add README.md\n")
@@ -298,7 +316,21 @@ def test_exact_commit_does_not_include_file_staged_by_hook(tmp_path, workspace):
 
     committed = subprocess.run(["git", "show", "--pretty=", "--name-only", "HEAD"], cwd=workspace, text=True, capture_output=True, check=True).stdout.splitlines()
     assert committed == [".skillreg/sources.json", "skills/one/SKILL.md"]
-    assert "hook edit" in (workspace / "README.md").read_text()
+    assert readme.read_text() == "unstaged content\n"
+    assert subprocess.run(
+        ["git", "diff", "--cached", "--binary", "--", "README.md"],
+        cwd=workspace,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout == staged_before
+    assert subprocess.run(
+        ["git", "diff", "--binary", "--", "README.md"],
+        cwd=workspace,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout == unstaged_before
 
 
 def test_remote_repo_is_added_as_submodule_without_push(tmp_path, workspace, monkeypatch):

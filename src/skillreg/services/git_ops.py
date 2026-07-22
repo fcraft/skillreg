@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import tempfile
 import urllib.parse
@@ -78,28 +79,12 @@ def commit_exact(repo: Path, paths: Sequence[str], message: str) -> str | None:
     changed = run_git(repo, ["status", "--porcelain", "--", *pathspecs]).stdout.strip()
     if not changed:
         return None
-    run_git(repo, ["add", "-A", "--", *pathspecs])
     hook_path = Path(run_git(repo, ["rev-parse", "--git-path", "hooks/pre-commit"]).stdout.strip())
     if not hook_path.is_absolute():
         hook_path = repo / hook_path
-    if hook_path.is_file() and os.access(hook_path, os.X_OK):
-        hook = subprocess.run(
-            [str(hook_path)],
-            cwd=repo,
-            capture_output=True,
-            text=True,
-            env={**os.environ, **GIT_AUTHOR_ENV},
-            timeout=120,
-        )
-        if hook.returncode:
-            detail = (hook.stderr or hook.stdout or "pre-commit hook failed").strip()
-            raise GitOperationError(f"pre-commit hook failed: {detail}")
-
-    fd, index_name = tempfile.mkstemp(prefix="skillreg-git-index-")
-    os.close(fd)
-    Path(index_name).unlink()
-    index_env = {"GIT_INDEX_FILE": index_name}
-    try:
+    with tempfile.TemporaryDirectory(prefix="skillreg-git-worktree-") as worktree_name:
+        index_name = str(Path(worktree_name) / ".skillreg-index")
+        index_env = {"GIT_INDEX_FILE": index_name}
         head_result = run_git(repo, ["rev-parse", "HEAD"], check=False)
         head = head_result.stdout.strip() if head_result.returncode == 0 else ""
         if head:
@@ -107,6 +92,32 @@ def commit_exact(repo: Path, paths: Sequence[str], message: str) -> str | None:
         else:
             run_git(repo, ["read-tree", "--empty"], extra_env=index_env)
         run_git(repo, ["add", "-A", "--", *pathspecs], extra_env=index_env)
+
+        if hook_path.is_file() and os.access(hook_path, os.X_OK):
+            worktree = Path(worktree_name)
+            hook_index = str(worktree / ".skillreg-hook-index")
+            shutil.copy2(index_name, hook_index)
+            hook_env = {"GIT_INDEX_FILE": hook_index}
+            run_git(repo, ["checkout-index", "-a", f"--prefix={worktree}/"], extra_env=hook_env)
+            git_dir = run_git(repo, ["rev-parse", "--absolute-git-dir"]).stdout.strip()
+            hook = subprocess.run(
+                [str(hook_path)],
+                cwd=worktree,
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    **GIT_AUTHOR_ENV,
+                    **hook_env,
+                    "GIT_DIR": git_dir,
+                    "GIT_WORK_TREE": str(worktree),
+                },
+                timeout=120,
+            )
+            if hook.returncode:
+                detail = (hook.stderr or hook.stdout or "pre-commit hook failed").strip()
+                raise GitOperationError(f"pre-commit hook failed: {detail}")
+
         tree = run_git(repo, ["write-tree"], extra_env=index_env).stdout.strip()
         args = ["commit-tree", tree, "-m", message]
         if head:
@@ -116,6 +127,5 @@ def commit_exact(repo: Path, paths: Sequence[str], message: str) -> str | None:
         if head:
             update_args.append(head)
         run_git(repo, update_args)
+        run_git(repo, ["reset", "-q", commit, "--", *pathspecs])
         return commit[:7]
-    finally:
-        Path(index_name).unlink(missing_ok=True)
