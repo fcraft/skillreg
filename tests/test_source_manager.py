@@ -336,3 +336,44 @@ def test_remote_repo_is_added_as_submodule_without_push(tmp_path, workspace, mon
     assert subprocess.run(["git", "rev-parse", "HEAD"], cwd=remote, text=True, capture_output=True, check=True).stdout.strip() == remote_head
     committed = subprocess.run(["git", "show", "--pretty=", "--name-only", "HEAD"], cwd=workspace, text=True, capture_output=True, check=True).stdout.splitlines()
     assert committed == [".gitmodules", ".skillreg/sources.json", "repos/remote-skills"]
+
+
+def test_existing_submodule_takeover_commits_updated_gitlink_only(tmp_path, workspace, monkeypatch):
+    upstream = tmp_path / "existing-upstream"
+    (upstream / "skills/one").mkdir(parents=True)
+    (upstream / "skills/one/SKILL.md").write_text("---\nname: one\n---\nold\n")
+    (upstream / "README.md").write_text("upstream\n")
+    (upstream / "source-manifest.json").write_text(json.dumps({
+        "source": {"type": "npm", "package": PACKAGE, "version": "0.9.0", "registry": REGISTRY, "integrity": "sha512-old"},
+        "skills": [{"source_directory": "one-dir", "repository_directory": "skills/one", "name": "one"}],
+    }))
+    subprocess.run(["git", "init", "-q"], cwd=upstream, check=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=upstream, check=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=upstream, check=True)
+    subprocess.run(["git", "add", "."], cwd=upstream, check=True)
+    subprocess.run(["git", "commit", "-qm", "init"], cwd=upstream, check=True)
+    remote = tmp_path / "existing-remote.git"
+    subprocess.run(["git", "clone", "-q", "--bare", str(upstream), str(remote)], check=True)
+    monkeypatch.setenv("GIT_ALLOW_PROTOCOL", "file")
+    subprocess.run(["git", "submodule", "add", "-q", str(remote), "repos/existing-skills"], cwd=workspace, check=True)
+    subprocess.run(["git", "add", ".gitmodules", "repos/existing-skills"], cwd=workspace, check=True)
+    subprocess.run(["git", "commit", "-qm", "add existing submodule"], cwd=workspace, check=True)
+    readme = workspace / "README.md"
+    readme.write_text("workspace\nkeep staged\n")
+    subprocess.run(["git", "add", "README.md"], cwd=workspace, check=True)
+    package = make_acquired(tmp_path, "1.0.0", {"one-dir": {"name": "one", "body": "managed"}})
+    manager = SourceManager(workspace, acquire=lambda *args: package)
+
+    result = manager.import_npm(
+        manager.preview_npm(PACKAGE, REGISTRY, "latest")["token"],
+        "repo",
+        ["one"],
+        target_path="repos/existing-skills",
+    )
+
+    assert result["source"]["resolvedVersion"] == "1.0.0"
+    committed = subprocess.run(["git", "show", "--pretty=", "--name-only", "HEAD"], cwd=workspace, text=True, capture_output=True, check=True).stdout.splitlines()
+    assert committed == [".skillreg/sources.json", "repos/existing-skills"]
+    staged = subprocess.run(["git", "diff", "--cached", "--name-only"], cwd=workspace, text=True, capture_output=True, check=True).stdout.splitlines()
+    assert staged == ["README.md"]
+    assert subprocess.run(["git", "status", "--porcelain", "--", "repos/existing-skills"], cwd=workspace, text=True, capture_output=True, check=True).stdout == ""
