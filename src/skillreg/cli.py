@@ -149,6 +149,124 @@ def submodule() -> None:
     """查看 workspace 子模块。"""
 
 
+@cli.group()
+def source() -> None:
+    """管理可持续更新的外部来源。"""
+
+
+@source.group()
+def npm() -> None:
+    """预览和导入 NPM 制品中的 Skill。"""
+
+
+def _source_manager():
+    from .services.source_manager import SourceManager
+
+    cfg = load_config()
+    if not cfg.workspace_path:
+        raise click.ClickException("Workspace not configured")
+    return SourceManager(Path(cfg.workspace_path))
+
+
+def _source_output(value, as_json: bool) -> None:
+    if as_json:
+        click.echo(json.dumps(value, ensure_ascii=False, indent=2))
+    else:
+        click.echo(json.dumps(value, ensure_ascii=False, indent=2))
+
+
+@npm.command("preview")
+@click.argument("package")
+@click.option("--registry", default="https://registry.npmjs.org/", show_default=True, help="NPM registry 地址。")
+@click.option("--version-spec", default="latest", show_default=True, help="版本、dist-tag 或 semver 范围。")
+@click.option("--json", "as_json", is_flag=True, help="输出 JSON。")
+def npm_preview(package: str, registry: str, version_spec: str, as_json: bool) -> None:
+    """解析 PACKAGE 并预览其中的全部 Skill。"""
+    try:
+        manager = _source_manager()
+        result = manager.preview_npm(package, registry, version_spec)
+        manager.discard_preview(result.pop("token"))
+        _source_output(result, as_json)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
+@npm.command("import")
+@click.argument("package")
+@click.option("--registry", default="https://registry.npmjs.org/", show_default=True, help="NPM registry 地址。")
+@click.option("--version-spec", default="latest", show_default=True, help="版本、dist-tag 或 semver 范围。")
+@click.option("--mode", type=click.Choice(["skill", "repo"]), default="skill", show_default=True, help="导入模式。")
+@click.option("--skill", "selected_skills", multiple=True, help="选择 Skill 名称，可重复；省略时选择全部。")
+@click.option("--target-path", help="workspace 内的安全目标路径。")
+@click.option("--remote", help="可选 Git remote；仅 Repo 模式。")
+@click.option("--branch", help="可选 Git 分支；仅 Repo 模式。")
+@click.option("--force", is_flag=True, help="覆盖已确认的本地冲突。")
+@click.option("--json", "as_json", is_flag=True, help="输出 JSON。")
+def npm_import(package: str, registry: str, version_spec: str, mode: str, selected_skills: tuple[str, ...], target_path: str | None, remote: str | None, branch: str | None, force: bool, as_json: bool) -> None:
+    """从 PACKAGE 导入选定 Skill，或创建独立集合仓。"""
+    try:
+        manager = _source_manager()
+        preview = manager.preview_npm(package, registry, version_spec)
+        selected = list(selected_skills) or [item["name"] for item in preview["skills"]]
+        result = manager.import_npm(preview["token"], mode, selected, target_path=target_path, force=force, remote=remote, branch=branch)
+        _source_output(result, as_json)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
+@source.command("list")
+@click.option("--json", "as_json", is_flag=True, help="输出 JSON。")
+def source_list(as_json: bool) -> None:
+    """列出当前 workspace 的受管来源。"""
+    try:
+        _source_output(_source_manager().list_sources(), as_json)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
+@source.command("check")
+@click.argument("source_id")
+@click.option("--json", "as_json", is_flag=True, help="输出 JSON。")
+def source_check(source_id: str, as_json: bool) -> None:
+    """检查 SOURCE_ID 是否有新版本。"""
+    try:
+        _source_output(_source_manager().check(source_id), as_json)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
+@source.command("update-preview")
+@click.argument("source_id")
+@click.option("--version-spec", help="临时检查指定版本或范围。")
+@click.option("--json", "as_json", is_flag=True, help="输出 JSON。")
+def source_update_preview(source_id: str, version_spec: str | None, as_json: bool) -> None:
+    """下载并验证候选制品，输出逐文件差异。"""
+    try:
+        manager = _source_manager()
+        result = manager.update_preview(source_id, version_spec)
+        manager.discard_preview(result.pop("token"))
+        _source_output(result, as_json)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
+@source.command("update")
+@click.argument("source_id")
+@click.option("--version-spec", help="更新到指定版本或范围。")
+@click.option("--force", is_flag=True, help="在查看差异后覆盖受管路径的本地修改。")
+@click.option("--dry-run", is_flag=True, help="只验证并输出差异，不修改文件。")
+@click.option("--json", "as_json", is_flag=True, help="输出 JSON。")
+def source_update(source_id: str, version_spec: str | None, force: bool, dry_run: bool, as_json: bool) -> None:
+    """检查差异后更新一个受管来源。"""
+    try:
+        manager = _source_manager()
+        preview = manager.update_preview(source_id, version_spec)
+        result = manager.update(source_id, preview["token"], force=force, dry_run=dry_run)
+        _source_output(result, as_json)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
 @workspace.command("create")
 @click.argument("location", type=click.Path())
 def create_workspace(location: str) -> None:

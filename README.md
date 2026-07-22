@@ -30,9 +30,9 @@
 
 ## 能力
 
-- **CLI**：创建/切换 workspace，注册/转换 skill，管理 targets/projects，执行 sync，查看 diff，启动 dashboard。
+- **CLI**：创建/切换 workspace，注册/转换 skill，管理 NPM 来源、targets/projects，执行 sync，查看 diff，启动 dashboard。
 - **Skill**：内置 `skillreg-skill`，让 agent 在任意项目里识别本地 `SKILL.md` 并注册到当前 workspace。
-- **Dashboard**：提供图形入口，可导入 skill、切换 workspace、管理同步目标、查看 Diff、按项目组批量同步、查看仓库状态/依赖图/Git 记录。
+- **Dashboard**：提供图形入口，可从本地、ZIP、Git 或 NPM 包导入 skill，管理 NPM 来源、同步目标、项目组、仓库状态、依赖图与 Git 记录。
 
 ## 安装与使用
 
@@ -40,6 +40,7 @@
 uv tool install skillreg
 skillreg workspace create ~/my-skills
 skillreg register /path/to/my-skill
+skillreg source npm import @scope/skill-pack --registry https://registry.npmjs.org/ --mode skill
 skillreg target add ~/.codex/skills
 skillreg sync execute --target ~/.codex/skills
 skillreg dashboard open
@@ -61,6 +62,12 @@ skillreg workspace switch <path>
 skillreg register <path> [--force] [--name name]
 skillreg list
 skillreg convert <name>
+skillreg source npm preview <package> [--registry url] [--version-spec spec]
+skillreg source npm import <package> [--mode skill|repo] [--skill name]
+skillreg source list
+skillreg source check <source-id>
+skillreg source update-preview <source-id>
+skillreg source update <source-id> [--dry-run] [--force]
 skillreg target list
 skillreg target add <path>
 skillreg sync status
@@ -74,6 +81,11 @@ skillreg dashboard status
 skillreg dashboard stop
 skillreg dashboard open --no-browser
 ```
+
+NPM 来源以包为管理单元。一份包可选择导入多个 Skill 到 `skills/`，也可在
+`repos/` 下创建独立集合仓。skillreg 直接下载并校验 registry 制品，不执行
+`npm install` 或生命周期脚本；来源、版本、完整性和目录映射保存在
+`.skillreg/sources.json`，后续可检查版本、预览逐文件差异并受控更新。
 
 ## 开发
 

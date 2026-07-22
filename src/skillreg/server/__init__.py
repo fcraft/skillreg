@@ -118,6 +118,12 @@ def create_app() -> FastAPI:
     except ImportError:
         pass
 
+    try:
+        from .sources import router as sources_router
+        app.include_router(sources_router)
+    except ImportError:
+        pass
+
     # Dashboard static serving (SPA fallback, after /api routes)
     _d = dashboard_dir()
     if _d is not None:
