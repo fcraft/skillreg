@@ -64,6 +64,7 @@ _SKILL_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 _WINDOWS_DRIVE_RE = re.compile(r"^[A-Za-z]:[/\\]")
 _SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$")
 _SKIPPED_DIRS = {".git", "node_modules", "__pycache__", "__MACOSX"}
+_TEXT_SUFFIXES = {".html", ".json", ".md", ".py", ".sh", ".txt"}
 
 
 def normalize_registry(registry: str) -> str:
@@ -266,6 +267,7 @@ def extract_tarball(payload: bytes, destination: Path) -> Path:
                             raise NpmSourceError(f"truncated tar member: {member.name}")
                         output.write(chunk)
                         remaining -= len(chunk)
+                target.chmod(0o644 | (member.mode & 0o111))
         package_root = destination / "package"
         if not package_root.is_dir():
             raise NpmSourceError("tarball does not contain package/ root")
@@ -273,6 +275,19 @@ def extract_tarball(payload: bytes, destination: Path) -> Path:
     except Exception:
         shutil.rmtree(destination, ignore_errors=True)
         raise
+
+
+def normalize_text_tree(root: Path) -> None:
+    """Apply the stable text canonicalization used by managed skill mirrors."""
+    for path in root.rglob("*"):
+        if not path.is_file() or path.suffix.lower() not in _TEXT_SUFFIXES:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        lines = [line.rstrip(" \t") for line in text.splitlines()]
+        path.write_text("\n".join(lines).rstrip("\n") + "\n", encoding="utf-8")
 
 
 def _frontmatter(skill_md: Path) -> dict[str, Any]:
@@ -346,6 +361,7 @@ def acquire_package(package: str, version_spec: str, registry: str) -> AcquiredP
     _TEMP_DIRS.add(temp_dir)
     try:
         root = extract_tarball(payload, temp_dir / "extracted")
+        normalize_text_tree(root)
         skills = discover_skills(root, package, version)
         return AcquiredPackage(
             package=package,

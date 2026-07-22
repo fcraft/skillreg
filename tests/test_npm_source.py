@@ -165,3 +165,25 @@ def test_acquire_never_executes_lifecycle_scripts(tmp_path, monkeypatch):
         assert not marker.exists()
     finally:
         acquired.cleanup()
+
+
+def test_extract_preserves_safe_file_mode_and_normalizes_text(tmp_path):
+    output = io.BytesIO()
+    with tarfile.open(fileobj=output, mode="w:gz") as archive:
+        files = {
+            "package/package.json": b'{"name":"@scope/pkg","version":"1.0.0"}',
+            "package/one/SKILL.md": b"---\nname: one\n---\n\n# One   ",
+            "package/one/run.sh": b"#!/bin/sh  \necho ok\t",
+        }
+        for name, payload in files.items():
+            info = tarfile.TarInfo(name)
+            info.size = len(payload)
+            info.mode = 0o755 if name.endswith("run.sh") else 0o644
+            archive.addfile(info, io.BytesIO(payload))
+
+    root = npm_source.extract_tarball(output.getvalue(), tmp_path / "normalized")
+    npm_source.normalize_text_tree(root)
+
+    assert (root / "one/SKILL.md").read_bytes() == b"---\nname: one\n---\n\n# One\n"
+    assert (root / "one/run.sh").read_bytes() == b"#!/bin/sh\necho ok\n"
+    assert (root / "one/run.sh").stat().st_mode & 0o777 == 0o755
