@@ -59,6 +59,8 @@ python -m uvicorn skillreg.server:app --host 127.0.0.1 --port 28787
 
 ## 4. 初始化最小可用闭环
 
+第一次使用时先读 `getting-started.md`，其中包含 Dashboard 引导、首个 Skill、同步目标和 Git 远端边界
+
 安装完成后，最小验证顺序：
 
 ```bash

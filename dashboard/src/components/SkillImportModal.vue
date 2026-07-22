@@ -13,21 +13,44 @@
       <div v-show="sourceType === 'folder'" class="source-panel">
         <div class="form-group">
           <label class="form-label">本地文件夹路径</label>
-          <div class="input-row">
+          <div class="input-row input-row--folder">
             <input
               v-model="folderPath"
               class="qqx-input"
               placeholder="例如: ~/.claude/skills/my-skill 或 /Users/xxx/.claude/skills/my-skill"
+              @input="clearUploadedFolder"
               @keyup.enter="validateSource"
             />
             <QButton
+              type="secondary"
+              size="small"
+              :disabled="uploading"
+              @click="openFolderPicker"
+            >
+              <FolderOpenIcon :size="15" />
+              {{ uploading ? '读取中...' : '选择文件夹' }}
+            </QButton>
+            <QButton
               type="primary"
               size="small"
-              :disabled="!folderPath.trim() || uploading"
+              :disabled="!folderPath.trim() || validationLoading || uploading"
               @click="validateSource"
             >
-              {{ uploading ? '验证中...' : '验证' }}
+              {{ validationLoading ? '验证中...' : '验证' }}
             </QButton>
+            <input
+              ref="folderInput"
+              class="native-folder-input"
+              type="file"
+              webkitdirectory
+              directory
+              multiple
+              @change="handleFolderSelection"
+            />
+          </div>
+          <p class="form-hint">可选择文件夹直接导入，也可手动输入本机路径</p>
+          <div v-if="validationError" class="state-card state-card--error folder-error">
+            <div class="state-card__inner"><XCircleIcon :size="20" /><span>{{ validationError }}</span></div>
           </div>
         </div>
       </div>
@@ -374,10 +397,12 @@ import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   Check as CheckIcon,
+  FolderOpen as FolderOpenIcon,
 } from 'lucide-vue-next'
 import { useToast } from '../composables/useToast.js'
 import {
   importUploadZip,
+  importUploadDirectory,
   importValidate,
   importExecute,
   importPreviewUpdate,
@@ -405,6 +430,7 @@ const sourceType = ref('folder')
 
 // --- Data state ---
 const folderPath = ref('')
+const uploadedFolderRoot = ref('')
 const selectedFile = ref(null)
 const tempPath = ref('')
 const extractedRoot = ref('')
@@ -468,6 +494,7 @@ const expandedFileContent = ref(null)
 
 // File input ref
 const fileInput = ref(null)
+const folderInput = ref(null)
 
 // --- Computed ---
 const localVisible = computed({
@@ -507,7 +534,7 @@ const sourceTabs = computed(() => [
 ])
 
 const sourcePath = computed(() => {
-  if (sourceType.value === 'folder') return folderPath.value.trim()
+  if (sourceType.value === 'folder') return uploadedFolderRoot.value || folderPath.value.trim()
   if (sourceType.value === 'zip') return extractedRoot.value
   if (sourceType.value === 'git') return gitTempPath.value
   return ''
@@ -524,13 +551,20 @@ function handleClose(val) {
 }
 
 function closeModal() {
+  cleanupTemporarySources()
   resetState()
   emit('update:modelValue', false)
+}
+
+function cleanupTemporarySources() {
+  const paths = new Set([tempPath.value, gitTempPath.value].filter(Boolean))
+  paths.forEach(path => importCleanup(path).catch(() => {}))
 }
 
 function resetState() {
   step.value = 'source'
   folderPath.value = ''
+  uploadedFolderRoot.value = ''
   selectedFile.value = null
   tempPath.value = ''
   extractedRoot.value = ''
@@ -593,6 +627,45 @@ function openFilePicker() {
   fileInput.value?.click()
 }
 
+function openFolderPicker() {
+  folderInput.value?.click()
+}
+
+function clearUploadedFolder() {
+  if (!uploadedFolderRoot.value && !tempPath.value) return
+  const managedTempPath = tempPath.value
+  uploadedFolderRoot.value = ''
+  extractedRoot.value = ''
+  tempPath.value = ''
+  if (managedTempPath) importCleanup(managedTempPath).catch(() => {})
+}
+
+async function handleFolderSelection(event) {
+  const files = Array.from(event.target.files || [])
+  event.target.value = ''
+  if (files.length === 0) {
+    validationError.value = '所选文件夹为空'
+    return
+  }
+
+  uploading.value = true
+  validationError.value = ''
+  validationResult.value = null
+  clearUploadedFolder()
+
+  try {
+    const uploadResult = await importUploadDirectory(files)
+    tempPath.value = uploadResult.tempPath
+    uploadedFolderRoot.value = uploadResult.extractedRoot
+    const result = await importValidate({ sourceType: 'folder', sourcePath: uploadedFolderRoot.value })
+    showValidationResult(result)
+  } catch (err) {
+    validationError.value = err.message || '文件夹读取或验证失败'
+  } finally {
+    uploading.value = false
+  }
+}
+
 function handleFileChange(e) {
   const file = e.target.files?.[0]
   if (file) {
@@ -627,8 +700,7 @@ async function validateSource() {
 
   try {
     const result = await importValidate({ sourceType: sourceType.value, sourcePath: sourcePath.value })
-    validationResult.value = result
-    step.value = 'validate'
+    showValidationResult(result)
   } catch (err) {
     validationError.value = err.message || '验证失败'
   } finally {
@@ -642,6 +714,10 @@ async function uploadAndValidate() {
   uploading.value = true
   validationError.value = ''
   validationResult.value = null
+  if (tempPath.value) {
+    importCleanup(tempPath.value).catch(() => {})
+    tempPath.value = ''
+  }
 
   try {
     const uploadResult = await importUploadZip(selectedFile.value)
@@ -649,13 +725,23 @@ async function uploadAndValidate() {
     extractedRoot.value = uploadResult.extractedRoot
 
     const result = await importValidate({ sourceType: 'zip', sourcePath: extractedRoot.value })
-    validationResult.value = result
-    step.value = 'validate'
+    showValidationResult(result)
   } catch (err) {
     validationError.value = err.message || '上传或验证失败'
   } finally {
     uploading.value = false
   }
+}
+
+function showValidationResult(result) {
+  step.value = 'validate'
+  if (!result.valid) {
+    validationResult.value = null
+    validationError.value = result.error || '未找到有效的 SKILL.md'
+    return
+  }
+  validationError.value = ''
+  validationResult.value = result
 }
 
 async function proceedFromValidate() {
@@ -894,14 +980,13 @@ function statusLabel(status) {
 
 // --- Cleanup on unmount ---
 onUnmounted(() => {
-  if (tempPath.value) {
-    importCleanup(tempPath.value).catch(() => {})
-  }
+  cleanupTemporarySources()
 })
 
 // Reset when modal opens
 watch(() => props.modelValue, (val) => {
   if (!val) {
+    cleanupTemporarySources()
     resetState()
   }
 })
@@ -976,6 +1061,18 @@ watch(() => props.modelValue, (val) => {
 .input-row {
   display: flex;
   gap: var(--qqx-space-sm);
+}
+
+.input-row--folder .qqx-input {
+  min-width: 0;
+}
+
+.native-folder-input {
+  display: none;
+}
+
+.folder-error {
+  margin-top: var(--qqx-space-md);
 }
 
 .qqx-input {
@@ -1460,5 +1557,15 @@ watch(() => props.modelValue, (val) => {
   color: var(--qqx-text-tertiary);
   margin: var(--qqx-space-xs) 0 0;
   font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+@media (max-width: 600px) {
+  .input-row--folder {
+    flex-wrap: wrap;
+  }
+
+  .input-row--folder .qqx-input {
+    flex-basis: 100%;
+  }
 }
 </style>

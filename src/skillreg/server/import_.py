@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import json
 
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from ..services import importer
@@ -91,6 +92,40 @@ async def upload_zip(file: UploadFile):
         result = importer.extract_zip(content)
         return {"success": True, "data": result}
     except Exception as e:
+        raise HTTPException(400, str(e))
+
+
+@router.post("/upload-directory")
+async def upload_directory(
+    files: list[UploadFile] = File(...),
+    paths: str = Form(...),
+):
+    """Upload a browser-selected directory to managed temporary storage."""
+    try:
+        relative_paths = json.loads(paths)
+    except json.JSONDecodeError:
+        raise HTTPException(400, "Invalid directory paths")
+
+    if not isinstance(relative_paths, list) or len(relative_paths) != len(files):
+        raise HTTPException(400, "Directory paths do not match uploaded files")
+    if not all(isinstance(path, str) for path in relative_paths):
+        raise HTTPException(400, "Invalid directory paths")
+    if len(files) > importer.MAX_DIRECTORY_UPLOAD_FILES:
+        raise HTTPException(400, "Selected folder contains too many files")
+
+    try:
+        uploaded = []
+        total_size = 0
+        for relative_path, file in zip(relative_paths, files):
+            remaining = importer.MAX_DIRECTORY_UPLOAD_BYTES - total_size
+            content = await file.read(remaining + 1)
+            total_size += len(content)
+            if total_size > importer.MAX_DIRECTORY_UPLOAD_BYTES:
+                raise ValueError("Selected folder is larger than 100 MB")
+            uploaded.append((relative_path, content))
+        result = importer.store_directory_upload(uploaded)
+        return {"success": True, "data": result}
+    except ValueError as e:
         raise HTTPException(400, str(e))
 
 

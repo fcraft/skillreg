@@ -10,7 +10,7 @@
       </div>
     </div>
     <SkillImportModal v-model="showImportModal" @imported="onImportComplete" />
-    <div class="filter-bar">
+    <div v-if="state.skills.length" class="filter-bar">
       <button
         v-for="cat in categories"
         :key="cat"
@@ -50,7 +50,13 @@
         </div>
       </div>
     </template>
-    <div v-if="!totalFiltered" class="skill-empty">没有匹配的 skill</div>
+    <div v-if="!state.skills.length" class="skill-empty skill-empty--first">
+      <div class="skill-empty-icon"><PackagePlus :size="24" /></div>
+      <strong>还没有 Skill</strong>
+      <span>导入本地目录、ZIP、Git 仓库或 NPM 包，开始建立你的 Skill 集合</span>
+      <QButton type="primary" size="small" @click="showImportModal = true">导入首个 Skill</QButton>
+    </div>
+    <div v-else-if="!totalFiltered" class="skill-empty">没有匹配的 Skill</div>
 
     <!-- File tree drawer -->
     <SkillDetailDrawer
@@ -64,9 +70,11 @@
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { PackagePlus } from 'lucide-vue-next'
 import SkillCard from './SkillCard.vue'
 import SkillDetailDrawer from './SkillDetailDrawer.vue'
 import SkillImportModal from './SkillImportModal.vue'
+import QButton from './QButton.vue'
 import { useData } from '../composables/useData.js'
 import { useSkillDetail } from '../composables/useSkillDetail.js'
 
@@ -88,6 +96,14 @@ const repoFilter = ref(route.query.submodule || null)
 watch(() => route.query.submodule, (val) => {
   repoFilter.value = val || null
 })
+
+watch(() => route.query.onboarding, (value) => {
+  if (value !== 'import') return
+  showImportModal.value = true
+  const query = { ...route.query }
+  delete query.onboarding
+  router.replace({ query })
+}, { immediate: true })
 watch(repoFilter, (val) => {
   const current = route.query.submodule || null
   const next = val && val !== '__standalone__' ? val : null
@@ -273,6 +289,48 @@ const groupedSkills = computed(() => {
   background: var(--qqx-bg-hover);
 }
 
+.skill-empty {
+  padding: var(--qqx-space-2xl);
+  border: 1px dashed var(--qqx-border-dashed);
+  border-radius: var(--qqx-radius-sm);
+  color: var(--qqx-text-tertiary);
+  font-size: var(--qqx-font-size-small);
+  text-align: center;
+}
+
+.skill-empty--first {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--qqx-space-sm);
+  padding: var(--qqx-space-3xl) var(--qqx-space-xl);
+  background: var(--qqx-bg-overlay);
+}
+
+.skill-empty--first strong {
+  color: var(--qqx-text-primary);
+  font-size: var(--qqx-font-size-title);
+}
+
+.skill-empty--first span {
+  max-width: 520px;
+  margin-bottom: var(--qqx-space-sm);
+  color: var(--qqx-text-secondary);
+  font-size: var(--qqx-font-size-caption);
+  line-height: 1.6;
+}
+
+.skill-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--qqx-space-xs);
+  border-radius: var(--qqx-radius-md);
+  background: var(--qqx-brand-light);
+  color: var(--qqx-brand);
+}
+
 .repo-filter-select:focus {
   outline: none;
   border-color: var(--qqx-brand);
@@ -304,13 +362,6 @@ const groupedSkills = computed(() => {
   background: var(--qqx-bg-elevated);
   padding: 1px 8px;
   border-radius: var(--qqx-radius-full);
-}
-
-.skill-empty {
-  padding: var(--qqx-space-3xl);
-  text-align: center;
-  color: var(--qqx-text-tertiary);
-  font-size: var(--qqx-font-size-small);
 }
 
 .grid {

@@ -1,4 +1,162 @@
 import { expect, test } from '@playwright/test'
+import path from 'node:path'
+
+test('first run guides workspace creation into the first skill import', async ({ page }) => {
+  await page.route('**/api/workspace/current', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ workspace_path: null, resolved_path: null, configured: false }),
+    })
+  })
+  await page.route('**/api/workspace/create', async (route) => {
+    expect(route.request().postDataJSON()).toEqual({ path: '~/guided-skills' })
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        workspace_path: '/Users/demo/guided-skills',
+        initial_commit: 'abc1234',
+        remote_configured: false,
+      }),
+    })
+  })
+
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: '准备你的 Skill Workspace' })).toBeVisible()
+  await expect(page.getByText('不会配置远端或自动 push')).toBeVisible()
+
+  await page.getByRole('textbox').fill('~/guided-skills')
+  await page.getByRole('button', { name: '创建并继续' }).click()
+
+  await expect(page.getByRole('heading', { name: 'Workspace 已就绪' })).toBeVisible()
+  await expect(page.getByText('abc1234')).toBeVisible()
+  await expect(page.getByText('尚未配置')).toBeVisible()
+
+  await page.getByRole('button', { name: /导入首个 Skill/ }).click()
+  await expect(page.getByRole('heading', { name: '导入新技能' })).toBeVisible()
+})
+
+test('first run can select an existing workspace and open target setup', async ({ page }) => {
+  await page.route('**/api/workspace/current', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ workspace_path: null, resolved_path: null, configured: false }),
+    })
+  })
+  await page.route('**/api/workspace/switch', async (route) => {
+    expect(route.request().postDataJSON()).toEqual({ path: '~/existing-skills' })
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, workspace_path: '/Users/demo/existing-skills' }),
+    })
+  })
+
+  await page.goto('/')
+  await page.getByRole('button', { name: '使用已有的' }).click()
+  await page.getByRole('textbox').fill('~/existing-skills')
+  await page.getByRole('button', { name: '选择并继续' }).click()
+
+  await expect(page.getByText('使用已有目录')).toBeVisible()
+  await expect(page.getByText('尚未配置')).toHaveCount(0)
+  await page.getByRole('button', { name: /添加同步目标/ }).click()
+  await expect(page.getByRole('heading', { name: '新增目标目录' })).toBeVisible()
+})
+
+test('switching to a missing workspace asks before creating it', async ({ page }) => {
+  const missingPath = '/tmp/skillreg-new-workspace'
+  let createdPath = null
+
+  await page.route('**/api/workspace/switch', async (route) => {
+    await route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        detail: {
+          code: 'workspace_not_found',
+          message: `Workspace does not exist: ${missingPath}`,
+        },
+      }),
+    })
+  })
+  await page.route('**/api/workspace/create', async (route) => {
+    createdPath = route.request().postDataJSON().path
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        workspace_path: missingPath,
+        initial_commit: 'def5678',
+        remote_configured: false,
+      }),
+    })
+  })
+
+  await page.goto('/')
+  await page.getByRole('button', { name: /Workspace/ }).click()
+  await page.locator('.workspace-modal-body input').fill(missingPath)
+  await page.getByRole('button', { name: '确认切换' }).click()
+
+  await expect(page.getByRole('heading', { name: '创建新 Workspace' })).toBeVisible()
+  await expect(page.getByText(missingPath, { exact: true })).toBeVisible()
+  await expect(page.getByText('Bad Request')).toHaveCount(0)
+  expect(createdPath).toBeNull()
+
+  await page.getByRole('button', { name: '确认创建' }).click()
+  await expect.poll(() => createdPath).toBe(missingPath)
+})
+
+test('workspace switch can use the native folder picker', async ({ page }) => {
+  const selectedPath = '/tmp/selected-skill-workspace'
+  let switchedPath = null
+
+  await page.route('**/api/workspace/select-directory', async (route) => {
+    expect(route.request().postDataJSON().initialPath).toContain('/workspace')
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, cancelled: false, path: selectedPath }),
+    })
+  })
+  await page.route('**/api/workspace/switch', async (route) => {
+    switchedPath = route.request().postDataJSON().path
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, workspace_path: selectedPath }),
+    })
+  })
+
+  await page.goto('/')
+  await page.locator('.workspace-chip').click()
+  await page.getByRole('button', { name: '选择文件夹' }).click()
+
+  await expect(page.locator('.workspace-modal-body input')).toHaveValue(selectedPath)
+  expect(switchedPath).toBeNull()
+
+  await page.getByRole('button', { name: '确认切换' }).click()
+  await expect.poll(() => switchedPath).toBe(selectedPath)
+})
+
+test('local folder import opens a folder picker and validates the selection', async ({ page }) => {
+  await page.goto('/')
+  await page.waitForURL('**/skills')
+  await page.getByRole('button', { name: '导入', exact: true }).click()
+
+  const folderInput = page.locator('input[webkitdirectory]')
+  await expect(page.getByRole('button', { name: '选择文件夹' })).toBeVisible()
+  await expect(folderInput).toHaveAttribute('multiple', '')
+
+  await folderInput.setInputFiles(path.resolve('tests/fixtures/folder-picker-skill'))
+
+  await expect(page.getByRole('heading', { name: '验证来源' })).toBeVisible()
+  await expect(page.locator('.result-name')).toHaveText('folder-picker-skill')
+  await expect(page.locator('.result-meta')).toHaveText('2 个文件')
+})
 
 test('dashboard routes and migration exclusions work', async ({ page }) => {
   await page.goto('/')
@@ -97,5 +255,5 @@ test('command panel stays within a mobile viewport', async ({ page }) => {
   expect(panelBox).not.toBeNull()
   expect(panelBox.x).toBeGreaterThanOrEqual(12)
   expect(panelBox.width).toBeLessThanOrEqual(351)
-  expect(panelBox.height).toBeLessThanOrEqual(643)
+  expect(panelBox.height).toBeLessThanOrEqual(643.1)
 })

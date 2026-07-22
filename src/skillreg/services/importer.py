@@ -29,6 +29,10 @@ GIT_AUTHOR_ENV = {
 }
 
 _SKILL_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
+_WINDOWS_DRIVE_RE = re.compile(r"^[A-Za-z]:")
+
+MAX_DIRECTORY_UPLOAD_FILES = 2_000
+MAX_DIRECTORY_UPLOAD_BYTES = 100 * 1024 * 1024
 
 # Files/dirs excluded during copy
 _COPY_IGNORED_DIRS = frozenset({"__pycache__", "__MACOSX"})
@@ -69,6 +73,8 @@ def create_workspace(location: str) -> dict:
     ws.mkdir(parents=True, exist_ok=True)
     (ws / "skills").mkdir(exist_ok=True)
     (ws / "repos").mkdir(exist_ok=True)
+    (ws / "skills" / ".gitkeep").touch()
+    (ws / "repos" / ".gitkeep").touch()
 
     # .gitignore
     (ws / ".gitignore").write_text(
@@ -108,11 +114,15 @@ def create_workspace(location: str) -> dict:
     from ..config import save_config
     save_config(cfg)
 
+    initial_commit = _get_head_commit(ws)
+
     return {
         "workspace_path": str(ws),
         "has_git": (ws / ".git").exists(),
         "has_skills_dir": (ws / "skills").is_dir(),
         "has_repos_dir": (ws / "repos").is_dir(),
+        "initial_commit": initial_commit,
+        "remote_configured": False,
     }
 
 
@@ -197,6 +207,70 @@ def extract_zip(buffer: bytes) -> dict:
     except Exception:
         shutil.rmtree(temp_path, ignore_errors=True)
         raise
+
+
+def store_directory_upload(files: Sequence[tuple[str, bytes]]) -> dict:
+    """Store a browser-selected directory in a managed temp directory."""
+    if not files:
+        raise ValueError("Selected folder is empty")
+    if len(files) > MAX_DIRECTORY_UPLOAD_FILES:
+        raise ValueError(
+            f"Selected folder contains too many files (maximum {MAX_DIRECTORY_UPLOAD_FILES})"
+        )
+
+    normalized: list[tuple[Path, bytes]] = []
+    seen_paths: set[Path] = set()
+    total_size = 0
+    root_name: str | None = None
+
+    for raw_path, content in files:
+        relative_path = _validate_directory_upload_path(raw_path)
+        if relative_path in seen_paths:
+            raise ValueError(f"Duplicate directory upload path: {raw_path}")
+        seen_paths.add(relative_path)
+        parts = relative_path.parts
+        if len(parts) > 1:
+            if root_name is None:
+                root_name = parts[0]
+            elif root_name != parts[0]:
+                raise ValueError("Selected files must belong to the same folder")
+
+        total_size += len(content)
+        if total_size > MAX_DIRECTORY_UPLOAD_BYTES:
+            raise ValueError("Selected folder is larger than 100 MB")
+        normalized.append((relative_path, content))
+
+    if root_name is None:
+        root_name = "selected-folder"
+        normalized = [(Path(root_name) / path, content) for path, content in normalized]
+    elif any(len(path.parts) == 1 for path, _ in normalized):
+        raise ValueError("Selected files must belong to the same folder")
+
+    temp_path = Path(tempfile.mkdtemp(prefix="skillreg-import-"))
+    try:
+        for relative_path, content in normalized:
+            destination = temp_path / relative_path
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(content)
+
+        extracted_root = temp_path / root_name
+        return {"tempPath": str(temp_path), "extractedRoot": str(extracted_root)}
+    except Exception:
+        shutil.rmtree(temp_path, ignore_errors=True)
+        raise
+
+
+def _validate_directory_upload_path(raw_path: str) -> Path:
+    normalized = raw_path.replace("\\", "/")
+    parts = normalized.split("/")
+    if (
+        not normalized.strip()
+        or normalized.startswith("/")
+        or _WINDOWS_DRIVE_RE.match(normalized)
+        or any(part in {"", ".", ".."} for part in parts)
+    ):
+        raise ValueError(f"Invalid directory upload path: {raw_path}")
+    return Path(normalized)
 
 
 def _find_skill_md_dir(root: Path) -> Path:
