@@ -49,7 +49,9 @@ def _file_hashes(root: Path) -> dict[str, str]:
         if path.is_symlink():
             result[relative] = f"symlink:{os.readlink(path)}"
         elif path.is_file():
-            result[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
+            digest = hashlib.sha256(path.read_bytes())
+            digest.update(f"\0{path.stat().st_mode & 0o777:o}".encode())
+            result[relative] = digest.hexdigest()
     return result
 
 
