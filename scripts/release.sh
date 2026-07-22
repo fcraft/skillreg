@@ -11,6 +11,7 @@ if [[ -n "$(git status --porcelain)" ]]; then
 fi
 
 (cd dashboard && npm ci && npm run build)
+(cd npm && npm ci && npm test && npm pack --dry-run >/dev/null)
 
 uv run python scripts/check_version.py
 version="$(uv run python scripts/versioning.py current)"
