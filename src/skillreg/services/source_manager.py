@@ -416,6 +416,8 @@ class SourceManager:
             workspace_paths = [".skillreg/sources.json"]
             if newly_added_submodule:
                 workspace_paths.extend([record["targetPath"], ".gitmodules"])
+            elif (repo / ".git").is_file():
+                workspace_paths.append(record["targetPath"])
             commit_exact(self.workspace, workspace_paths, f"feat: register npm source {record['id']}")
         except Exception:
             self._rollback(created, backups, old_store)
@@ -429,6 +431,8 @@ class SourceManager:
                 if not readme_existed:
                     readme.unlink(missing_ok=True)
                 self._restore_repo_head(repo, old_repo_head)
+                if (repo / ".git").is_file():
+                    run_git(self.workspace, ["add", "-A", "--", record["targetPath"], ".skillreg/sources.json"], check=False)
             raise
         finally:
             shutil.rmtree(transaction, ignore_errors=True)
