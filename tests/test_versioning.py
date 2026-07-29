@@ -330,3 +330,14 @@ def test_release_workflow_fetches_history_and_keeps_tag_version_check():
 
     assert "fetch-depth: 0" in workflow
     assert "scripts/check_version.py --require-tag" in workflow
+    assert 'git config --global user.name "skillreg CI"' in workflow
+    assert 'git config --global user.email "ci@skillreg.invalid"' in workflow
+
+
+def test_ci_workflow_configures_git_identity_for_repository_tests():
+    workflow = (Path(__file__).parents[1] / ".github" / "workflows" / "ci.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'git config --global user.name "skillreg CI"' in workflow
+    assert 'git config --global user.email "ci@skillreg.invalid"' in workflow

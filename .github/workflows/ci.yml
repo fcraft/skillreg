@@ -67,6 +67,11 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra dev
 
+      - name: Configure Git test identity
+        run: |
+          git config --global user.name "skillreg CI"
+          git config --global user.email "ci@skillreg.invalid"
+
       - name: Check version metadata
         run: uv run python scripts/check_version.py
 
