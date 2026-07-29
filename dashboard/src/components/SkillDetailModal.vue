@@ -41,9 +41,17 @@
             <span class="detail-label">父技能</span>
             <span>{{ skill.parentSkill }}</span>
           </div>
-          <div v-if="skill.isSubmodule" class="detail-row">
-            <span class="detail-label">子模块</span>
-            <code>{{ skill.submodulePath }}</code>
+          <div v-if="skill.source" class="detail-row">
+            <span class="detail-label">NPM 来源</span>
+            <button class="detail-link" @click="openSource">
+              {{ skill.source.package }}@{{ skill.source.resolvedVersion }} →
+            </button>
+          </div>
+          <div v-if="skill.repositoryPath" class="detail-row">
+            <span class="detail-label">所属仓库</span>
+            <button class="detail-link" @click="openRepository">
+              {{ skill.repositoryPath.replace(/^repos\//, '') }} →
+            </button>
           </div>
           <p v-if="skill.description" class="detail-desc">{{ skill.description }}</p>
         </div>
@@ -218,6 +226,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { FolderOpen, TriangleAlert, Download } from 'lucide-vue-next'
 import QModal from './QModal.vue'
 import QButton from './QButton.vue'
@@ -235,8 +244,23 @@ import {
 const { state, close, openFileDrawer, closeFileDrawer } = useSkillDetail()
 const { state: syncState, loadSyncStatus, getSkillTargetStatus, refreshSkill } = useSyncBridge()
 const toast = useToast()
+const router = useRouter()
 
 const skill = computed(() => state.skill)
+
+function openSource() {
+  const sourceId = skill.value?.source?.id
+  if (!sourceId) return
+  close()
+  router.push({ name: 'sources', query: { source: sourceId } })
+}
+
+function openRepository() {
+  const path = skill.value?.repositoryPath
+  if (!path) return
+  close()
+  router.push({ name: 'repos', query: { repo: path, skill: skill.value.name } })
+}
 const activeTab = computed({
   get: () => state.activeTab,
   set: (v) => { state.activeTab = v },
@@ -699,6 +723,20 @@ function closeFilePreview() {
   padding: 1px 6px;
   border-radius: var(--qqx-radius-xs);
   font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.detail-link {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--qqx-brand);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.detail-link:hover {
+  color: var(--qqx-brand-hover);
 }
 
 .category-tag {

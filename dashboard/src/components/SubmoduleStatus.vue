@@ -3,7 +3,7 @@
   <section class="submodule-section">
     <div class="section-header">
       <h2>仓库</h2>
-      <span class="count">{{ state.submodules.length + 1 }}</span>
+      <span class="count">{{ state.repositories.length + 1 }}</span>
       <QButton
         class="refresh-all-btn"
         type="ghost"
@@ -61,13 +61,31 @@
         </div>
       </div>
 
+      <ManagedRepositoryCard
+        v-for="repo in managedRepositories"
+        :key="repo.path"
+        :repo="repo"
+        :expanded="Boolean(expanded[repo.path])"
+        :selected="route.query.repo === repo.path"
+        @toggle="toggle(repo.path)"
+        @navigate-source="navToSource"
+        @navigate-skill="navToSkill"
+      />
+
       <!-- Submodules -->
-      <div v-for="sub in state.submodules" :key="sub.path" class="submodule-card" :class="{ expanded: expanded[sub.path] }">
+      <div
+        v-for="sub in state.submodules"
+        :key="sub.path"
+        class="submodule-card"
+        :class="{ expanded: expanded[sub.path], 'managed-repo-card--selected': route.query.repo === sub.path }"
+        :data-repository-path="sub.path"
+      >
         <div class="submodule-row" @click="toggle(sub.path)">
           <span class="expand-indicator">{{ expanded[sub.path] ? '▾' : '▸' }}</span>
           <div class="sub-info">
             <div class="sub-name-row">
               <span class="sub-path">{{ displayPath(sub.path) }}</span>
+              <span v-if="repositoryByPath[sub.path]?.source" class="managed-repo-badge">NPM 托管</span>
               <button
                 v-if="sub.remoteUrl"
                 class="repo-btn"
@@ -81,7 +99,14 @@
                 </svg>
               </button>
             </div>
-            <span class="sub-desc">{{ sub.description }}</span>
+            <button
+              v-if="repositoryByPath[sub.path]?.source"
+              class="managed-source-link"
+              @click.stop="navToSource(repositoryByPath[sub.path].source.id)"
+            >
+              {{ repositoryByPath[sub.path].source.package }}@{{ repositoryByPath[sub.path].source.resolvedVersion }} →
+            </button>
+            <span v-else class="sub-desc">{{ sub.description }}</span>
           </div>
           <span class="sub-branch">{{ sub.branch }}</span>
 
@@ -387,12 +412,13 @@ import {
   fixDetachedHead as fixDetachedHeadApi, refreshSubmodule as refreshSubmoduleApi,
   fetchSubmoduleDiff as fetchSubmoduleDiffApi,
   removeSubmodule as removeSubmoduleApi, renameSubmodule as renameSubmoduleApi,
-  fetchSyncConfig, executeSync,
+      fetchSyncConfig, executeSync,
 } from '../api/index.js'
 import { MoreHorizontal, Pencil, Trash2, Download } from 'lucide-vue-next'
 import QModal from './QModal.vue'
 import QButton from './QButton.vue'
 import QInput from './QInput.vue'
+import ManagedRepositoryCard from './ManagedRepositoryCard.vue'
 
 function displayPath(p) {
   return p.replace(/^repos\//, '')
@@ -631,6 +657,12 @@ function onTooltipLeave() {
 }
 
 const mainLogs = computed(() => state.gitLogs.main || [])
+const repositoryByPath = computed(() => Object.fromEntries(
+  state.repositories.map(repo => [repo.path, repo]),
+))
+const managedRepositories = computed(() => (
+  state.repositories.filter(repo => repo.kind === 'nested' && repo.source)
+))
 
 // Compute skills per submodule
 const skillsBySubmodule = computed(() => {
@@ -650,6 +682,23 @@ watch(() => route.query.submodule, (val) => {
   if (val) expanded[val] = true
 }, { immediate: true })
 
+watch(
+  [
+    () => route.query.repo,
+    () => state.repositories.length,
+    () => state.submodules.length,
+  ],
+  async ([repoPath]) => {
+    if (!repoPath) return
+    expanded[repoPath] = true
+    await nextTick()
+    document
+      .querySelector(`[data-repository-path="${CSS.escape(repoPath)}"]`)
+      ?.scrollIntoView({ block: 'center' })
+  },
+  { immediate: true },
+)
+
 watch(() => route.query.skill, (skillName) => {
   if (skillName) {
     const skill = state.skills.find(s => s.name === skillName)
@@ -658,7 +707,11 @@ watch(() => route.query.skill, (skillName) => {
 }, { immediate: true })
 
 function navToSkill(skillName) {
-  show(skillName)
+  if (skillName) show(skillName)
+}
+
+function navToSource(sourceId) {
+  router.push({ name: 'sources', query: { source: sourceId } })
 }
 
 function navToSkillsFiltered(submodulePath) {
@@ -1757,6 +1810,40 @@ async function handleFixDetached(sub) {
 .sync-preview-warning svg {
   flex-shrink: 0;
   margin-top: 1px;
+}
+
+.managed-repo-card--selected {
+  border-color: var(--qqx-brand);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--qqx-brand) 16%, transparent);
+}
+
+.managed-repo-badge {
+  padding: 2px 6px;
+  border-radius: var(--qqx-radius-full);
+  background: var(--qqx-brand-light);
+  color: var(--qqx-brand);
+  font-size: 10px;
+  font-weight: var(--qqx-font-medium);
+}
+
+.managed-source-link,
+.managed-skill-item {
+  border: 0;
+  background: transparent;
+  color: var(--qqx-brand);
+  cursor: pointer;
+  font: inherit;
+}
+
+.managed-source-link {
+  align-self: flex-start;
+  padding: 0;
+  font-size: var(--qqx-font-size-small);
+}
+
+.managed-repo-missing {
+  color: var(--qqx-warning);
+  font-size: var(--qqx-font-size-small);
 }
 
 @media (max-width: 767px) {

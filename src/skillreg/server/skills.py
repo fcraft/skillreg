@@ -10,9 +10,10 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 from ..config import load_config
-from .git import git_logs
-from ..services.skill_registry import get_all, get_skill
 from ..services import file_browser, importer
+from ..services.catalog import project_catalog
+from ..services.skill_registry import get_all, get_skill
+from .git import git_logs
 
 router = APIRouter(prefix="/api/skills", tags=["skills"])
 
@@ -32,7 +33,7 @@ def _workspace() -> Path:
 def list_skills(full: str = Query("0", alias="full")):
     """List skills — lightweight without ?full=1, full with ?full=1."""
     ws = _workspace()
-    data = get_all(ws)
+    data = project_catalog(ws, get_all(ws))
     if full == "1":
         data["gitLogs"] = git_logs(scope="all", path=None)
         return data
@@ -43,7 +44,7 @@ def list_skills(full: str = Query("0", alias="full")):
 def refresh_skills():
     """Force refresh the skill registry."""
     ws = _workspace()
-    data = get_all(ws, force=True)
+    data = project_catalog(ws, get_all(ws, force=True))
     data["gitLogs"] = git_logs(scope="all", path=None)
     return data
 
@@ -55,7 +56,11 @@ def skill_detail(skill_id: str):
     skill = get_skill(ws, skill_id)
     if not skill:
         raise HTTPException(404, "Unknown skill")
-    return skill
+    data = project_catalog(ws, get_all(ws))
+    return next(
+        item for item in data["skills"]
+        if item["id"] == skill["id"] and item["path"] == skill["path"]
+    )
 
 
 @router.delete("/{skill_id}")

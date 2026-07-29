@@ -24,14 +24,16 @@
             <div class="source-title">{{ source.package }}</div>
             <div class="source-meta">
               <span>{{ source.resolvedVersion }} · {{ source.mode === 'repo' ? 'Repo' : 'Skill' }}</span>
-              <button
-                v-if="source.repository"
-                class="entity-link"
-                :disabled="!source.repository.exists"
-                @click="openRepository(source.repository.path)"
-              >
-                {{ source.repository.name }} →
-              </button>
+              <template v-if="source.repository">
+                <button
+                  class="entity-link"
+                  :disabled="!source.repository.exists"
+                  @click="openRepository(source.repository.path)"
+                >
+                  {{ source.repository.name }} →
+                </button>
+                <span v-if="!source.repository.exists" class="mapping-missing">仓库缺失</span>
+              </template>
               <code v-else>{{ source.targetPath }}</code>
             </div>
           </div>
