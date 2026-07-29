@@ -307,7 +307,7 @@ watch(() => route.query.source, () => nextTick(scrollToSelectedSource))
 .page-header p { margin: 4px 0 0; color: var(--qqx-text-secondary); }
 .source-list { display: grid; gap: var(--qqx-space-md); }
 .source-card { padding: var(--qqx-space-lg); border: 1px solid var(--qqx-border-color); border-radius: var(--qqx-radius-lg); background: var(--qqx-bg-card); }
-.source-card--selected { border-color: var(--qqx-brand-color); box-shadow: 0 0 0 2px color-mix(in srgb, var(--qqx-brand-color) 16%, transparent); }
+.source-card--selected { border-color: var(--qqx-brand); box-shadow: 0 0 0 2px color-mix(in srgb, var(--qqx-brand) 16%, transparent); }
 .source-title { font-weight: var(--qqx-font-semibold); color: var(--qqx-text-primary); }
 .source-meta { margin-top: var(--qqx-space-sm); justify-content: flex-start; color: var(--qqx-text-secondary); font-size: var(--qqx-font-size-small); }
 .status-pill { padding: 4px 10px; border-radius: var(--qqx-radius-full); background: var(--qqx-bg-subtle); font-size: var(--qqx-font-size-small); }
@@ -315,7 +315,8 @@ watch(() => route.query.source, () => nextTick(scrollToSelectedSource))
 .status-pill[data-status="up-to-date"] { color: var(--qqx-success); }
 .mapping-list, .diff-list { display: flex; flex-direction: column; gap: 6px; margin: var(--qqx-space-md) 0; color: var(--qqx-text-secondary); }
 .mapping-row { display: flex; align-items: center; gap: var(--qqx-space-sm); min-width: 0; }
-.entity-link, .skill-link { border: 0; padding: 0; background: transparent; color: var(--qqx-brand-color); cursor: pointer; font: inherit; }
+.entity-link, .skill-link { border: 0; padding: 0; background: transparent; color: var(--qqx-brand); cursor: pointer; font: inherit; }
+.entity-link:hover:not(:disabled), .skill-link:hover:not(:disabled) { color: var(--qqx-brand-hover); }
 .entity-link:disabled, .skill-link:disabled { color: var(--qqx-text-tertiary); cursor: default; }
 .mapping-missing { color: var(--qqx-warning); font-size: var(--qqx-font-size-small); }
 .actions { justify-content: flex-end; }
