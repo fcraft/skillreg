@@ -136,5 +136,6 @@ def test_release_script_runs_full_gates_before_tag_and_uses_atomic_push():
         "npm ci && npm test && npm pack --dry-run",
     ):
         assert prepare < script.index(command) < tag
+    assert script.index("npm run build") < script.index("uv run python scripts/check_version.py")
     assert 'git commit --allow-empty -m "chore(release): $tag"' in script
     assert 'git push --atomic origin main "$tag"' in script
