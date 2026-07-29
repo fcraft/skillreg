@@ -66,11 +66,14 @@ uv run --with ruff ruff check src/ tests/ scripts/
 For a local release:
 
 ```bash
+scripts/release.sh --dry-run
 scripts/release.sh
 ```
 
-The script validates version metadata, creates and pushes the tag, and lets
-GitHub Actions publish the GitHub Release, PyPI package, and npm package.
+The script previews the next version from Conventional Commits since the last
+release tag. A confirmed release synchronizes version metadata, runs the full
+validation suite, creates the release commit and tag, and lets GitHub Actions
+publish the GitHub Release, PyPI package, and npm package.
 
 ## License
 

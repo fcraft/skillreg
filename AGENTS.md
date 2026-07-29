@@ -85,10 +85,11 @@ Dashboard 是人类用户的主要操作入口；CLI 是 agent 自动化闭环�
 - `src/skillreg/builtin/skillreg-skill/`：注入 workspace 的内置 skill。
 - `dashboard/src/`：Vue dashboard。
 - `npm/`：npm CLI 启动器、隔离 Python 运行时引导和 npm 包测试。
-- `scripts/versioning.py`：版本同步、检查、bump 逻辑。
+- `scripts/versioning.py`：版本规划、同步和一致性检查。
 - `scripts/check_version.py`：CI/release 使用的版本一致性检查入口。
-- `scripts/hooks/commit-msg`：本地 main 分支提交时的版本 bump hook。
-- `scripts/release.sh`：本地创建并推送 release tag 的脚本。
+- `scripts/check_release_state.py`：发布前只读核对 Git remote、PyPI 和 npm 状态。
+- `scripts/hooks/commit-msg`：受管的只读 hook，不修改工作树或 index。
+- `scripts/release.sh`：本地预览、验证并执行 release commit/tag/push 的入口。
 
 ## 开发规范
 
@@ -162,32 +163,47 @@ uv run python scripts/versioning.py sync --version 1.2.3
 scripts/install-git-hooks.sh
 ```
 
-在 `main` 分支提交时，`commit-msg` hook 会根据提交信息 bump `x.y.z`：
-
-- `feat:`：`y + 1`，`z` 归零。
-- 其他提交：`z + 1`。
-- `x` 固定为 `1`。
-
-注意：当前 hook 会在 commit-msg 阶段修改并 `git add` 版本文件。若提交后
-发现版本文件仍留在工作树，需要补一个 `chore: sync version <version>` 提交，
-并使用 `--no-verify` 避免再次 bump。
+普通 `fix:`、`feat:`、`chore:` 等提交不会修改版本文件。受管
+`commit-msg` hook 只保留稳定的提交入口，不修改工作树或 index。安装脚本可
+替换旧版 skillreg 受管 hook；若发现无法确认来源的自定义 hook，会停止并要求
+人工处理，不会覆盖。
 
 ## 发布工作流
 
-本地发布入口：
+先只读预览：
 
 ```bash
-scripts/release.sh
+scripts/release.sh --dry-run
 ```
 
-发布前脚本要求 working tree 干净，并执行：
+脚本使用最近一个 `HEAD` 可达的 `vX.Y.Z` tag，分析 `tag..HEAD` 的全部
+Conventional Commits：
 
-1. `uv run python scripts/check_version.py`
-2. 读取当前版本，生成 tag `v<version>`
-3. 检查本地和远端不存在同名 tag
-4. `git tag -a v<version> -m "Release v<version>"`
-5. `git push origin main`
-6. `git push origin v<version>`
+- `BREAKING CHANGE:` 或 header 中的 `!`：major。
+- `feat:`：minor。
+- `fix:`、`perf:`、`revert:`：patch。
+- 其他类型默认不触发发布。
+
+同一区间只取最高等级并 bump 一次。没有可发布变更时自动发布会停止；维护者可
+使用 `--bump patch|minor|major` 显式覆盖。`plan` 和 `prepare` 也可独立使用：
+
+```bash
+python3 scripts/versioning.py plan --json
+python3 scripts/versioning.py prepare
+```
+
+正式发布运行 `scripts/release.sh`。脚本要求 `main`、干净工作树、完整且一致的
+本地/远端 tag，并只读核验 PyPI 与 npm。确认后执行：
+
+1. 同步 6 个版本元数据文件（包括 `uv.lock`）。
+2. 执行版本检查、Python 测试和 lint、Dashboard 测试/构建/E2E、npm 测试和 pack。
+3. 精确暂存版本文件并创建唯一的 `chore(release): vX.Y.Z` 提交。
+4. 创建 annotated tag。
+5. 原子 push `main` 和 tag。
+
+任何验证失败都不会创建 tag 或 push，已生成的版本差异会保留供审查。迁移期若
+源码版本高于最近 tag 且不低于提交区间要求的最低版本，计划会沿用该 pending
+version；不会降级或重复 bump。
 
 推送 tag 后，GitHub Actions 的 `.github/workflows/release.yml` 会：
 
@@ -202,7 +218,8 @@ scripts/release.sh
 9. 发布到 npm
 
 不要手工上传 PyPI 或 npm 包；首次占用 npm 包名除外，后续以 tag workflow
-为准。npm 首次发布和 Trusted Publishing 配置见 `docs/npm-publishing.md`。
+为准。release workflow 使用完整 Git 历史验证 tag 与版本一致性。npm 首次发布
+和 Trusted Publishing 配置见 `docs/npm-publishing.md`。
 
 ## 验证门禁
 
