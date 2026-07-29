@@ -111,10 +111,11 @@ fi
 
 python3 scripts/versioning.py prepare --bump "$bump"
 
-(cd dashboard && npm ci && npm test && npm run build && npm run e2e)
+(cd dashboard && npm ci && npm test && npm run build)
 uv run python scripts/check_version.py
 uv run pytest -q
 uv run --with ruff ruff check src/ tests/ scripts/
+(cd dashboard && npm run e2e)
 (cd npm && npm ci && npm test && npm pack --dry-run)
 
 version_files=(
