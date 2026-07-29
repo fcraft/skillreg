@@ -8,8 +8,10 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ..config import load_config
+from ..services.catalog import enrich_sources
+from ..services.git_ops import GitIdentityRequiredError
+from ..services.skill_registry import get_all
 from ..services.source_manager import SourceManager
-
 
 router = APIRouter(prefix="/api/sources", tags=["sources"])
 
@@ -50,9 +52,23 @@ def _manager() -> SourceManager:
         raise HTTPException(400, str(exc)) from exc
 
 
-def _call(operation):
+def _call(manager: SourceManager, operation):
     try:
         return {"success": True, "data": operation()}
+    except GitIdentityRequiredError as exc:
+        try:
+            relative = exc.repo.resolve().relative_to(manager.workspace.resolve())
+            repository = relative.as_posix() or "."
+        except ValueError:
+            repository = str(exc.repo)
+        raise HTTPException(
+            409,
+            {
+                "code": "git_identity_required",
+                "message": "提交前需要设置 Git 身份",
+                "repository": repository,
+            },
+        ) from exc
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
 
@@ -60,13 +76,13 @@ def _call(operation):
 @router.post("/npm/preview")
 def preview_npm(body: NpmPreviewBody):
     manager = _manager()
-    return _call(lambda: manager.preview_npm(body.package, body.registry, body.versionSpec))
+    return _call(manager, lambda: manager.preview_npm(body.package, body.registry, body.versionSpec))
 
 
 @router.post("/npm/import")
 def import_npm(body: NpmImportBody):
     manager = _manager()
-    return _call(lambda: manager.import_npm(
+    return _call(manager, lambda: manager.import_npm(
         body.token,
         body.mode,
         body.selectedSkills,
@@ -80,22 +96,30 @@ def import_npm(body: NpmImportBody):
 @router.get("")
 def list_sources():
     manager = _manager()
-    return _call(manager.list_sources)
+    return _call(
+        manager,
+        lambda: enrich_sources(
+            manager.workspace,
+            manager.list_sources(),
+            get_all(manager.workspace),
+        ),
+    )
 
 
 @router.post("/{source_id}/check")
 def check_source(source_id: str):
     manager = _manager()
-    return _call(lambda: manager.check(source_id))
+    return _call(manager, lambda: manager.check(source_id))
 
 
 @router.post("/{source_id}/update-preview")
-def preview_update(source_id: str, body: UpdatePreviewBody = UpdatePreviewBody()):
+def preview_update(source_id: str, body: UpdatePreviewBody | None = None):
     manager = _manager()
-    return _call(lambda: manager.update_preview(source_id, body.versionSpec))
+    version_spec = body.versionSpec if body else None
+    return _call(manager, lambda: manager.update_preview(source_id, version_spec))
 
 
 @router.post("/{source_id}/update")
 def update_source(source_id: str, body: UpdateBody):
     manager = _manager()
-    return _call(lambda: manager.update(source_id, body.token, force=body.force, dry_run=body.dryRun))
+    return _call(manager, lambda: manager.update(source_id, body.token, force=body.force, dry_run=body.dryRun))

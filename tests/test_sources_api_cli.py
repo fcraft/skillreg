@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 
 from click.testing import CliRunner
@@ -67,6 +68,85 @@ def test_sources_api_rejects_invalid_session(tmp_path):
     )
     assert response.status_code == 400
     assert "preview session" in response.json()["detail"]
+
+
+def test_sources_api_reports_repository_that_needs_git_identity(tmp_path, monkeypatch):
+    workspace = configure_workspace(tmp_path)
+    subprocess.run(["git", "config", "--unset", "user.email"], cwd=workspace, check=True)
+    subprocess.run(["git", "config", "--unset", "user.name"], cwd=workspace, check=True)
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", os.devnull)
+    monkeypatch.setenv("GIT_CONFIG_SYSTEM", os.devnull)
+    monkeypatch.setattr(
+        source_manager,
+        "acquire_package",
+        lambda *args: make_acquired(
+            tmp_path,
+            "1.0.0",
+            {"source-one": {"name": "one"}},
+        ),
+    )
+    from fastapi.testclient import TestClient
+    client = TestClient(create_app())
+    preview = client.post(
+        "/api/sources/npm/preview",
+        json={"package": PACKAGE, "registry": REGISTRY, "versionSpec": "latest"},
+    ).json()["data"]
+
+    response = client.post(
+        "/api/sources/npm/import",
+        json={
+            "token": preview["token"],
+            "mode": "skill",
+            "selectedSkills": ["one"],
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == {
+        "code": "git_identity_required",
+        "message": "提交前需要设置 Git 身份",
+        "repository": ".",
+    }
+
+
+def test_git_identity_api_saves_repository_local_identity(tmp_path, monkeypatch):
+    workspace = configure_workspace(tmp_path)
+    subprocess.run(["git", "config", "--unset", "user.email"], cwd=workspace, check=True)
+    subprocess.run(["git", "config", "--unset", "user.name"], cwd=workspace, check=True)
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", os.devnull)
+    monkeypatch.setenv("GIT_CONFIG_SYSTEM", os.devnull)
+    from fastapi.testclient import TestClient
+
+    response = TestClient(create_app()).post(
+        "/api/git/identity",
+        json={
+            "repository": ".",
+            "name": "Workspace User",
+            "email": "workspace@example.com",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "success": True,
+        "repository": ".",
+        "name": "Workspace User",
+        "email": "workspace@example.com",
+    }
+    assert subprocess.run(
+        ["git", "config", "--local", "user.name"],
+        cwd=workspace,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip() == "Workspace User"
+    assert subprocess.run(
+        ["git", "config", "--local", "user.email"],
+        cwd=workspace,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip() == "workspace@example.com"
 
 
 def test_source_cli_happy_path_json_and_help(tmp_path, monkeypatch):
