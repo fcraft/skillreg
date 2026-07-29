@@ -112,6 +112,7 @@ fi
 python3 scripts/versioning.py prepare --bump "$bump"
 
 (cd dashboard && npm ci && npm test && npm run build)
+uv sync --extra dev
 uv run python scripts/check_version.py
 uv run pytest -q
 uv run --with ruff ruff check src/ tests/ scripts/

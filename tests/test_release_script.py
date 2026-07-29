@@ -130,6 +130,7 @@ def test_release_script_runs_full_gates_before_tag_and_uses_atomic_push():
 
     for command in (
         "uv run python scripts/check_version.py",
+        "uv sync --extra dev",
         "uv run pytest -q",
         "uv run --with ruff ruff check src/ tests/ scripts/",
         "npm test && npm run build",
@@ -138,6 +139,7 @@ def test_release_script_runs_full_gates_before_tag_and_uses_atomic_push():
     ):
         assert prepare < script.index(command) < tag
     assert script.index("npm run build") < script.index("uv run python scripts/check_version.py")
+    assert script.index("uv sync --extra dev") < script.index("uv run pytest -q")
     assert script.index("uv run python scripts/check_version.py") < script.index("npm run e2e")
     assert 'git commit --allow-empty -m "chore(release): $tag"' in script
     assert 'git push --atomic origin main "$tag"' in script
