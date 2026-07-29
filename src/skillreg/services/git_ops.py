@@ -11,16 +11,19 @@ from collections.abc import Sequence
 from pathlib import Path
 
 
-GIT_AUTHOR_ENV = {
-    "GIT_AUTHOR_NAME": "skillreg",
-    "GIT_AUTHOR_EMAIL": "skillreg@example.invalid",
-    "GIT_COMMITTER_NAME": "skillreg",
-    "GIT_COMMITTER_EMAIL": "skillreg@example.invalid",
-}
-
-
 class GitOperationError(ValueError):
     """Raised when an expected Git operation fails."""
+
+
+class GitIdentityRequiredError(GitOperationError):
+    """Raised before a commit when Git cannot resolve its identity."""
+
+    def __init__(self, repo: Path):
+        self.repo = repo
+        super().__init__(
+            "Git identity is required; configure user.name and user.email "
+            f"for {repo}"
+        )
 
 
 def _redact(value: str) -> str:
@@ -40,7 +43,8 @@ def run_git(repo: Path, args: Sequence[str], *, check: bool = True, extra_env: d
             cwd=repo,
             capture_output=True,
             text=True,
-            env={**os.environ, **GIT_AUTHOR_ENV, **(extra_env or {})},
+            env={**os.environ, **(extra_env or {})},
+            check=False,
             timeout=120,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
@@ -69,6 +73,12 @@ def worktree_dirty(path: Path) -> bool:
     return bool(run_git(path, ["status", "--porcelain", "--untracked-files=all"]).stdout.strip())
 
 
+def _require_commit_identity(repo: Path) -> None:
+    for variable in ("GIT_AUTHOR_IDENT", "GIT_COMMITTER_IDENT"):
+        if run_git(repo, ["var", variable], check=False).returncode:
+            raise GitIdentityRequiredError(repo)
+
+
 def commit_exact(repo: Path, paths: Sequence[str], message: str) -> str | None:
     """Commit exactly ``paths`` while preserving unrelated staged changes."""
     if not is_git_repo(repo):
@@ -79,6 +89,7 @@ def commit_exact(repo: Path, paths: Sequence[str], message: str) -> str | None:
     changed = run_git(repo, ["status", "--porcelain", "--", *pathspecs]).stdout.strip()
     if not changed:
         return None
+    _require_commit_identity(repo)
     hook_path = Path(run_git(repo, ["rev-parse", "--git-path", "hooks/pre-commit"]).stdout.strip())
     if not hook_path.is_absolute():
         hook_path = repo / hook_path
@@ -107,11 +118,11 @@ def commit_exact(repo: Path, paths: Sequence[str], message: str) -> str | None:
                 text=True,
                 env={
                     **os.environ,
-                    **GIT_AUTHOR_ENV,
                     **hook_env,
                     "GIT_DIR": git_dir,
                     "GIT_WORK_TREE": str(worktree),
                 },
+                check=False,
                 timeout=120,
             )
             if hook.returncode:
