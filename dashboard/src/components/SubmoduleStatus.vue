@@ -161,21 +161,31 @@
               class="repo-more-btn"
               :class="{ 'repo-more-btn--open': repoMenuOpen === sub.path }"
               title="管理仓库"
-              @click.stop="toggleRepoMenu(sub.path)"
+              :aria-expanded="repoMenuOpen === sub.path"
+              aria-haspopup="menu"
+              @click.stop="toggleRepoMenu($event, sub.path)"
             >
               <MoreHorizontal :size="14" />
             </button>
-            <div v-if="repoMenuOpen === sub.path" class="repo-dropdown">
-              <button class="repo-dropdown-item" @click="openInstallRepo(sub)">
-                <Download :size="13" /> 一键安装到目标
-              </button>
-              <button class="repo-dropdown-item" @click="openRenameRepo(sub)">
-                <Pencil :size="13" /> 重命名仓库
-              </button>
-              <button class="repo-dropdown-item repo-dropdown-item--danger" @click="openRemoveRepo(sub)">
-                <Trash2 :size="13" /> 删除仓库
-              </button>
-            </div>
+            <Teleport to="body">
+              <div
+                v-if="repoMenuOpen === sub.path"
+                class="repo-dropdown"
+                role="menu"
+                :style="{ top: `${repoMenuPosition.top}px`, left: `${repoMenuPosition.left}px` }"
+                @click.stop
+              >
+                <button class="repo-dropdown-item" role="menuitem" @click="openInstallRepo(sub)">
+                  <Download :size="13" /> 一键安装到目标
+                </button>
+                <button class="repo-dropdown-item" role="menuitem" @click="openRenameRepo(sub)">
+                  <Pencil :size="13" /> 重命名仓库
+                </button>
+                <button class="repo-dropdown-item repo-dropdown-item--danger" role="menuitem" @click="openRemoveRepo(sub)">
+                  <Trash2 :size="13" /> 删除仓库
+                </button>
+              </div>
+            </Teleport>
           </div>
         </div>
         <div v-show="expanded[sub.path]" class="commit-panel">
@@ -371,6 +381,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useData } from '../composables/useData.js'
 import { useSkillDetail } from '../composables/useSkillDetail.js'
 import { useToast } from '../composables/useToast.js'
+import { positionDropdown } from '../overlays/dropdownPosition.js'
 import {
   syncSubmodule as syncSubmoduleApi, previewSyncSubmodule as previewSyncApi,
   fixDetachedHead as fixDetachedHeadApi, refreshSubmodule as refreshSubmoduleApi,
@@ -405,6 +416,7 @@ const tooltip = reactive({ sub: null, top: 0, left: 0, transform: '' })
 
 // ── Repo management (rename / remove / install-to-target) ──
 const repoMenuOpen = ref(null)        // sub.path whose dropdown is open
+const repoMenuPosition = reactive({ top: 0, left: 0 })
 const targets = ref([])               // configured sync targets
 
 const installRepo = reactive({ show: false, path: null, skills: [], target: '', running: false, error: '' })
@@ -429,8 +441,23 @@ async function loadTargets() {
   }
 }
 
-function toggleRepoMenu(path) {
-  repoMenuOpen.value = repoMenuOpen.value === path ? null : path
+const REPO_MENU_WIDTH = 168
+const REPO_MENU_HEIGHT = 112
+
+function toggleRepoMenu(event, path) {
+  if (repoMenuOpen.value === path) {
+    closeRepoMenu()
+    return
+  }
+
+  const rect = event.currentTarget.getBoundingClientRect()
+  Object.assign(repoMenuPosition, positionDropdown(rect, {
+    viewportWidth: window.innerWidth,
+    viewportHeight: window.innerHeight,
+    menuWidth: REPO_MENU_WIDTH,
+    menuHeight: REPO_MENU_HEIGHT,
+  }))
+  repoMenuOpen.value = path
 }
 
 function closeRepoMenu() {
@@ -439,6 +466,10 @@ function closeRepoMenu() {
 
 function onDocumentClick(e) {
   if (!e.target.closest('.repo-more-wrapper')) closeRepoMenu()
+}
+
+function onDocumentKeydown(e) {
+  if (e.key === 'Escape') closeRepoMenu()
 }
 
 // ── Install repo skills to a target ──
@@ -534,10 +565,16 @@ async function confirmRemoveRepo() {
 onMounted(() => {
   loadTargets()
   document.addEventListener('click', onDocumentClick)
+  document.addEventListener('keydown', onDocumentKeydown)
+  window.addEventListener('resize', closeRepoMenu)
+  window.addEventListener('scroll', closeRepoMenu, true)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', onDocumentClick)
+  document.removeEventListener('keydown', onDocumentKeydown)
+  window.removeEventListener('resize', closeRepoMenu)
+  window.removeEventListener('scroll', closeRepoMenu, true)
 })
 
 // Preview modal state
@@ -1487,9 +1524,7 @@ async function handleFixDetached(sub) {
 }
 
 .repo-dropdown {
-  position: absolute;
-  top: 28px;
-  right: 0;
+  position: fixed;
   z-index: var(--z-dropdown, 200);
   min-width: 168px;
   padding: 4px;
