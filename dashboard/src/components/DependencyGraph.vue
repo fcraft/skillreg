@@ -449,12 +449,12 @@ function render() {
     .on('click', (event, d) => {
       event.stopPropagation()
       hidePopover()
-      if (d.isSubmoduleRoot) {
+      if (d.isSubmoduleRoot || d.isRepositoryRoot) {
         // Collapsible repos: toggle on click; small repos navigate as before.
         if ((d._childCount || 0) > 0) {
           toggleRepo(d.path)
         } else {
-          router.push({ name: 'repos', query: { submodule: d.path } })
+          router.push({ name: 'repos', query: { repo: d.path } })
         }
       } else if (d.submodulePath) {
         router.push({ name: 'repos', query: { submodule: d.submodulePath, skill: d.name } })

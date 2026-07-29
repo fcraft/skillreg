@@ -5,6 +5,7 @@ import { useEventBus } from './useEventBus.js'
 const state = reactive({
   skills: [],
   repoNodes: [],
+  repositories: [],
   submodules: [],
   relationships: [],
   gitLogs: { main: [], submodules: {} },
@@ -52,6 +53,7 @@ export function useData() {
     try {
       const data = await fetchSkillsFull()
       state.repoNodes = data.repoNodes || []
+      state.repositories = data.repositories || []
       state.submodules = data.submodules || []
       state.relationships = data.relationships || []
       state.gitLogs = data.gitLogs || { main: [], submodules: {} }
@@ -67,6 +69,7 @@ export function useData() {
       const data = await fetchSkillsRefresh()
       state.skills = data.skills || []
       state.repoNodes = data.repoNodes || []
+      state.repositories = data.repositories || []
       state.submodules = data.submodules || []
       state.relationships = data.relationships || []
       state.gitLogs = data.gitLogs || { main: [], submodules: {} }
