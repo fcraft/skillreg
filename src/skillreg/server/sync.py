@@ -1,4 +1,4 @@
-"""Sync API routes — ported from agent-hub ``routes/sync.js``."""
+"""Sync API routes."""
 
 from __future__ import annotations
 

@@ -56,52 +56,21 @@ npm 启动器会运行完全相同版本的 Python 包。系统有 `uv` 时直�
 ```bash
 skillreg workspace create ~/my-skills
 skillreg register /path/to/my-skill
-skillreg source npm import @scope/skill-pack --registry https://registry.npmjs.org/ --mode skill
 skillreg target add ~/.codex/skills
 skillreg sync execute --target ~/.codex/skills
 skillreg dashboard open
 ```
 
-Dashboard 默认打开：
-
-```text
-http://127.0.0.1:28787
-```
-
-常用命令：
+查看完整命令和参数：
 
 ```bash
-skillreg config
-skillreg workspace create <path>
-skillreg workspace current
-skillreg workspace switch <path>
-skillreg register <path> [--force] [--name name]
-skillreg list
-skillreg convert <name>
-skillreg source npm preview <package> [--registry url] [--version-spec spec]
-skillreg source npm import <package> [--mode skill|repo] [--skill name]
-skillreg source list
-skillreg source check <source-id>
-skillreg source update-preview <source-id>
-skillreg source update <source-id> [--dry-run] [--force]
-skillreg target list
-skillreg target add <path>
-skillreg sync status
-skillreg sync execute --target <path> [--skill name]
-skillreg project create --name <name> --target <path>
-skillreg sync execute --project <name>
-skillreg diff <skill> --target <path>
-skillreg submodule list
-skillreg dashboard start
-skillreg dashboard status
-skillreg dashboard stop
-skillreg dashboard open --no-browser
+skillreg -h
+skillreg <group> -h
 ```
 
-NPM 来源以包为管理单元。一份包可选择导入多个 Skill 到 `skills/`，也可在
-`repos/` 下创建独立集合仓。skillreg 直接下载并校验 registry 制品，不执行
-`npm install` 或生命周期脚本；来源、版本、完整性和目录映射保存在
-`.skillreg/sources.json`，后续可检查版本、预览逐文件差异并受控更新。
+需要导入 NPM Skill 包时，使用 `skillreg source npm -h` 查看来源预览、导入
+和更新命令。skillreg 只下载并校验 registry 制品，不执行 `npm install` 或
+生命周期脚本。
 
 ## 开发
 
@@ -114,19 +83,14 @@ uv run pytest -q
 uv run --with ruff ruff check src/ tests/ scripts/
 ```
 
-版本号由 `pyproject.toml`、`src/skillreg/__init__.py`、内置
-`skillreg-skill` 和 `npm/package.json` 共同校验。安装 git hook 后，在
-`main` 分支提交时会自动 bump `x.y.z` 版本：`feat:` 提交使 `y + 1`，其他
-提交使 `z + 1`，并把 `x` 固定为 `1`。
-
-本地发版：
+本地发版使用：
 
 ```bash
 scripts/release.sh
 ```
 
-脚本会读取当前版本，创建并推送 `v<version>` tag，随后由 GitHub Actions
-发布到 GitHub Release、PyPI 和 npm。
+脚本会校验版本、创建并推送 tag，再由 GitHub Actions 发布到 GitHub Release、
+PyPI 和 npm。
 
 ## Contributors
 

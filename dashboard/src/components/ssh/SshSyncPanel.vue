@@ -12,7 +12,7 @@
           <span class="sync-panel-host-id">{{ host.id }}</span>
           <span class="sync-panel-host-addr">· {{ host.hostname }}</span>
           <span class="sync-panel-meta">
-            路径: {{ host.agentHubPath || '~/agent-hub' }}
+            路径: {{ host.agentHubPath || '-' }}
             <span v-if="lastCheckTime"> · 最后检查: {{ lastCheckTime }}</span>
           </span>
         </div>
@@ -26,21 +26,21 @@
         </div>
       </div>
 
-      <!-- No agent-hub: show install -->
+      <!-- Remote workspace unavailable -->
       <div v-if="checkResult && checkResult.reason === 'no_agent_hub' && !installing" class="sync-panel-install">
         <div class="sync-panel-install-icon">📦</div>
-        <div class="sync-panel-install-title">远程主机未安装 agent-hub</div>
+        <div class="sync-panel-install-title">远程 workspace 不可用</div>
         <div class="sync-panel-install-detail">{{ checkResult.detail }}</div>
         <div class="sync-panel-install-detail">仓库: {{ host.repoUrl || '(从本地 origin 获取)' }}</div>
         <QButton type="primary" size="medium" :disabled="installing" @click="$emit('install')">
-          <Rocket :size="14" /> 一键安装 agent-hub
+          <Rocket :size="14" /> 初始化远程环境
         </QButton>
         <div class="sync-panel-install-hint">将自动 clone 仓库并运行 bootstrap.sh</div>
       </div>
 
       <!-- Loading -->
       <div v-else-if="loading || installing" class="sync-panel-loading">
-        {{ installing ? '正在安装 agent-hub...（clone + bootstrap，可能需要几分钟）' : '正在获取远程同步状态...' }}
+        {{ installing ? '正在初始化远程环境...（可能需要几分钟）' : '正在获取远程同步状态...' }}
       </div>
 
       <!-- Error -->

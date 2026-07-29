@@ -1,4 +1,4 @@
-"""Import API routes — ported from agent-hub ``routes/import.js``."""
+"""Import API routes."""
 
 from __future__ import annotations
 

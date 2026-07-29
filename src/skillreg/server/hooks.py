@@ -1,4 +1,4 @@
-"""Hooks API routes — ported from agent-hub ``routes/hooks.js``.
+"""Hooks API routes.
 
 Integrates the hooks management logic from ``infra/hooks.py``.
 Uses subprocess for scan/status/install/uninstall/validate operations.

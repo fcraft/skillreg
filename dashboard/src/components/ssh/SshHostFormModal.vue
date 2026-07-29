@@ -23,7 +23,7 @@
         <QInput v-model="form.identityFile" label="Identity File" placeholder="~/.ssh/id_rsa" />
       </div>
       <div class="form-row">
-        <QInput v-model="form.agentHubPath" label="agent-hub 路径 *" placeholder="~/agent-hub" />
+        <QInput v-model="form.agentHubPath" label="Workspace 路径 *" placeholder="~/my-skills" />
       </div>
 
       <div v-if="error" class="form-error">{{ error }}</div>
@@ -83,7 +83,7 @@ watch(() => props.modelValue, (val) => {
     } else {
       Object.assign(form, {
         id: '', label: '', hostname: '', port: '',
-        user: '', identityFile: '', agentHubPath: '~/agent-hub',
+        user: '', identityFile: '', agentHubPath: '',
       })
     }
   }
@@ -111,7 +111,7 @@ async function handleSubmit() {
     port: parseInt(form.port) || 22,
     user: form.user.trim() || null,
     identityFile: form.identityFile.trim() || null,
-    agentHubPath: form.agentHubPath.trim() || '~/agent-hub',
+    agentHubPath: form.agentHubPath.trim(),
   }
 
   emit('submit', payload)

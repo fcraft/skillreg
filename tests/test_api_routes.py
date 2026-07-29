@@ -207,7 +207,7 @@ def test_update_target_skills_unknown_target_fails(tmp_path, monkeypatch):
 
 
 def test_git_import_defaults_to_third_directory(monkeypatch):
-    """Git skill import keeps agent-hub's default skills/third target."""
+    """Git skill import defaults to the skills/third target."""
     seen = {}
 
     def fake_git_import_skills(temp_path, selected_skills, target_dir):

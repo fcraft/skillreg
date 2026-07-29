@@ -14,7 +14,7 @@ Workspace 是 skillreg 管理 Skill 的本地目录，通常包含：
 - `skills/`：直接注册的独立 Skill
 - `repos/`：转换为子仓或 CLI 骨架后的 Skill
 
-用户不需要理解产品仓或历史 daemon 工作流，只需要决定这个本地目录放在哪里
+用户只需要决定这个本地目录放在哪里
 
 推荐默认位置：
 

@@ -1,4 +1,4 @@
-"""Submodule API routes — ported from agent-hub ``routes/submodules.js``.
+"""Submodule API routes.
 
 Provides submodule listing, sync preview/execute, diff, refresh, and fix-detached.
 """

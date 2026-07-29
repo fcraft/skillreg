@@ -1,4 +1,4 @@
-"""Sync manager service — ported from agent-hub ``sync-manager.js``.
+"""Sync manager service.
 
 Handles target configuration CRUD, project registry, and sync execution.
 Delegates actual sync logic to ``sync-skills.py`` via subprocess.
@@ -455,7 +455,7 @@ _AGENT_CONVENTIONS: list[tuple[str, str]] = [
 
 
 def discover_agent_dirs(root_path: str) -> list[dict]:
-    """Scan a directory for agent hub directories."""
+    """Scan a directory for agent skill directories."""
     root = Path(root_path).expanduser().resolve()
     if not root.is_dir():
         return []

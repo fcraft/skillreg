@@ -1,4 +1,4 @@
-"""Skills API routes — ported from agent-hub ``routes/skills.js``."""
+"""Skills API routes."""
 
 from __future__ import annotations
 

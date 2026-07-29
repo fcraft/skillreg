@@ -14,10 +14,10 @@
     <div v-else>
       <QTabs v-model="activeTab" :tabs="tabs" />
 
-      <!-- Agent-hub hooks -->
+      <!-- Workspace hooks -->
       <div v-if="activeTab === 'native'" class="hooks-panel">
         <QCard v-if="nativeHooks.length === 0" empty>
-          <p class="hooks-empty-text">暂无 agent-hub 内置 Hook。将 hook 脚本放入 <code>hooks/</code> 目录即可自动发现。</p>
+          <p class="hooks-empty-text">暂无 workspace Hook。将 hook 脚本放入 <code>hooks/</code> 目录即可自动发现</p>
         </QCard>
         <HookItem
           v-for="hook in nativeHooks"
@@ -75,7 +75,7 @@ import { getHookStatus, installHook, uninstallHook } from '../api/index.js'
 const toast = useToast()
 
 const tabs = [
-  { key: 'native', label: 'Agent-hub Hooks' },
+  { key: 'native', label: 'Workspace Hooks' },
   { key: 'repos', label: '仓库 Hooks' },
   { key: 'third', label: '第三方 Hooks' },
 ]
