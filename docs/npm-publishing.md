@@ -59,8 +59,14 @@ provenance，不需要配置 `NPM_TOKEN`。
 后续发布只运行：
 
 ```bash
+scripts/release.sh --dry-run
 scripts/release.sh
 ```
+
+`--dry-run` 会只读展示最近发布 tag 到 `HEAD` 的版本计划，并核对 Git remote、
+PyPI 和 npm 状态，不修改文件、commit、tag 或 remote。正式执行只会创建一个
+`chore(release): vX.Y.Z` 版本提交，再原子 push `main` 和 tag。普通功能提交
+不会修改版本文件。
 
 如果 `skillreg` 包名在首次发布前被占用，应停止发布并改用受控 scope，不要向
 未知包所有者索要权限。

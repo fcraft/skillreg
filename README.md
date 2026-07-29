@@ -86,11 +86,13 @@ uv run --with ruff ruff check src/ tests/ scripts/
 本地发版使用：
 
 ```bash
+scripts/release.sh --dry-run
 scripts/release.sh
 ```
 
-脚本会校验版本、创建并推送 tag，再由 GitHub Actions 发布到 GitHub Release、
-PyPI 和 npm。
+脚本会根据上一个发布 tag 之后的 Conventional Commits 预览下一版本；正式执行
+时统一同步版本、完成测试并创建 release commit/tag，再由 GitHub Actions 发布到
+GitHub Release、PyPI 和 npm。
 
 ## Contributors
 
