@@ -16,8 +16,8 @@
 - `skills/`：直接注册进 workspace 的 skills。
 - `repos/`：转换为子仓/CLI 骨架后的 skills。
 
-不要再把本仓描述成依赖 `agent-hub` 运行，也不要引用旧的
-`skillreg-cli` daemon 工作流作为当前事实。
+所有产品说明和实现判断都以当前 workspace、CLI、backend 和 Dashboard
+架构为准。
 
 ## 当前真实能力
 
@@ -96,15 +96,19 @@ Dashboard 是人类用户的主要操作入口；CLI 是 agent 自动化闭环�
 
 所有用户能力都围绕当前 `~/.skillreg/config.json` 指向的 workspace 展开。
 用户可能在任意项目中说“注册这个 skill”，agent 应定位本地 `SKILL.md`
-所在目录并注册到当前 workspace，而不是要求用户理解产品仓、workspace 仓或
-agent-hub 旧结构。
+所在目录并注册到当前 workspace，不要求用户理解内部仓库划分。
 
 ### 2. 文档只写当前事实
 
 - README 面向用户，保持简洁。
 - AGENTS.md 面向后续 agent，写真实实现和工作流。
-- 不要引用已删除的 `docs/archive/` 或迁移期 issue 作为当前事实来源。
-- 不要恢复旧 daemon 命令描述，除非代码真的重新支持。
+- 不要引用已删除的文档或历史 issue 作为当前事实来源。
+- 不要在当前文档中保留已经退出产品模型的架构、命令或品牌描述。
+- README 只保留产品定位、安装方式、最短使用闭环和开发入口，不维护完整命令清单；CLI 命令和参数以 `-h` / `--help` 为准。
+- `README.md` 与 `docs/README.en.md` 的结构、能力边界和关键入口必须同步维护。
+- `docs/` 只保存需要长期维护的用户指南或维护者手册。新增文档前先检索现有内容，优先合并，避免产生重复事实源。
+- 临时方案、执行交接和已解决事故记录不得长期留在 `docs/`；任务完成后应删除临时文档，历史结论由 issue、commit 和 Git history 承载。
+- 跟踪文档不得记录个人机器的绝对路径、一次性工作区状态或仅对单次执行有效的恢复步骤。
 
 ### 3. Sync 状态语义
 
@@ -223,7 +227,7 @@ uv run skillreg <group> -h
 ## 对 agent 的要求
 
 1. 先确认当前代码真实支持某项能力，再写 README、AGENTS.md 或 skill 文案。
-2. 不要把旧 `skillreg-cli`、daemon、agent-hub 运行方式写成当前事实。
+2. 只描述当前 workspace、CLI、backend 和 Dashboard 实际支持的运行方式。
 3. 对用户可见文案保持“本地 skill workspace”心智，不暴露不必要的仓库实现细节。
 4. 提交前确认版本检查、测试和 lint。
 5. 发布时使用 `scripts/release.sh`，不要绕过 tag workflow。

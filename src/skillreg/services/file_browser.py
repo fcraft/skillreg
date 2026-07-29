@@ -1,4 +1,4 @@
-"""File browser service — ported from agent-hub ``file-browser.js``.
+"""File browser service.
 
 Provides file tree building and file content reading with safety guards.
 Deep: 4, nodes: 300, cache: 30s, preview: 100KB.

@@ -1,4 +1,4 @@
-"""Import service — ported from agent-hub ``importer.js``.
+"""Import service.
 
 Handles three import sources (zip / git-clone / local directory) × two modes
 (skill copy / submodule add), plus update preview/execute.

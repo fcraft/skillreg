@@ -1,4 +1,4 @@
-"""Git API routes — ported from agent-hub ``routes/git.js``.
+"""Git API routes.
 
 Returns git log for main repo and submodules.
 """

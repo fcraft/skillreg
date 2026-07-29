@@ -1,4 +1,4 @@
-"""Skill registry service — ported from agent-hub ``skill-registry.js``.
+"""Skill registry service.
 
 Provides skill discovery, classification, and the ``getAll()`` aggregation that
 powers the dashboard.  All paths are rooted at the user-configured workspace.
@@ -37,7 +37,7 @@ _KNOWN_DEPENDENCIES: list[dict[str, str]] = [
 ]
 
 # Agent conventions (same as sync-skills.py)
-_AGENT_HUB_CONVENTIONS: list[tuple[str, str]] = [
+_AGENT_CONVENTIONS: list[tuple[str, str]] = [
     (".claude/skills", "claude"),
     (".tclaude/skills", "tclaude"),
     (".codebuddy/skills", "codebuddy"),

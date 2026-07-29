@@ -69,7 +69,7 @@ function autoStartServer() {
         let actualPort = await discoverServerPort()
 
         if (!actualPort) {
-          console.log('[auto-start] Starting agent-hub server...')
+          console.log('[auto-start] Starting backend server...')
           await spawnServer()
           const ok = await waitForHealth(DEFAULT_PORT)
           if (ok) actualPort = await discoverServerPort() || DEFAULT_PORT

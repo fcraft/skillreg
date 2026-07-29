@@ -1,4 +1,4 @@
-"""Registry API routes — ported from agent-hub ``routes/registry.js``."""
+"""Registry API routes."""
 
 from __future__ import annotations
 

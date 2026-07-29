@@ -33,7 +33,7 @@
           <span class="expand-indicator">{{ expanded.main ? '▾' : '▸' }}</span>
           <div class="sub-info">
             <div class="sub-name-row">
-              <span class="sub-path">agent-hub</span>
+              <span class="sub-path">skillreg</span>
               <button
                 v-if="remoteUrlMap.main"
                 class="repo-btn"

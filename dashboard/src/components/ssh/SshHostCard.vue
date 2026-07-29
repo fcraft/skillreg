@@ -111,7 +111,7 @@ const reasonText = computed(() => {
   const { reason, detail } = props.checkResult
   if (reason === 'unreachable') return '连接失败'
   if (reason === 'auth_failed') return '认证失败'
-  if (reason === 'no_agent_hub') return '未找到 agent-hub'
+  if (reason === 'no_agent_hub') return '未找到远程 workspace'
   if (reason === 'error') return detail || '未知错误'
   return detail || '未知错误'
 })
