@@ -4,10 +4,11 @@
  */
 
 class ApiError extends Error {
-  constructor(status, message, code = null) {
+  constructor(status, message, code = null, details = null) {
     super(message)
     this.status = status
     this.code = code
+    this.details = details
     this.name = 'ApiError'
   }
 }
@@ -22,7 +23,12 @@ async function request(path, options = {}) {
     const detail = data.detail
     const structuredDetail = detail && typeof detail === 'object' ? detail : null
     const message = data.error || structuredDetail?.message || detail || res.statusText
-    throw new ApiError(res.status, message, data.code || structuredDetail?.code || null)
+    throw new ApiError(
+      res.status,
+      message,
+      data.code || structuredDetail?.code || null,
+      structuredDetail,
+    )
   }
   return res.json()
 }
@@ -372,6 +378,10 @@ export function previewSourceUpdate(id, versionSpec) {
 
 export function updateSource(id, token, options = {}) {
   return post(`/api/sources/${encodeURIComponent(id)}/update`, { token, ...options }).then(res => res.data)
+}
+
+export function configureGitIdentity(repository, name, email) {
+  return post('/api/git/identity', { repository, name, email })
 }
 
 // --- Hooks ---

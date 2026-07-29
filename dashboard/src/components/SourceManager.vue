@@ -12,16 +12,44 @@
     <div v-if="loading" class="empty-state">加载来源中...</div>
     <div v-else-if="sources.length === 0" class="empty-state">尚未添加受管来源</div>
     <div v-else class="source-list">
-      <article v-for="source in sources" :key="source.id" class="source-card">
+      <article
+        v-for="source in sources"
+        :key="source.id"
+        :data-source-id="source.id"
+        class="source-card"
+        :class="{ 'source-card--selected': route.query.source === source.id }"
+      >
         <div class="source-card__top">
           <div>
             <div class="source-title">{{ source.package }}</div>
-            <div class="source-meta">{{ source.resolvedVersion }} · {{ source.mode === 'repo' ? 'Repo' : 'Skill' }} · {{ source.targetPath }}</div>
+            <div class="source-meta">
+              <span>{{ source.resolvedVersion }} · {{ source.mode === 'repo' ? 'Repo' : 'Skill' }}</span>
+              <button
+                v-if="source.repository"
+                class="entity-link"
+                :disabled="!source.repository.exists"
+                @click="openRepository(source.repository.path)"
+              >
+                {{ source.repository.name }} →
+              </button>
+              <code v-else>{{ source.targetPath }}</code>
+            </div>
           </div>
           <span class="status-pill" :data-status="checks[source.id]?.status">{{ sourceStatusLabel(checks[source.id]?.status) }}</span>
         </div>
         <div class="mapping-list">
-          <code v-for="skill in source.skills" :key="skill.name">{{ skill.sourceDirectory }} → {{ skill.targetDirectory }}</code>
+          <div v-for="skill in source.skills" :key="skill.path" class="mapping-row">
+            <code>{{ skill.sourceDirectory }} →</code>
+            <button
+              class="skill-link"
+              :disabled="!skill.available"
+              :title="skill.available ? '查看 Skill' : '映射存在，但当前未发现对应 Skill'"
+              @click="openSkill(skill)"
+            >
+              {{ skill.name }}
+            </button>
+            <span v-if="!skill.available" class="mapping-missing">Skill 缺失</span>
+          </div>
         </div>
         <div class="source-meta">
           <span>更新时间 {{ formatTime(source.updatedAt) }}</span>
@@ -56,22 +84,82 @@
         </div>
       </article>
     </div>
+
+    <QModal
+      v-model="identityDialog.open"
+      title="设置 Git 身份"
+      width="440px"
+      :close-on-overlay="false"
+    >
+      <div class="identity-form">
+        <p>提交前需要为这个仓库设置身份</p>
+        <code>{{ identityDialog.repository }}</code>
+        <QInput
+          v-model="identityDialog.name"
+          label="用户名"
+          placeholder="例如 kexjhhuang"
+        />
+        <QInput
+          v-model="identityDialog.email"
+          label="邮箱"
+          placeholder="例如 name@example.com"
+          type="email"
+        />
+        <div v-if="identityDialog.error" class="notice notice--error">
+          {{ identityDialog.error }}
+        </div>
+      </div>
+      <template #footer>
+        <QButton type="ghost" :disabled="identityDialog.saving" @click="closeIdentityDialog">
+          取消
+        </QButton>
+        <QButton type="primary" :disabled="identityDialog.saving" @click="saveGitIdentity">
+          {{ identityDialog.saving ? '保存中...' : '保存并重试' }}
+        </QButton>
+      </template>
+    </QModal>
   </section>
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import QButton from './QButton.vue'
-import { checkSource, fetchSources, previewSourceUpdate, updateSource } from '../api/index.js'
+import QInput from './QInput.vue'
+import QModal from './QModal.vue'
+import {
+  checkSource,
+  configureGitIdentity,
+  fetchSources,
+  previewSourceUpdate,
+  updateSource,
+} from '../api/index.js'
+import {
+  gitIdentityRequestFromError,
+  validateGitIdentity,
+} from '../sources/gitIdentity.js'
 import { canApplyUpdate, destructiveCount, sourceStatusLabel } from '../sources/sourceState.js'
+import { useSkillDetail } from '../composables/useSkillDetail.js'
 
 const sources = ref([])
+const route = useRoute()
+const router = useRouter()
+const { show: showSkill } = useSkillDetail()
 const loading = ref(false)
 const busy = ref('')
 const errorMessage = ref('')
 const checks = reactive({})
 const previews = reactive({})
 const forceConfirmed = reactive({})
+const identityDialog = reactive({
+  open: false,
+  repository: '.',
+  name: '',
+  email: '',
+  source: null,
+  saving: false,
+  error: '',
+})
 
 function formatTime(value) {
   if (!value) return '未知'
@@ -83,11 +171,28 @@ async function load() {
   errorMessage.value = ''
   try {
     sources.value = await fetchSources()
+    await nextTick()
+    scrollToSelectedSource()
   } catch (error) {
     errorMessage.value = error.message || '来源加载失败'
   } finally {
     loading.value = false
   }
+}
+
+function openRepository(path) {
+  router.push({ name: 'repos', query: { repo: path } })
+}
+
+function openSkill(skill) {
+  if (skill.available && skill.skillId) showSkill(skill.skillId)
+}
+
+function scrollToSelectedSource() {
+  const sourceId = route.query.source
+  if (!sourceId) return
+  const card = document.querySelector(`[data-source-id="${CSS.escape(sourceId)}"]`)
+  card?.scrollIntoView({ block: 'center' })
 }
 
 async function runCheck(source) {
@@ -140,13 +245,57 @@ async function runUpdate(source) {
     delete previews[source.id]
     await load()
   } catch (error) {
-    errorMessage.value = error.message || '更新失败'
+    const request = gitIdentityRequestFromError(error)
+    if (request) {
+      identityDialog.repository = request.repository
+      identityDialog.source = source
+      identityDialog.error = ''
+      identityDialog.open = true
+    } else {
+      errorMessage.value = error.message || '更新失败'
+    }
   } finally {
     busy.value = ''
   }
 }
 
+function closeIdentityDialog() {
+  if (identityDialog.saving) return
+  identityDialog.open = false
+  identityDialog.source = null
+  identityDialog.error = ''
+}
+
+async function saveGitIdentity() {
+  const validationError = validateGitIdentity(identityDialog.name, identityDialog.email)
+  if (validationError) {
+    identityDialog.error = validationError
+    return
+  }
+  const source = identityDialog.source
+  identityDialog.saving = true
+  identityDialog.error = ''
+  try {
+    await configureGitIdentity(
+      identityDialog.repository,
+      identityDialog.name.trim(),
+      identityDialog.email.trim(),
+    )
+    identityDialog.open = false
+    identityDialog.source = null
+    if (source) {
+      await runPreview(source)
+      await runUpdate(source)
+    }
+  } catch (error) {
+    identityDialog.error = error.message || 'Git 身份保存失败'
+  } finally {
+    identityDialog.saving = false
+  }
+}
+
 onMounted(load)
+watch(() => route.query.source, () => nextTick(scrollToSelectedSource))
 </script>
 
 <style scoped>
@@ -156,16 +305,24 @@ onMounted(load)
 .page-header p { margin: 4px 0 0; color: var(--qqx-text-secondary); }
 .source-list { display: grid; gap: var(--qqx-space-md); }
 .source-card { padding: var(--qqx-space-lg); border: 1px solid var(--qqx-border-color); border-radius: var(--qqx-radius-lg); background: var(--qqx-bg-card); }
+.source-card--selected { border-color: var(--qqx-brand-color); box-shadow: 0 0 0 2px color-mix(in srgb, var(--qqx-brand-color) 16%, transparent); }
 .source-title { font-weight: var(--qqx-font-semibold); color: var(--qqx-text-primary); }
 .source-meta { margin-top: var(--qqx-space-sm); justify-content: flex-start; color: var(--qqx-text-secondary); font-size: var(--qqx-font-size-small); }
 .status-pill { padding: 4px 10px; border-radius: var(--qqx-radius-full); background: var(--qqx-bg-subtle); font-size: var(--qqx-font-size-small); }
 .status-pill[data-status="update-available"] { color: var(--qqx-warning); }
 .status-pill[data-status="up-to-date"] { color: var(--qqx-success); }
 .mapping-list, .diff-list { display: flex; flex-direction: column; gap: 6px; margin: var(--qqx-space-md) 0; color: var(--qqx-text-secondary); }
+.mapping-row { display: flex; align-items: center; gap: var(--qqx-space-sm); min-width: 0; }
+.entity-link, .skill-link { border: 0; padding: 0; background: transparent; color: var(--qqx-brand-color); cursor: pointer; font: inherit; }
+.entity-link:disabled, .skill-link:disabled { color: var(--qqx-text-tertiary); cursor: default; }
+.mapping-missing { color: var(--qqx-warning); font-size: var(--qqx-font-size-small); }
 .actions { justify-content: flex-end; }
 .preview-panel { margin-top: var(--qqx-space-md); padding-top: var(--qqx-space-md); border-top: 1px solid var(--qqx-border-color); }
 .preview-summary { justify-content: flex-start; flex-wrap: wrap; }
 .notice, .empty-state { padding: var(--qqx-space-md); border-radius: var(--qqx-radius-md); background: var(--qqx-bg-subtle); color: var(--qqx-text-secondary); }
 .notice--error { color: var(--qqx-error); }
 .notice--warning { color: var(--qqx-warning); }
+.identity-form { display: flex; flex-direction: column; gap: var(--qqx-space-md); }
+.identity-form p { margin: 0; color: var(--qqx-text-secondary); }
+.identity-form code { padding: var(--qqx-space-sm); border-radius: var(--qqx-radius-xs); background: var(--qqx-bg-subtle); color: var(--qqx-text-primary); }
 </style>
