@@ -128,8 +128,8 @@ def test_submodule_index_status_prefers_staged_gitlink(tmp_path, monkeypatch):
     def fake_run(cmd, cwd):
         if cmd == "git ls-files -s -- repos/demo":
             return "160000 feedbeeffeedbeeffeedbeeffeedbeeffeedbeef 0\trepos/demo"
-        if cmd == "git status --porcelain repos/demo":
-            return "M  repos/demo"
+        if cmd == "git diff --name-only HEAD -- repos/demo":
+            return "repos/demo"
         if cmd == "git rev-parse --short HEAD":
             return "feedbee"
         raise RuntimeError(f"unexpected command: {cmd}")
@@ -144,3 +144,26 @@ def test_submodule_index_status_prefers_staged_gitlink(tmp_path, monkeypatch):
         "indexBehind": 0,
         "indexDirty": True,
     }
+
+
+def test_submodule_index_status_ignores_dirty_submodule_worktree(
+    tmp_path, monkeypatch,
+):
+    """Submodule files do not represent a parent-repo gitlink change."""
+    submodule = tmp_path / "repos" / "demo"
+    submodule.mkdir(parents=True)
+
+    def fake_run(cmd, cwd):
+        if cmd == "git ls-files -s -- repos/demo":
+            return "160000 feedbeeffeedbeeffeedbeeffeedbeeffeedbeef 0\trepos/demo"
+        if cmd == "git diff --name-only HEAD -- repos/demo":
+            return ""
+        if cmd == "git rev-parse --short HEAD":
+            return "feedbee"
+        raise RuntimeError(f"unexpected command: {cmd}")
+
+    monkeypatch.setattr(registry, "_run", fake_run)
+
+    status = registry._get_submodule_index_status(tmp_path, "repos/demo")
+
+    assert status["indexDirty"] is False
