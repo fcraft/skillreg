@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import skillreg.config as cfgmod
+from skillreg import __version__
 from skillreg.server import app
 
 
@@ -25,6 +26,7 @@ def test_health_no_workspace(tmp_path, monkeypatch):
     assert r.status_code == 200
     data = r.json()
     assert data["status"] == "ok"
+    assert data["version"] == __version__
     assert data["workspace_path"] is None
     assert "message" in data and "workspace" in data["message"]
 
@@ -44,5 +46,6 @@ def test_health_with_workspace(tmp_path, monkeypatch):
     assert r.status_code == 200
     data = r.json()
     assert data["status"] == "ok"
+    assert data["version"] == __version__
     assert data["workspace_path"] == str(tmp_path / "my-workspace")
     assert "message" not in data

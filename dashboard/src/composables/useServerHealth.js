@@ -2,6 +2,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useData } from './useData.js'
 
 const isServerDown = ref(false)
+const backendVersion = ref(null)
 
 let timer = null
 let failCount = 0
@@ -20,6 +21,8 @@ async function ping() {
   try {
     const res = await fetch('/api/health')
     if (!res.ok) throw new Error('unhealthy')
+    const health = await res.json()
+    backendVersion.value = health.version || null
     if (failCount > 0) {
       failCount = 0
       if (isServerDown.value) {
@@ -28,6 +31,7 @@ async function ping() {
     }
     return true
   } catch {
+    backendVersion.value = null
     return false
   }
 }
@@ -103,5 +107,5 @@ export function useServerHealth() {
     document.removeEventListener('visibilitychange', handleVisibilityChange)
   })
 
-  return { isServerDown, ping }
+  return { isServerDown, backendVersion, ping }
 }
