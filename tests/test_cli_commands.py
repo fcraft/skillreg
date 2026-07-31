@@ -80,6 +80,27 @@ def test_register_list_convert_and_diff(tmp_path, monkeypatch):
     assert (workspace / "repos" / "demo-skill-cli" / "skill" / "demo-skill" / "SKILL.md").exists()
 
 
+def test_sync_execute_does_not_report_success_when_sync_fails(tmp_path, monkeypatch):
+    _configure(tmp_path, monkeypatch)
+    target = tmp_path / "target-skills"
+    monkeypatch.setattr(
+        sync_manager,
+        "execute_sync",
+        lambda *args, **kwargs: {
+            "success": False,
+            "stdout": "",
+            "stderr": "unrecognized arguments: --repo-root",
+        },
+    )
+
+    result = CliRunner().invoke(cli, ["sync", "execute", "--target", str(target)])
+
+    assert result.exit_code == 1
+    assert "✓ 同步完成" not in result.output
+    assert "✗ 同步失败" in result.output
+    assert "unrecognized arguments: --repo-root" in result.output
+
+
 def test_register_preserves_preexisting_staged_changes(tmp_path, monkeypatch):
     cfg_path = tmp_path / "config.json"
     monkeypatch.setattr(cfgmod, "CONFIG_FILE", cfg_path)

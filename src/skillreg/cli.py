@@ -512,7 +512,6 @@ def sync_execute(
                     target_item, dry_run=dry_run, skills=skills,
                 )
                 results.append({"target": target_item, **result})
-            click.echo(f"✓ 已同步项目组: {project_entry['name']}")
         else:
             if not target_path:
                 raise ValueError("缺少 --target 或 --project")
@@ -520,7 +519,6 @@ def sync_execute(
                 target_path, dry_run=dry_run, skills=skills,
             )
             results.append({"target": target_path, **result})
-            click.echo(f"✓ 同步{'预览' if dry_run else '完成'}")
     except (FileNotFoundError, ValueError) as e:
         click.echo(f"✗ 同步失败: {e}", err=True)
         _echo_workspace_summary(heading="同步失败时的 skillreg 上下文")
@@ -538,6 +536,12 @@ def sync_execute(
                 click.echo(f"    错误: {line}", err=True)
         if not result.get("success", False):
             failed = True
+    if failed:
+        click.echo("✗ 同步失败", err=True)
+    elif project_id:
+        click.echo(f"✓ 已同步项目组: {project_entry['name']}")
+    else:
+        click.echo(f"✓ 同步{'预览' if dry_run else '完成'}")
     _echo_workspace_summary(heading="执行同步后的 skillreg 上下文")
     if failed:
         raise SystemExit(1)
