@@ -314,8 +314,8 @@ def test_submodule_sync_pulls_remote_and_stages_parent_pointer(tmp_path, monkeyp
 
     def fake_run(cmd, cwd, timeout=30):
         calls.append((cmd, cwd, timeout))
-        if cmd == "git status --porcelain -- repos/demo":
-            return "M  repos/demo"
+        if cmd == "git diff --cached --name-only HEAD -- repos/demo":
+            return "repos/demo"
         if cmd.startswith("git status"):
             return ""
         if cmd.startswith("git rev-list"):
@@ -344,6 +344,58 @@ def test_submodule_sync_pulls_remote_and_stages_parent_pointer(tmp_path, monkeyp
         str(tmp_path),
         30,
     ) in calls
+
+
+def test_submodule_sync_skips_parent_commit_without_gitlink_change(
+    tmp_path, monkeypatch,
+):
+    """A dirty submodule worktree must not trigger an empty parent commit."""
+    _make_workspace(tmp_path, monkeypatch)
+    client = _client()
+    subdir = tmp_path / "repos" / "demo"
+    subdir.mkdir(parents=True)
+    calls = []
+
+    monkeypatch.setattr(
+        submodules_api, "_get_submodule_branch", lambda ws, path: "main",
+    )
+    monkeypatch.setattr(
+        submodules_api, "_is_head_detached", lambda ws, path: False,
+    )
+    monkeypatch.setattr(
+        submodules_api,
+        "_get_submodule_index_status",
+        lambda ws, path: {
+            "indexAhead": 0,
+            "indexBehind": 0,
+            "indexDirty": True,
+        },
+    )
+    monkeypatch.setattr(
+        submodules_api,
+        "get_submodule_status",
+        lambda ws, path, branch: {"syncState": "dirty", "branch": branch},
+    )
+
+    def fake_run(cmd, cwd, timeout=30):
+        calls.append((cmd, cwd, timeout))
+        if cmd == "git diff --cached --name-only HEAD -- repos/demo":
+            return ""
+        if cmd.startswith("git status"):
+            return "?? scratch.py"
+        if cmd.startswith("git rev-list"):
+            return "0\t0"
+        return ""
+
+    monkeypatch.setattr(submodules_api, "_run", fake_run)
+
+    response = client.post("/api/submodules/sync", json={"path": "repos/demo"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["parentPointerStaged"] is False
+    assert data["parentPointerCommitted"] is False
+    assert not any(cmd.startswith("git commit ") for cmd, _, _ in calls)
 
 
 def test_workspace_current_and_switch(tmp_path, monkeypatch):

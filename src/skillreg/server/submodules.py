@@ -8,6 +8,7 @@ from __future__ import annotations
 import subprocess
 import time
 from pathlib import Path
+from typing import Annotated
 
 from fastapi import APIRouter, Body, HTTPException
 from pydantic import BaseModel
@@ -15,12 +16,12 @@ from pydantic import BaseModel
 from ..config import load_config
 from ..services import importer
 from ..services.skill_registry import (
+    _get_submodule_branch,
+    _get_submodule_index_status,
+    _is_head_detached,
     clear_cache,
     get_submodule_status,
     read_submodule_configs,
-    _get_submodule_branch,
-    _is_head_detached,
-    _get_submodule_index_status,
 )
 
 router = APIRouter(prefix="/api/submodules", tags=["submodules"])
@@ -50,7 +51,7 @@ def _ws() -> Path:
 def _run(cmd: str, cwd: str, timeout: int = 30) -> str:
     result = subprocess.run(
         cmd, shell=True, capture_output=True, text=True,
-        cwd=cwd, timeout=timeout,
+        cwd=cwd, timeout=timeout, check=False,
     )
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or f"Command failed: {cmd}")
@@ -276,10 +277,12 @@ def sync_submodule(body: SyncBody):
         parent_pointer_committed = False
         if idx["indexBehind"] > 0 or idx["indexAhead"] > 0 or idx["indexDirty"]:
             _run(f"git add -- {path}", str(ws))
-            steps.append("stage-parent-pointer")
-            parent_pointer_staged = True
-            pointer_status = _run(f"git status --porcelain -- {path}", str(ws))
+            pointer_status = _run(
+                f"git diff --cached --name-only HEAD -- {path}", str(ws),
+            )
             if pointer_status:
+                steps.append("stage-parent-pointer")
+                parent_pointer_staged = True
                 _run(
                     "git commit "
                     f"-m {_shell_quote(f'dashboard: sync {path} submodule')} "
@@ -305,7 +308,7 @@ def sync_submodule(body: SyncBody):
 
 
 @router.post("/refresh")
-def refresh_submodule(body: dict | None = Body(default=None)):
+def refresh_submodule(body: Annotated[dict | None, Body()] = None):
     """Refresh one submodule, or all submodules when path is omitted."""
     ws = _ws()
     configs = read_submodule_configs(ws)

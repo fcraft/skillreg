@@ -57,7 +57,7 @@ def _run(cmd: str, cwd: str | None = None, timeout: int = 30) -> str:
     """Run a shell command and return stripped stdout. Raises on failure."""
     result = subprocess.run(
         cmd, shell=True, capture_output=True, text=True,
-        cwd=cwd, timeout=timeout,
+        cwd=cwd, timeout=timeout, check=False,
     )
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or f"Command failed: {cmd}")
@@ -331,11 +331,12 @@ def _get_submodule_index_status(
     if not index_ref or not full.is_dir():
         return {"indexRef": index_ref, "indexAhead": 0, "indexBehind": 0, "indexDirty": False}
 
-    # Detect uncommitted main-repo pointer changes (indexDirty)
+    # Detect only real parent-repo gitlink changes. ``git status`` also reports
+    # a submodule when its own worktree is dirty, which is a different state.
     index_dirty = False
     try:
         st = _run(
-            f"git status --porcelain {submodule_path}", cwd=str(workspace),
+            f"git diff --name-only HEAD -- {submodule_path}", cwd=str(workspace),
         )
         index_dirty = len(st) > 0
     except RuntimeError:
