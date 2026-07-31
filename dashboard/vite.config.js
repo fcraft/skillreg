@@ -1,5 +1,15 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { readFileSync } from 'node:fs'
+
+function readDashboardVersion() {
+  const pyprojectUrl = new URL('../pyproject.toml', import.meta.url)
+  const pyproject = readFileSync(pyprojectUrl, 'utf8')
+  const projectSection = pyproject.match(/\[project\]([\s\S]*?)(?=\n\[|$)/)
+  const version = projectSection?.[1].match(/^version\s*=\s*"([^"]+)"/m)?.[1]
+  if (!version) throw new Error('Unable to read dashboard version from pyproject.toml')
+  return version
+}
 
 function autoStartServer() {
   let childProc = null
@@ -112,6 +122,9 @@ function autoStartServer() {
 }
 
 export default defineConfig({
+  define: {
+    __SKILLREG_DASHBOARD_VERSION__: JSON.stringify(readDashboardVersion()),
+  },
   plugins: [vue(), autoStartServer()],
   server: {
     port: 17880,

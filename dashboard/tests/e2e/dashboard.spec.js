@@ -165,6 +165,10 @@ test('dashboard routes and migration exclusions work', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Agent Skills Dashboard' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Skills', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'demo-skill', exact: true })).toBeVisible()
+  await expect(page.locator('.version-status__summary')).toHaveText('版本一致')
+  const versions = await page.locator('.version-status__versions span').allTextContents()
+  expect(versions).toHaveLength(2)
+  expect(versions[0].replace('前端 ', '')).toBe(versions[1].replace('后端 ', ''))
 
   await expect(page.getByText('Hooks 管理')).toHaveCount(0)
   await expect(page.getByText('SSH 远程')).toHaveCount(0)

@@ -22,6 +22,13 @@
       </div>
     </template>
 
+    <template #user>
+      <VersionStatus
+        :backend-version="backendVersion"
+        :server-down="isServerDown"
+      />
+    </template>
+
     <template #header>
       <div class="header-content">
         <h1 class="header-title">Agent Skills Dashboard</h1>
@@ -151,6 +158,7 @@ import QModal from './components/QModal.vue'
 import QInput from './components/QInput.vue'
 import CommandPanel from './components/CommandPanel.vue'
 import WorkspaceOnboarding from './components/WorkspaceOnboarding.vue'
+import VersionStatus from './components/VersionStatus.vue'
 import { useToast } from './composables/useToast.js'
 import { useData } from './composables/useData.js'
 import { useSyncBridge } from './composables/useSyncBridge.js'
@@ -160,7 +168,7 @@ import { createWorkspace, fetchCurrentWorkspace, selectWorkspaceDirectory, switc
 
 const toast = useToast()
 const { state, loadData, loadExtended, refresh } = useData()
-const { isServerDown } = useServerHealth()
+const { isServerDown, backendVersion } = useServerHealth()
 const bannerDismissed = ref(false)
 const workspaceModalOpen = ref(false)
 const workspacePath = ref('')

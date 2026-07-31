@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from .. import __version__
 from ..config import CONFIG_FILE, load_config
 
 router = APIRouter(tags=["health"])
@@ -15,9 +16,14 @@ def health() -> dict:
     cfg = load_config()
     workspace = cfg.workspace_path
     if workspace:
-        return {"status": "ok", "workspace_path": workspace}
+        return {
+            "status": "ok",
+            "version": __version__,
+            "workspace_path": workspace,
+        }
     return {
         "status": "ok",
+        "version": __version__,
         "workspace_path": None,
         "message": (
             "workspace not configured; set workspace_path in "
