@@ -234,6 +234,24 @@ class TestSkillImport:
         content = (ws / "skills" / "force-skill" / "SKILL.md").read_text()
         assert "v2" in content
 
+    def test_import_force_from_registered_skill_preserves_source(self, tmp_path, monkeypatch):
+        ws = tmp_path / "workspace"
+        importer.create_workspace(str(ws))
+        skill_dir = ws / "skills" / "registered-skill"
+        skill_dir.mkdir()
+        skill_md = skill_dir / "SKILL.md"
+        original = "---\nname: registered-skill\n---\n\n# Keep me\n"
+        skill_md.write_text(original, encoding="utf-8")
+        (skill_dir / "tool.py").write_text("print('keep me')\n", encoding="utf-8")
+
+        _configure_workspace(ws, monkeypatch)
+        result = importer.import_skill(str(skill_dir), force=True)
+
+        assert result["name"] == "registered-skill"
+        assert result["filesCopied"] == 0
+        assert skill_md.read_text(encoding="utf-8") == original
+        assert (skill_dir / "tool.py").read_text(encoding="utf-8") == "print('keep me')\n"
+
 
 class TestZipImport:
     def test_extracts_zip(self, tmp_path):

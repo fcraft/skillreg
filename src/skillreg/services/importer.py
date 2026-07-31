@@ -322,12 +322,14 @@ def import_skill(
         raise ValueError(f"Invalid skill name: {name}")
 
     target_dir = ws / "skills" / name
+    source_is_target = src == target_dir.resolve()
     if target_dir.exists():
         if not force:
             raise ValueError(f"Skill '{name}' already exists at skills/{name}")
-        shutil.rmtree(target_dir)
+        if not source_is_target:
+            shutil.rmtree(target_dir)
 
-    files_copied = _copy_skill_files(src, target_dir)
+    files_copied = 0 if source_is_target else _copy_skill_files(src, target_dir)
 
     # Git commit in workspace
     _git_add_commit(ws, [f"skills/{name}"], f"skillreg: register '{name}'")
