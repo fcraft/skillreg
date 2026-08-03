@@ -187,6 +187,33 @@ test('dashboard routes and migration exclusions work', async ({ page }) => {
   await expect(page.getByText('暂无项目组')).toBeVisible()
 })
 
+test('target file management shows the contents of an existing target', async ({ page }) => {
+  const syncResponse = await page.request.post('/api/sync/execute', {
+    data: { target: 'claude-skills', skills: ['demo-skill'] },
+  })
+  expect(syncResponse.ok()).toBeTruthy()
+
+  await page.goto('/sync')
+  await expect(page.getByRole('heading', { name: 'Sync 工具' })).toBeVisible()
+  await page.getByRole('button', { name: '管理目标文件' }).click()
+
+  const modal = page.locator('.qqx-modal').filter({ hasText: '目标文件管理' })
+  await expect(modal).toBeVisible()
+  await expect(modal).toContainText('共 1 个 skill 目录')
+  await expect(modal.getByText('demo-skill', { exact: true })).toBeVisible()
+  await expect(modal).not.toContainText('目标目录不存在')
+
+  const row = modal.locator('.target-file-row').filter({ hasText: 'demo-skill' })
+  const badge = row.locator('.target-file-badge')
+  const action = row.locator('.target-file-actions .qqx-btn')
+  await expect(badge).toHaveCSS('height', '24px')
+  await expect(action).toHaveCSS('height', '24px')
+  const [badgeBox, actionBox] = await Promise.all([badge.boundingBox(), action.boundingBox()])
+  expect(badgeBox).not.toBeNull()
+  expect(actionBox).not.toBeNull()
+  expect(Math.abs((badgeBox.y + badgeBox.height / 2) - (actionBox.y + actionBox.height / 2))).toBeLessThanOrEqual(1)
+})
+
 test('spa fallback supports direct route entry', async ({ page }) => {
   await page.goto('/sync')
   await expect(page.getByRole('heading', { name: 'Sync 工具' })).toBeVisible()

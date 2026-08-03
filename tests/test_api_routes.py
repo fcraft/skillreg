@@ -169,6 +169,28 @@ def test_sync_targets(tmp_path, monkeypatch):
     assert isinstance(r.json(), list)
 
 
+def test_target_skills_reports_path_and_existence(tmp_path, monkeypatch):
+    """Target file management receives enough metadata for both path states."""
+    _make_workspace(tmp_path, monkeypatch)
+    existing_target = tmp_path / "targets" / "agents"
+    existing_target.mkdir(parents=True)
+    cfg = cfgmod.load_config()
+    cfg.targets = [str(existing_target)]
+    cfgmod.save_config(cfg)
+
+    client = _client()
+    existing = client.get("/api/sync/target-skills", params={"target": str(existing_target)})
+    assert existing.status_code == 200
+    assert existing.json()["path"] == str(existing_target)
+    assert existing.json()["exists"] is True
+
+    missing_target = tmp_path / "targets" / "missing"
+    missing = client.get("/api/sync/target-skills", params={"target": str(missing_target)})
+    assert missing.status_code == 200
+    assert missing.json()["path"] == str(missing_target)
+    assert missing.json()["exists"] is False
+
+
 def test_update_target_skills_persists_and_filters_sync(tmp_path, monkeypatch):
     """PUT /api/sync/targets/:name/skills stores a whitelist used by sync."""
     _make_workspace(tmp_path, monkeypatch)
