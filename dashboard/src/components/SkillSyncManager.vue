@@ -2187,8 +2187,13 @@ async function addDiscoveredTargets() {
 }
 
 .target-file-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  box-sizing: border-box;
   font-size: 11px;
-  padding: 2px 8px;
+  line-height: 1;
+  padding: 0 8px;
   border-radius: var(--qqx-radius-full);
   flex-shrink: 0;
 }
@@ -2204,7 +2209,17 @@ async function addDiscoveredTargets() {
 }
 
 .target-file-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 56px;
   flex-shrink: 0;
+}
+
+.target-file-actions :deep(.qqx-btn) {
+  min-width: 56px;
+  height: 24px;
+  box-sizing: border-box;
 }
 
 /* Confirm Remove Unmanaged */

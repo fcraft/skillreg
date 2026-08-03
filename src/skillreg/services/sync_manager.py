@@ -352,7 +352,8 @@ def list_target_skills(target: str) -> dict:
     target_path = Path(target_config_path).expanduser()
     source_lookup = {item["name"]: item for item in get_all(workspace)["skills"]}
     skills: list[dict] = []
-    if target_path.is_dir():
+    target_exists = target_path.is_dir()
+    if target_exists:
         for entry in sorted(target_path.iterdir(), key=lambda item: item.name.lower()):
             if not entry.is_dir():
                 continue
@@ -368,6 +369,8 @@ def list_target_skills(target: str) -> dict:
             })
     return {
         "target": str(target_path),
+        "path": str(target_path),
+        "exists": target_exists,
         "configuredSkills": _target_filter_for(cfg, target_config_path),
         "skills": skills,
     }
