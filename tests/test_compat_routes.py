@@ -90,3 +90,27 @@ def test_compat_routes_cover_dashboard_legacy_paths(tmp_path, monkeypatch):
     legacy_sync_resp = client.post("/api/sync-skills", params={"target": str(target)})
     assert legacy_sync_resp.status_code == 200
     assert legacy_sync_resp.json()["success"] is True
+
+
+def test_legacy_sync_skills_route_empty_workspace_noop(tmp_path, monkeypatch):
+    """/api/sync-skills on an empty workspace (no infra/) is a success no-op."""
+    workspace = tmp_path / "workspace"
+    (workspace / "skills").mkdir(parents=True)
+    (workspace / "repos").mkdir(parents=True)
+
+    target = tmp_path / "target" / "skills"
+    target.mkdir(parents=True)
+
+    cfg_path = tmp_path / "config.json"
+    monkeypatch.setattr(cfgmod, "CONFIG_FILE", cfg_path)
+    monkeypatch.setattr(cfgmod, "CONFIG_DIR", cfg_path.parent)
+    cfg = cfgmod.load_config()
+    cfg.workspace_path = str(workspace)
+    cfg.targets = [str(target)]
+    cfgmod.save_config(cfg)
+
+    resp = _client().post("/api/sync-skills", params={"target": str(target)})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["success"] is True
+    assert "No skills to sync" in data["stdout"]
