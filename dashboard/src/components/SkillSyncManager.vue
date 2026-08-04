@@ -1932,22 +1932,22 @@ async function addDiscoveredTargets() {
 .skill-list {
   display: flex;
   flex-direction: column;
+  gap: var(--qqx-space-xs);
 }
 
 .skill-list-row {
   display: flex;
   align-items: center;
   gap: var(--qqx-space-md);
-  padding: var(--qqx-space-sm) var(--qqx-space-md);
-  transition: background var(--qqx-transition);
+  padding: var(--qqx-space-md);
+  border-radius: var(--qqx-radius-md);
+  transition: background-color var(--qqx-transition), box-shadow var(--qqx-transition);
 }
 
-.skill-list-row:hover {
+.skill-list-row:hover,
+.skill-list-row:focus-within {
   background: var(--qqx-bg-hover);
-}
-
-.skill-list-row + .skill-list-row {
-  border-top: 1px solid var(--qqx-border-color);
+  box-shadow: inset 0 0 0 1px var(--qqx-border-color);
 }
 
 .skill-list-name {
@@ -1994,7 +1994,7 @@ async function addDiscoveredTargets() {
 
 .skill-list-actions {
   display: flex;
-  gap: var(--qqx-space-xs);
+  gap: var(--qqx-space-sm);
   flex-shrink: 0;
 }
 
