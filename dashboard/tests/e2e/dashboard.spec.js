@@ -191,8 +191,8 @@ test('sync skill rows have a rounded hover surface and breathing room', async ({
   await page.goto('/sync')
   await expect(page.getByRole('heading', { name: 'Sync 工具' })).toBeVisible()
 
+  const sectionHeader = page.locator('.section-header').first()
   const firstRow = page.locator('.skill-list-row').first()
-  const secondRow = page.locator('.skill-list-row').nth(1)
   await firstRow.hover()
 
   const rowStyle = await firstRow.evaluate((element) => {
@@ -200,21 +200,24 @@ test('sync skill rows have a rounded hover surface and breathing room', async ({
     return {
       borderRadius: style.borderRadius,
       radiusToken: style.getPropertyValue('--qqx-radius-md').trim(),
-      gap: style.gap,
-      spacingToken: style.getPropertyValue('--qqx-space-md').trim(),
-      paddingTop: style.paddingTop,
     }
   })
   expect(rowStyle.borderRadius).toBe(rowStyle.radiusToken)
-  expect(rowStyle.gap).toBe(rowStyle.spacingToken)
-  expect(rowStyle.paddingTop).toBe(rowStyle.spacingToken)
   await expect.poll(() => firstRow.evaluate((element) => getComputedStyle(element).backgroundColor))
     .not.toBe('rgba(0, 0, 0, 0)')
 
-  const [firstBox, secondBox] = await Promise.all([firstRow.boundingBox(), secondRow.boundingBox()])
+  const [headerBox, firstBox] = await Promise.all([sectionHeader.boundingBox(), firstRow.boundingBox()])
+  const headerSpacing = await sectionHeader.evaluate((element) => {
+    const style = getComputedStyle(element)
+    return {
+      marginBottom: style.marginBottom,
+      spacingToken: style.getPropertyValue('--qqx-space-md').trim(),
+    }
+  })
+  expect(headerSpacing.marginBottom).toBe(headerSpacing.spacingToken)
+  expect(headerBox).not.toBeNull()
   expect(firstBox).not.toBeNull()
-  expect(secondBox).not.toBeNull()
-  expect(secondBox.y - (firstBox.y + firstBox.height)).toBeGreaterThanOrEqual(4)
+  expect(firstBox.y - (headerBox.y + headerBox.height)).toBeGreaterThanOrEqual(12)
 })
 
 test('target file management shows the contents of an existing target', async ({ page }) => {
