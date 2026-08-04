@@ -1,7 +1,7 @@
 """Sync manager service.
 
 Handles target configuration CRUD, project registry, and sync execution.
-Delegates actual sync logic to ``sync-skills.py`` via subprocess.
+Copies selected skills directly from the workspace into sync targets.
 """
 
 from __future__ import annotations
@@ -9,7 +9,6 @@ from __future__ import annotations
 import filecmp
 import json
 import shutil
-import subprocess
 import uuid
 from pathlib import Path
 
@@ -263,10 +262,12 @@ def delete_project(pid: str) -> None:
 
 
 def execute_sync(target: str, dry_run: bool = False, skills: list[str] | None = None) -> dict:
-    """Execute sync via sync-skills.py subprocess.
+    """Execute sync from the workspace to a target directory.
 
-    In v1 this delegates to the sync-skills.py script. Once sync-skills.py
-    is adapted for workspace paths, this will use the workspace path from config.
+    Native copy is the only execution path: each selected skill is copied
+    directly from the workspace (``skills/`` / ``repos/``) into the target.
+    When no skill matches, the call is a no-op that returns success with an
+    explainable message; it never falls back to a legacy ``infra/sync-skills.py``.
     """
     cfg = load_config()
     workspace = _workspace_from_config(cfg)
@@ -275,6 +276,17 @@ def execute_sync(target: str, dry_run: bool = False, skills: list[str] | None = 
     target_path.mkdir(parents=True, exist_ok=True)
     selected_names = skills if skills is not None else _target_filter_for(cfg, target_config_path)
     selected_skills = _select_source_skills(workspace, selected_names or None)
+
+    if not selected_skills:
+        if selected_names:
+            reason = f"no matching skills in workspace: {', '.join(sorted(selected_names))}"
+        else:
+            reason = "workspace has no skills"
+        return {
+            "success": True,
+            "stdout": f"No skills to sync ({reason})",
+            "stderr": "",
+        }
 
     if dry_run:
         return {
@@ -296,38 +308,11 @@ def execute_sync(target: str, dry_run: bool = False, skills: list[str] | None = 
         )
         copied += 1
 
-    if copied > 0:
-        return {
-            "success": True,
-            "stdout": f"Synced {copied} skill(s) to {target_path}",
-            "stderr": "",
-        }
-
-    # Build the sync command
-    sync_script = _find_sync_script()
-    args = [
-        "python3", str(sync_script),
-        "--target", str(target_path),
-        "--repo-root", str(workspace),
-    ]
-    if dry_run:
-        args.append("--dry-run")
-    if selected_names:
-        args.extend(selected_names)
-
-    try:
-        result = subprocess.run(
-            args, capture_output=True, text=True, timeout=60,
-        )
-        return {
-            "success": result.returncode == 0,
-            "stdout": result.stdout,
-            "stderr": result.stderr,
-        }
-    except subprocess.TimeoutExpired:
-        return {"success": False, "stdout": "", "stderr": "Sync timed out after 60s"}
-    except FileNotFoundError:
-        return {"success": False, "stdout": "", "stderr": "sync-skills.py not found"}
+    return {
+        "success": True,
+        "stdout": f"Synced {copied} skill(s) to {target_path}",
+        "stderr": "",
+    }
 
 
 def get_skill_presence(skill: str) -> dict:
@@ -429,18 +414,6 @@ def get_target_file(skill: str, target: str, rel_path: str) -> dict:
         result["content"] = content
         result["language"] = file_path.suffix.lstrip(".") or "text"
     return result
-
-
-def _find_sync_script() -> Path:
-    """Find the sync-skills.py script."""
-    candidates = [
-        Path(__file__).resolve().parents[3] / "infra" / "sync-skills.py",
-        Path.cwd() / "infra" / "sync-skills.py",
-    ]
-    for path in candidates:
-        if path.exists():
-            return path
-    raise FileNotFoundError("sync-skills.py not found in any expected location")
 
 
 # ── agent dir discovery ────────────────────────────────────────────────────

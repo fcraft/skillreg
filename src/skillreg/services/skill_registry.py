@@ -36,7 +36,7 @@ _KNOWN_DEPENDENCIES: list[dict[str, str]] = [
     {"from": "ntcompose-build-page", "to": "ntdev-build", "type": "depends-on"},
 ]
 
-# Agent conventions (same as sync-skills.py)
+# Agent conventions (same as the sync target discovery)
 _AGENT_CONVENTIONS: list[tuple[str, str]] = [
     (".claude/skills", "claude"),
     (".tclaude/skills", "tclaude"),
