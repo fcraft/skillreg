@@ -187,6 +187,36 @@ test('dashboard routes and migration exclusions work', async ({ page }) => {
   await expect(page.getByText('暂无项目组')).toBeVisible()
 })
 
+test('sync skill rows have a rounded hover surface and breathing room', async ({ page }) => {
+  await page.goto('/sync')
+  await expect(page.getByRole('heading', { name: 'Sync 工具' })).toBeVisible()
+
+  const firstRow = page.locator('.skill-list-row').first()
+  const secondRow = page.locator('.skill-list-row').nth(1)
+  await firstRow.hover()
+
+  const rowStyle = await firstRow.evaluate((element) => {
+    const style = getComputedStyle(element)
+    return {
+      borderRadius: style.borderRadius,
+      radiusToken: style.getPropertyValue('--qqx-radius-md').trim(),
+      gap: style.gap,
+      spacingToken: style.getPropertyValue('--qqx-space-md').trim(),
+      paddingTop: style.paddingTop,
+    }
+  })
+  expect(rowStyle.borderRadius).toBe(rowStyle.radiusToken)
+  expect(rowStyle.gap).toBe(rowStyle.spacingToken)
+  expect(rowStyle.paddingTop).toBe(rowStyle.spacingToken)
+  await expect.poll(() => firstRow.evaluate((element) => getComputedStyle(element).backgroundColor))
+    .not.toBe('rgba(0, 0, 0, 0)')
+
+  const [firstBox, secondBox] = await Promise.all([firstRow.boundingBox(), secondRow.boundingBox()])
+  expect(firstBox).not.toBeNull()
+  expect(secondBox).not.toBeNull()
+  expect(secondBox.y - (firstBox.y + firstBox.height)).toBeGreaterThanOrEqual(4)
+})
+
 test('target file management shows the contents of an existing target', async ({ page }) => {
   const syncResponse = await page.request.post('/api/sync/execute', {
     data: { target: 'claude-skills', skills: ['demo-skill'] },
