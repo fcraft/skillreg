@@ -23,6 +23,7 @@ export function useModalFocus(isOpen, panel, close) {
     const activeDialog = event.target.closest?.('[role="dialog"]')
     if (activeDialog && activeDialog !== panel.value && !panel.value.contains(activeDialog)) return
     if (event.key === 'Escape') {
+      if (event.target.matches?.('[role="combobox"][aria-expanded="true"]')) return
       event.preventDefault(); event.stopImmediatePropagation(); close()
     } else if (event.key === 'Tab') {
       const items = [...panel.value.querySelectorAll(focusable)].filter(item => !item.disabled && !item.closest('[inert]') && item.getClientRects().length)
