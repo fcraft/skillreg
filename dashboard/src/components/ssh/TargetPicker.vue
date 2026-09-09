@@ -2,7 +2,7 @@
   <QModal :model-value="modelValue" title="添加远端安装目标" width="580px" @update:model-value="$emit('update:modelValue', $event)">
     <div class="ssh-form">
       <p class="ssh-muted">{{ connection?.name }} · {{ connection?.host }}</p>
-      <label>安装范围<select v-model="scope" class="ssh-input" @change="reset"><option value="global">全局 Agent</option><option value="project">项目内 Agent</option></select></label>
+      <QSelect v-model="scope" label="安装范围" :options="[{ value: 'global', label: '全局 Agent' }, { value: 'project', label: '项目内 Agent' }]" @change="reset" />
       <label v-if="scope === 'project'">项目根目录<input v-model="root" class="ssh-input" placeholder="/path/to/project" @input="reset" /></label>
       <QButton type="secondary" :disabled="busy || (scope === 'project' && !root)" @click="discover">{{ busy ? '发现中…' : '发现 Agent 目录' }}</QButton>
       <div v-if="discovered" class="ssh-target-options">
@@ -24,6 +24,7 @@ import QModal from '../QModal.vue'
 import QButton from '../QButton.vue'
 import QDisclosure from '../QDisclosure.vue'
 import QCheckbox from '../QCheckbox.vue'
+import QSelect from '../QSelect.vue'
 import { discoverTargets, addTarget } from '../../api/remoteSync.js'
 const props = defineProps({ modelValue: Boolean, connection: Object })
 const emit = defineEmits(['update:modelValue', 'saved'])
