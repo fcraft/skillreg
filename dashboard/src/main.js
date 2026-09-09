@@ -3,6 +3,7 @@ import App from './App.vue'
 import router from './router'
 import './styles/variables.css'
 import './styles/global.css'
+import './styles/interaction.css'
 
 import QButton from './components/QButton.vue'
 import QCard from './components/QCard.vue'

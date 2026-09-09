@@ -2,12 +2,12 @@
   <Teleport to="body">
     <Transition name="qqx-modal">
       <div v-if="modelValue" class="qqx-modal-overlay" @click.self="handleOverlayClick">
-        <div class="qqx-modal" :style="{ width: width }">
+        <div ref="panel" class="qqx-modal" :style="{ width: width }" role="dialog" aria-modal="true" :aria-label="title || undefined" tabindex="-1">
           <div class="qqx-modal__header">
             <slot name="title">
               <h2 class="qqx-modal__title">{{ title }}</h2>
             </slot>
-            <button class="qqx-modal__close" @click="close">
+            <button class="qqx-modal__close q-press" aria-label="关闭弹窗" @click="close">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
               </svg>
@@ -26,6 +26,8 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
+import { useModalFocus } from '../composables/useModalFocus.js'
 const props = defineProps({
   modelValue: {
     type: Boolean,
@@ -46,6 +48,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue'])
+const panel = ref(null)
+useModalFocus(() => props.modelValue, panel, close)
 
 function close() {
   emit('update:modelValue', false)
@@ -71,6 +75,7 @@ function handleOverlayClick() {
 }
 
 .qqx-modal {
+  outline: none;
   background: var(--qqx-modal-bg);
   border: 1px solid var(--qqx-border-color);
   border-radius: var(--qqx-radius-lg);
@@ -104,7 +109,6 @@ function handleOverlayClick() {
   background: transparent;
   color: var(--qqx-text-secondary);
   border-radius: var(--qqx-radius-xs);
-  transition: all var(--qqx-transition);
 }
 
 .qqx-modal__close:hover {
@@ -155,5 +159,14 @@ function handleOverlayClick() {
     width: calc(100% - 32px) !important;
     max-width: none;
   }
+}
+@media (prefers-reduced-motion: reduce) {
+  .qqx-modal-enter-active, .qqx-modal-leave-active,
+  .qqx-modal-enter-active .qqx-modal, .qqx-modal-leave-active .qqx-modal { transition: opacity 80ms linear; }
+  .qqx-modal-enter-from .qqx-modal, .qqx-modal-leave-to .qqx-modal { transform: none; }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .qqx-modal-overlay { backdrop-filter: none; background: var(--qqx-bg-backdrop); }
+  .qqx-modal { border: 2px solid var(--qqx-text-secondary); }
 }
 </style>

@@ -297,7 +297,8 @@ test('command panel ranks global results and supports keyboard navigation', asyn
 
   await page.keyboard.press('ControlOrMeta+K')
   await search.fill('同步')
-  await expect(dialog.getByRole('option').first().locator('.command-item-title')).toHaveText('Sync 工具')
+  await expect(dialog.getByRole('option').first().locator('.command-item-title')).toHaveText('SSH 同步')
+  await expect(dialog.getByRole('option').filter({ has: page.locator('.command-item-title', { hasText: /^Sync 工具$/ }) })).toBeVisible()
 
   await search.fill('mattpocock')
   await expect(dialog.getByRole('option').first().locator('.command-item-title')).toHaveText('ask-matt')

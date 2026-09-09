@@ -52,6 +52,11 @@ To import NPM skill packages, run `skillreg source npm -h` for preview, import,
 and update commands. skillreg downloads and verifies registry artifacts without
 running `npm install` or lifecycle scripts.
 
+For remote installation, open **SSH Sync** in the Dashboard, add a connection,
+select an agent or project skill directory, preview changes, and confirm the run.
+Execution history is available afterward. For CLI options, use `skillreg connection -h`
+and `skillreg sync -h`. See the [SSH sync guide (Chinese)](ssh-sync.md) for prerequisites and examples.
+
 ## Development
 
 ```bash

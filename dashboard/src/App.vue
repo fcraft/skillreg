@@ -5,6 +5,7 @@
         <div class="sidebar-section-title">概览</div>
         <NavItem to="/skills" :icon="Zap" label="Skill 列表" />
         <NavItem to="/sync" :icon="RefreshCw" label="Sync 工具" />
+        <NavItem to="/ssh" :icon="Server" label="SSH 同步" />
         <NavItem to="/projects" :icon="FolderKanban" label="项目组" />
         <NavItem to="/repos" :icon="Package" label="仓库状态" />
         <NavItem to="/sources" :icon="PackageSearch" label="NPM 来源" />
@@ -146,7 +147,7 @@
 <script setup>
 import { onMounted, watch, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Zap, Package, PackageSearch, RefreshCw, GitGraph, GitCommit, FolderKanban, Palette, FolderPlus, FolderOpen } from 'lucide-vue-next'
+import { Zap, Package, PackageSearch, RefreshCw, GitGraph, GitCommit, FolderKanban, Palette, FolderPlus, FolderOpen, Server } from 'lucide-vue-next'
 import QLayout from './components/QLayout.vue'
 import QButton from './components/QButton.vue'
 import QThemeSwitch from './components/QThemeSwitch.vue'
@@ -202,6 +203,7 @@ const navigationCommands = [
   { id: 'nav-repos', title: '仓库状态', description: '查看子模块状态', keywords: ['repo', 'repository', 'submodule', '子模块'], icon: Package, path: '/repos' },
   { id: 'nav-sources', title: 'NPM 来源', description: '检查和更新 NPM 来源', keywords: ['npm', 'source', '来源', '更新'], icon: PackageSearch, path: '/sources' },
   { id: 'nav-sync', title: 'Sync 工具', description: '管理同步目标与状态', keywords: ['同步', '安装', 'target', '目标'], icon: RefreshCw, path: '/sync' },
+  { id: 'nav-ssh', title: 'SSH 同步', description: '连接开发机并同步 Skill', keywords: ['ssh', '远程', '连接', '安装'], icon: Server, path: '/ssh' },
   { id: 'nav-projects', title: '项目组', description: '管理项目组', keywords: ['project', '分组'], icon: FolderKanban, path: '/projects' },
   { id: 'nav-graph', title: '依赖关系图', description: '查看 Skill 依赖图', keywords: ['graph', '依赖', '关系', '拓扑'], icon: GitGraph, path: '/graph' },
   { id: 'nav-logs', title: '提交记录', description: '查看 Git 提交历史', keywords: ['git', 'log', 'history', '历史'], icon: GitCommit, path: '/logs' },

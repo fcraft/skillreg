@@ -16,6 +16,8 @@ Exclude rules and manifest settings stay code-internal (not in this file).
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -23,7 +25,7 @@ from pydantic import BaseModel, Field
 
 # --- locations -------------------------------------------------------------
 
-CONFIG_DIR: Path = Path.home() / ".skillreg"
+CONFIG_DIR: Path = Path(os.environ.get("SKILLREG_CONFIG_DIR", Path.home() / ".skillreg")).expanduser()
 CONFIG_FILE: Path = CONFIG_DIR / "config.json"
 
 
@@ -38,7 +40,7 @@ class SkillregConfig(BaseModel):
         description="Absolute path to the workspace repo (skills storage). "
         "null until the user configures it.",
     )
-    targets: List[str] = Field(
+    targets: List[Any] = Field(
         default_factory=list,
         description="Install targets (agent skill dirs), e.g. ~/.claude/skills.",
     )
@@ -84,4 +86,12 @@ def save_config(cfg: SkillregConfig, path: Optional[Path] = None) -> None:
     if path is None:
         path = CONFIG_FILE
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(cfg.model_dump_json(indent=2), encoding="utf-8")
+    fd, temporary = tempfile.mkstemp(prefix=".config-", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            stream.write(cfg.model_dump_json(indent=2))
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        Path(temporary).unlink(missing_ok=True)

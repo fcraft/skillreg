@@ -5,7 +5,8 @@
         v-for="tab in tabs"
         :key="tab.key"
         :ref="(el) => setTabRef(tab.key, el)"
-        :class="['qqx-tabs__item', { 'qqx-tabs__item--active': modelValue === tab.key }]"
+        :class="['qqx-tabs__item', 'q-press', { 'qqx-tabs__item--active': modelValue === tab.key }]"
+        :aria-pressed="modelValue === tab.key"
         @click="switchTab(tab.key)"
       >
         {{ tab.label }}
@@ -90,7 +91,6 @@ onMounted(() => {
   border: none;
   cursor: pointer;
   font-family: inherit;
-  transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .qqx-tabs__item:not(.qqx-tabs__item--active):hover {
@@ -112,7 +112,8 @@ onMounted(() => {
               width 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.qqx-tabs__content {
-  /* Slide-up animation applied via key + class */
+@media (prefers-reduced-motion: reduce) {
+  .qqx-tabs__content { animation: none; }
+  .qqx-tabs__indicator { transition: none; }
 }
 </style>

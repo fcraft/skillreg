@@ -87,8 +87,9 @@ defineEmits(['update:modelValue'])
   background: var(--qqx-bg-card);
   transition: border-color var(--qqx-transition),
               background var(--qqx-transition),
-              box-shadow var(--qqx-transition);
+              box-shadow var(--qqx-transition), transform 150ms ease-out;
 }
+.q-checkbox:active:not(.q-checkbox--disabled) .q-checkbox__visual { transform: scale(0.9); transition-duration: 100ms; }
 
 /* Size: md (18px) */
 .q-checkbox--md .q-checkbox__visual {
@@ -140,5 +141,11 @@ defineEmits(['update:modelValue'])
 @keyframes q-check-pop {
   from { transform: scale(0); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
+}
+@media (pointer: coarse) { .q-checkbox { min-height: 40px; } }
+@media (prefers-reduced-motion: reduce) {
+  .q-checkbox__visual { transition: none; }
+  .q-checkbox:active:not(.q-checkbox--disabled) .q-checkbox__visual { transform: none; }
+  .q-checkbox__check { animation: none; }
 }
 </style>

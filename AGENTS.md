@@ -74,6 +74,19 @@ API/backend 当前覆盖：
 
 Dashboard 是人类用户的主要操作入口；CLI 是 agent 自动化闭环入口。
 
+SSH 同步入口为 Dashboard `/ssh`，以及 CLI `connection`、`target discover`、
+`target add --connection`、`sync preview`、`sync execute --target-id|--preview-id`、
+`sync run/history/retry/cancel`、`sync status --target-id`。具体参数以 help 为准，
+前置条件和状态边界见 `docs/ssh-sync.md`
+
+已保存目标的轻量目录探测与按需文档读取由 `sync_inventory.py` 提供，CLI 为
+`target inventory <id>` 和 `target read-skill <id> <name>`。Dashboard 添加目标后
+依次探测新增目录；其他目标按需探测。目录列表不递归读取内容，也不代表同步状态
+
+`services/sync_files.py` 同时作为 SSH 上传的无依赖 worker，必须保持 Python 3.6
+语法及标准库兼容。`ssh_connections.py` 管连接与传输，`sync_targets.py` 管稳定目标
+ID，`sync_runs.py` 管预览、SQLite 执行记录和观察结果；取消请求不能被进度更新覆盖
+
 ## 代码组织
 
 - `src/skillreg/cli.py`：CLI 入口和命令封装。

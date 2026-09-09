@@ -7,6 +7,7 @@ import GitLog from '../components/GitLog.vue'
 import ProjectManager from '../components/ProjectManager.vue'
 import ComponentPlayground from '../components/ComponentPlayground.vue'
 import SourceManager from '../components/SourceManager.vue'
+import SshView from '../views/SshView.vue'
 
 const routes = [
   { path: '/', redirect: '/skills' },
@@ -14,6 +15,7 @@ const routes = [
   { path: '/repos', name: 'repos', component: SubmoduleStatus },
   { path: '/sources', name: 'sources', component: SourceManager },
   { path: '/sync', name: 'sync', component: SkillSyncManager },
+  { path: '/ssh', name: 'ssh', component: SshView },
   { path: '/projects', name: 'projects', component: ProjectManager },
   { path: '/graph', name: 'graph', component: DependencyGraph },
   { path: '/logs', name: 'logs', component: GitLog },

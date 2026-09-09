@@ -1,5 +1,5 @@
 <template>
-  <QModal v-model="open" width="820px" class="sdm-modal">
+  <QModal v-model="open" :title="skill?.name || 'Skill 详情'" width="820px" class="sdm-modal">
     <template #title>
       <div class="sdm-header-row">
         <h2 class="sdm-header-title">{{ skill?.name || 'Skill 详情' }}</h2>
@@ -12,7 +12,8 @@
       <div class="sdm-layout">
         <nav class="sdm-sidebar">
           <button v-for="tab in tabs" :key="tab.key"
-            :class="['sdm-sidebar-item', { 'sdm-sidebar-item--active': activeTab === tab.key }]"
+            :class="['sdm-sidebar-item', 'q-press', { 'sdm-sidebar-item--active': activeTab === tab.key }]"
+            :aria-pressed="activeTab === tab.key"
             @click="activeTab = tab.key">
             {{ tab.label }}
           </button>
@@ -43,13 +44,13 @@
           </div>
           <div v-if="skill.source" class="detail-row">
             <span class="detail-label">NPM 来源</span>
-            <button class="detail-link" @click="openSource">
+            <button class="detail-link q-press" @click="openSource">
               {{ skill.source.package }}@{{ skill.source.resolvedVersion }} →
             </button>
           </div>
           <div v-if="skill.repositoryPath" class="detail-row">
             <span class="detail-label">所属仓库</span>
-            <button class="detail-link" @click="openRepository">
+            <button class="detail-link q-press" @click="openRepository">
               {{ skill.repositoryPath.replace(/^repos\//, '') }} →
             </button>
           </div>
@@ -60,9 +61,12 @@
       <!-- Tab: 安装 -->
       <div v-else-if="activeTab === 'install'" key="install" class="sdm-tab-content">
         <div class="im-tabs">
-          <button :class="['im-tab', { 'im-tab--active': installSubTab === 'targets' }]" @click="installSubTab = 'targets'">目标</button>
-          <button :class="['im-tab', { 'im-tab--active': installSubTab === 'projects' }]" @click="installSubTab = 'projects'">项目组</button>
+          <button :class="['im-tab', 'q-press', { 'im-tab--active': installSubTab === 'targets' }]" :aria-pressed="installSubTab === 'targets'" @click="installSubTab = 'targets'">目标</button>
+          <button :class="['im-tab', 'q-press', { 'im-tab--active': installSubTab === 'projects' }]" :aria-pressed="installSubTab === 'projects'" @click="installSubTab = 'projects'">项目组</button>
+          <button :class="['im-tab', 'q-press', { 'im-tab--active': installSubTab === 'ssh' }]" :aria-pressed="installSubTab === 'ssh'" @click="installSubTab = 'ssh'">SSH</button>
         </div>
+
+        <SkillSshInstall v-if="installSubTab === 'ssh'" :key="skill.name" :skill-name="skill.name" @manage="close(); router.push('/ssh')" />
 
         <!-- Sub Tab: 目标 -->
         <div v-if="installSubTab === 'targets'" class="im-body">
@@ -115,7 +119,7 @@
         </div>
 
         <!-- Custom path -->
-        <div class="im-custom">
+        <div v-if="installSubTab !== 'ssh'" class="im-custom">
           <div class="im-custom-label">自定义目录</div>
           <div class="im-custom-row">
             <input v-model="customPath" class="im-custom-input" placeholder="输入目录路径..." @keydown.enter="doInstallCustom" />
@@ -232,6 +236,7 @@ import QModal from './QModal.vue'
 import QButton from './QButton.vue'
 import QDiffViewer from './QDiffViewer.vue'
 import SkillDetailDrawer from './SkillDetailDrawer.vue'
+import SkillSshInstall from './ssh/SkillSshInstall.vue'
 import { useSkillDetail } from '../composables/useSkillDetail.js'
 import { useSyncBridge } from '../composables/useSyncBridge.js'
 import { useToast } from '../composables/useToast.js'
@@ -343,11 +348,6 @@ function statusLabel(status) {
 
 // ── Install: watch for tab switch to lazy-load ──
 watch(() => state.activeTab, async (tab) => {
-  if (tab === 'install' || tab === 'sync') {
-    if (!syncState.loaded) {
-      await loadSyncStatus()
-    }
-  }
   if (tab === 'install') {
     // Reset install state
     installError.value = ''
@@ -357,6 +357,9 @@ watch(() => state.activeTab, async (tab) => {
     customPath.value = ''
     discoveredMap.value = {}
     loadProjects()
+  }
+  if ((tab === 'install' || tab === 'sync') && !syncState.loaded) {
+    await loadSyncStatus()
   }
   if (tab === 'sync') {
     // Lightweight per-skill refresh — only updates this skill's status entries
@@ -662,7 +665,13 @@ function closeFilePreview() {
 
 .sdm-tab-fade-leave-to {
   opacity: 0;
-  transform: translateY(-4px);
+  transform: translateY(6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sdm-tab-fade-enter-active, .sdm-tab-fade-leave-active { transition: opacity 80ms linear; }
+  .sdm-tab-fade-enter-from, .sdm-tab-fade-leave-to { transform: none; }
+  .im-chevron { transition: none; }
 }
 
 /* Top tabs (tablet/mobile only) */

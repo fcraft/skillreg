@@ -1,0 +1,27 @@
+.q-press {
+  touch-action: manipulation;
+  transition: color var(--qqx-transition), background-color var(--qqx-transition),
+    border-color var(--qqx-transition), transform 150ms ease-out;
+}
+
+.q-press:active:not(:disabled):not([aria-disabled="true"]) {
+  transform: scale(var(--q-press-scale, 0.97));
+  transition-duration: 100ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.q-press:focus-visible {
+  outline: 2px solid var(--qqx-brand);
+  outline-offset: 3px;
+}
+
+@media (pointer: coarse) {
+  .q-press { min-height: 40px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .q-press, .q-press:active:not(:disabled):not([aria-disabled="true"]) {
+    transform: none !important;
+    transition: color 80ms linear, background-color 80ms linear;
+  }
+}
