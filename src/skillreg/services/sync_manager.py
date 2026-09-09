@@ -13,12 +13,15 @@ import uuid
 from pathlib import Path
 
 from .skill_registry import get_all, get_skill
+from . import sync_targets, sync_files
 
 from ..config import load_config, save_config, SkillregConfig
 
 # ── project registry ───────────────────────────────────────────────────────
 
-_PROJECTS_DIR = Path.home() / ".skillreg"
+from .. import config as config_module
+
+_PROJECTS_DIR = config_module.CONFIG_DIR
 _PROJECTS_FILE = _PROJECTS_DIR / "projects.json"
 
 
@@ -27,15 +30,36 @@ def _read_projects() -> dict[str, dict]:
         return {"projects": {}}
     try:
         data = json.loads(_PROJECTS_FILE.read_text(encoding="utf-8"))
-        return data if "projects" in data else {"projects": {}}
+        if "projects" not in data:
+            return {"projects": {}}
+        for project in data["projects"].values():
+            if "targetIds" in project:
+                targets = []
+                for identifier in project["targetIds"]:
+                    try:
+                        target = sync_targets.resolve_target(identifier)
+                        targets.append(target["path"] if target["transport"] == "local" else target["id"])
+                    except ValueError:
+                        continue
+                project["targets"] = targets
+        return data
     except (json.JSONDecodeError, OSError):
         return {"projects": {}}
 
 
 def _write_projects(data: dict) -> None:
+    for project in data.get("projects", {}).values():
+        identifiers = []
+        for value in project.get("targets", []):
+            try:
+                target = sync_targets.resolve_target(value)
+            except ValueError:
+                target = sync_targets.add_target(sync_targets.display_name(value), value)
+            identifiers.append(target["id"])
+        project["targetIds"] = identifiers
     _PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
     _PROJECTS_FILE.write_text(
-        json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8",
+        json.dumps({"projects": {key: {k: v for k, v in value.items() if k != "targets"} for key, value in data["projects"].items()}}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8",
     )
 
 
@@ -51,10 +75,15 @@ def get_targets(cfg: SkillregConfig | None = None) -> list[dict]:
     if cfg is None:
         cfg = load_config()
     result = []
-    for t in cfg.targets:
-        label = _target_display_name(Path(t))
+    for record in sync_targets.target_records(cfg):
+        if record["transport"] != "local":
+            continue
+        t = record["path"]
+        label = record["name"]
         skills = _target_filter_for(cfg, t)
         result.append({
+            "id": record["id"],
+            "transport": "local",
             "name": label,
             "path": t,
             "label": label,
@@ -78,7 +107,7 @@ def get_sync_config(cfg: SkillregConfig | None = None) -> dict:
                 "label": _target_display_name(Path(t)),
                 "skills": _target_filter_for(cfg, t),
             }
-            for t in cfg.targets
+            for t in sync_targets.local_paths(cfg)
         ],
         "sources": [
             {"path": "skills", "mode": "scan"},
@@ -99,23 +128,12 @@ def get_sync_config(cfg: SkillregConfig | None = None) -> dict:
 
 def add_target(name: str, path: str) -> dict:
     """Add a new sync target."""
-    cfg = load_config()
-    if path in cfg.targets:
-        raise ValueError(f'Target "{path}" already exists')
-    cfg.targets.append(path)
-    save_config(cfg)
-    return {"name": name, "path": path}
+    return sync_targets.add_target(name, path)
 
 
 def remove_target(name: str) -> None:
     """Remove a sync target by name or path."""
-    cfg = load_config()
-    target = _resolve_config_target(cfg, name)
-    if target is None:
-        raise ValueError(f'Target "{name}" not found')
-    cfg.targets.remove(target)
-    _remove_target_filter(cfg, target)
-    save_config(cfg)
+    sync_targets.remove_target(name)
 
 
 def rename_target(old_name: str, new_name: str) -> dict:
@@ -126,10 +144,16 @@ def rename_target(old_name: str, new_name: str) -> dict:
         raise ValueError(f'Target "{old_name}" not found')
     if _resolve_config_target(cfg, new_name) is not None:
         raise ValueError(f'Target "{new_name}" already exists')
-    idx = cfg.targets.index(target)
-    cfg.targets[idx] = new_name
+    record = sync_targets.resolve_target(old_name, cfg=cfg)
+    projects = _read_projects()
+    record["path"] = new_name
+    cfg.targets = [record if item["id"] == record["id"] else item for item in sync_targets.target_records(cfg)]
     _rename_target_filter(cfg, target, new_name)
     save_config(cfg)
+    for project in projects["projects"].values():
+        project["targets"] = [new_name if item == target else item for item in project.get("targets", [])]
+    if projects["projects"]:
+        _write_projects(projects)
     return {"name": new_name, "path": new_name}
 
 
@@ -140,8 +164,7 @@ def update_target_skills(target: str, skills: list[str]) -> dict:
     if target_path is None:
         raise ValueError(f"Unknown target: {target}")
     normalized_skills = list(dict.fromkeys(skills))
-    cfg.target_skill_filters[target_path] = normalized_skills
-    save_config(cfg)
+    sync_targets.update_target(target, skills=normalized_skills)
     return {
         "target": target,
         "path": target_path,
@@ -159,7 +182,7 @@ def get_sync_status(
     cfg = load_config()
     workspace = _workspace_from_config(cfg)
     data = get_all(workspace)
-    target_paths = _selected_targets(cfg.targets, target)
+    target_paths = _selected_targets(sync_targets.local_paths(cfg), target)
     source_skills = data["skills"]
     if skill:
         source_skills = [s for s in source_skills if s["name"] == skill]
@@ -217,7 +240,7 @@ def create_project(name: str, targets: list[str]) -> dict:
     entry = {
         "id": pid,
         "name": name,
-        "targets": [str(Path(t).expanduser()) for t in targets],
+        "targets": [t if any(r["id"] == t for r in sync_targets.target_records()) else str(Path(t).expanduser()) for t in targets],
         "created_at": _now_iso(),
     }
     data.setdefault("projects", {})[pid] = entry
@@ -270,10 +293,20 @@ def execute_sync(target: str, dry_run: bool = False, skills: list[str] | None = 
     explainable message; it never falls back to a legacy ``infra/sync-skills.py``.
     """
     cfg = load_config()
+    try:
+        definition = sync_targets.resolve_target(target, cfg=cfg)
+    except ValueError:
+        definition = None
+    if definition and definition["transport"] == "ssh":
+        from . import sync_runs
+        planned = sync_runs.preview([definition["id"]], skills)
+        if dry_run:
+            return {"success": True, "stdout": json.dumps(planned, ensure_ascii=False), "stderr": ""}
+        run = sync_runs.create_run(planned["id"], background=False)
+        return {"success": run["state"] == "succeeded", "stdout": json.dumps(run, ensure_ascii=False), "stderr": "" if run["state"] == "succeeded" else "Remote sync failed", "runId": run["id"]}
     workspace = _workspace_from_config(cfg)
     target_config_path = _resolve_config_target(cfg, target) or target
     target_path = Path(target_config_path).expanduser()
-    target_path.mkdir(parents=True, exist_ok=True)
     selected_names = skills if skills is not None else _target_filter_for(cfg, target_config_path)
     selected_skills = _select_source_skills(workspace, selected_names or None)
 
@@ -299,13 +332,8 @@ def execute_sync(target: str, dry_run: bool = False, skills: list[str] | None = 
     for item in selected_skills:
         source_dir = workspace / item["path"]
         destination = target_path / item["name"]
-        if destination.exists():
-            shutil.rmtree(destination)
-        shutil.copytree(
-            source_dir,
-            destination,
-            ignore=shutil.ignore_patterns(".git", "__pycache__", ".DS_Store", "Thumbs.db", "._*"),
-        )
+        snapshot, bundle, digest = sync_files.make_bundle(source_dir)
+        sync_files.install({"path": str(target_path.resolve()), "name": item["name"], "bundle": bundle, "bundleDigest": digest, "sourceDigest": snapshot["digest"], "expectedDigest": sync_files.tree_snapshot(destination)["digest"], "force": True, "workspaceId": str(workspace), "runId": str(uuid.uuid4())})
         copied += 1
 
     return {
@@ -324,7 +352,7 @@ def get_skill_presence(skill: str) -> dict:
         raise ValueError(f"Unknown skill: {skill}")
     targets = {
         target_path: _skill_status(workspace, target_path, item)
-        for target_path in cfg.targets
+        for target_path in sync_targets.local_paths(cfg)
     }
     return {"skill": skill, "targets": targets}
 
@@ -521,17 +549,22 @@ def _selected_targets(targets: list[str], target: str | None) -> list[str]:
 
 
 def _resolve_config_target(cfg: SkillregConfig, target: str) -> str | None:
-    if target in cfg.targets:
-        return target
-    target_path = Path(target).expanduser()
-    for item in cfg.targets:
-        item_path = Path(item).expanduser()
-        if item_path == target_path or _target_display_name(item_path) == target:
-            return item
-    return None
+    try:
+        record = sync_targets.resolve_target(target, cfg=cfg)
+    except ValueError:
+        return None
+    if record["transport"] != "local":
+        raise ValueError("Use SSH preview and runs for remote targets")
+    return record["path"]
 
 
 def _target_filter_for(cfg: SkillregConfig, target: str) -> list[str]:
+    try:
+        record = sync_targets.resolve_target(target, cfg=cfg)
+        if record.get("skills"):
+            return list(record["skills"])
+    except ValueError:
+        pass
     for key in _target_filter_keys(target):
         skills = cfg.target_skill_filters.get(key)
         if skills is not None:
@@ -563,7 +596,7 @@ def _rename_target_filter(cfg: SkillregConfig, old_target: str, new_target: str)
 def _dirs_equal(source: Path, target: Path) -> bool:
     if not source.is_dir() or not target.is_dir():
         return False
-    comparison = filecmp.dircmp(source, target, ignore=[".git", "__pycache__", ".DS_Store", "Thumbs.db"])
+    comparison = filecmp.dircmp(source, target, ignore=[".git", "__pycache__", ".DS_Store", "Thumbs.db", ".sync-manifest.json"])
     if comparison.left_only or comparison.right_only or comparison.diff_files or comparison.funny_files:
         return False
     return all(
@@ -594,6 +627,8 @@ def _walk_files(root: Path) -> dict[str, bytes]:
     result: dict[str, bytes] = {}
     for file_path in sorted(root.rglob("*")):
         if not file_path.is_file():
+            continue
+        if file_path.name == ".sync-manifest.json":
             continue
         if any(part in {".git", "__pycache__"} for part in file_path.parts):
             continue

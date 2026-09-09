@@ -1,0 +1,38 @@
+.ssh-page h2 { margin: 0; font-size: 22px; font-weight: 600; }
+.ssh-page h3, .ssh-preview-target h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.ssh-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.ssh-muted { color: var(--qqx-text-secondary); font-size: 13px; line-height: 1.6; margin: 6px 0; overflow-wrap: anywhere; }
+.ssh-error { color: var(--qqx-danger-text, #e53e3e); font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ssh-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.ssh-target-row { display: flex; align-items: center; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--qqx-border-color); }
+.ssh-target-row > .q-checkbox { flex: 1; min-width: 0; }
+.ssh-target-row code, .ssh-option code { display: block; font-size: 12px; color: var(--qqx-text-secondary); padding-top: 5px; overflow-wrap: anywhere; }
+.ssh-input { display: block; width: 100%; min-width: 0; height: 40px; padding: 7px 11px; border: 2px solid var(--qqx-input-border); border-radius: 8px; background: var(--qqx-input-bg); color: var(--qqx-text-primary); font: inherit; margin-top: 7px; box-sizing: border-box; }
+.ssh-input { transition: border-color var(--qqx-transition), background var(--qqx-transition); }
+.ssh-input:focus { outline: none; border-color: var(--qqx-brand); box-shadow: none; background: color-mix(in srgb, var(--qqx-brand-light) 50%, var(--qqx-input-bg)); }
+.ssh-form { display: flex; flex-direction: column; gap: 16px; font-size: 14px; }
+.ssh-advanced { padding-top: 16px; }
+.ssh-form summary { cursor: pointer; }
+.ssh-form progress { width: 100%; accent-color: var(--qqx-brand); }
+.ssh-empty { text-align: center; padding: 48px; }
+.ssh-empty h3 { margin: 16px 0 8px; }
+.ssh-empty p { margin-bottom: 20px; }
+.ssh-history-row { display: grid; grid-template-columns: 180px minmax(0, 1fr) 90px; width: 100%; align-items: center; gap: 20px; text-align: left; background: transparent; color: var(--qqx-text-primary); border: 0; border-bottom: 1px solid var(--qqx-border-color); padding: 16px 0; cursor: pointer; font-size: 13px; overflow-wrap: anywhere; }
+.ssh-history-row:hover { background: var(--qqx-bg-surface); }
+.ssh-option { display: flex; gap: 12px; align-items: center; padding: 12px 0; }
+.ssh-target-options { max-height: 280px; overflow-y: auto; }
+.ssh-preview-target { border-top: 1px solid var(--qqx-border-color); padding-top: 16px; }
+.ssh-path { display: block; font-size: 12px; overflow-wrap: anywhere; color: var(--qqx-text-secondary); margin-top: 6px; }
+.ssh-file-diff { border-bottom: 1px solid var(--qqx-border-color); padding: 12px 0; }
+.ssh-file-diff summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ssh-diff-row { display: flex; gap: 20px; padding: 8px 0; font-size: 12px; overflow-wrap: anywhere; }
+.ssh-diff-row span { color: var(--qqx-text-secondary); flex-shrink: 0; }
+.ssh-run-skill { padding: 12px 0; border-bottom: 1px solid var(--qqx-border-color); }
+.ssh-status-synced { color: var(--qqx-success, #16a34a); }
+.ssh-status-modified { color: var(--qqx-warn-text, #a16207); }
+.ssh-status-missing { color: var(--qqx-text-secondary); }
+@media (max-width: 767px) {
+  .ssh-target-row { flex-wrap: wrap; }
+  .ssh-history-row { grid-template-columns: 1fr 90px; gap: 8px; }
+  .ssh-history-row > span:first-child { grid-column: 1 / -1; }
+}

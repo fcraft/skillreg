@@ -2,6 +2,7 @@
   <button
     :class="[
       'qqx-btn',
+      'q-press',
       `qqx-btn--${type}`,
       `qqx-btn--${size}`,
       {
@@ -61,19 +62,8 @@ defineEmits(['click'])
   gap: 6px;
   border: none;
   font-weight: var(--qqx-font-medium);
-  transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1),
-              background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1),
-              border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1),
-              transform 150ms ease-out;
   white-space: nowrap;
   user-select: none;
-}
-
-/* Active press feedback — press: FastOutSlowIn 100ms, release: ease-out 150ms */
-.qqx-btn:active:not(:disabled) {
-  transform: scale(0.97);
-  transition-duration: 100ms;
-  transition-timing-function: cubic-bezier(0.4, 0.0, 0.2, 1.0);
 }
 
 /* Focus ring */

@@ -72,6 +72,10 @@ skillreg <group> -h
 和更新命令。skillreg 只下载并校验 registry 制品，不执行 `npm install` 或
 生命周期脚本。
 
+远程安装可从 Dashboard 的「SSH 同步」进入，按“添加连接 → 选择 Agent 或项目
+安装目录 → 预览 → 确认同步”操作，并查看执行记录。CLI 使用 `skillreg connection -h`
+和 `skillreg sync -h`；前置条件和示例见 [SSH 同步指南](docs/ssh-sync.md)。
+
 ## 开发
 
 ```bash

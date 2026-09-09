@@ -23,6 +23,7 @@ from typing import Optional, Sequence
 import click
 from . import __version__
 from .config import CONFIG_FILE, load_config, save_config
+from .remote_cli import register as register_remote_commands
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 28787
@@ -90,7 +91,8 @@ def _echo_workspace_summary(*, heading: str = "skillreg 上下文") -> None:
     click.echo(heading)
     click.echo(f"  配置文件       : {CONFIG_FILE}")
     click.echo(f"  当前 workspace : {cfg.workspace_path or '(未配置)'}")
-    click.echo(f"  同步目标       : {_format_csv(cfg.targets)}")
+    from .services.sync_targets import local_paths
+    click.echo(f"  同步目标       : {_format_csv(local_paths(cfg))}")
 
 
 @click.group(cls=SkillregGroup)
@@ -106,12 +108,13 @@ def config() -> None:
     首次运行会自动创建默认的 ``~/.skillreg/config.json``。
     """
     cfg = load_config()
+    from .services.sync_targets import local_paths
     click.echo("skillreg 配置")
     click.echo(f"  配置文件  : {CONFIG_FILE}")
     click.echo(f"  workspace : {cfg.workspace_path or '(未配置)'}")
     click.echo(
         f"  同步目标  : "
-        f"{', '.join(cfg.targets) if cfg.targets else '(none)'}"
+        f"{', '.join(local_paths(cfg)) if cfg.targets else '(none)'}"
     )
     click.echo(
         f"  agents     : "
@@ -390,35 +393,47 @@ def convert_skill(name: str) -> None:
 
 
 @target.command("list")
-def list_targets() -> None:
+@click.option("--json", "as_json", is_flag=True, help="输出带稳定 ID 的目标列表")
+def list_targets(as_json: bool) -> None:
     """列出已配置的同步目标。"""
-    from .services.sync_manager import get_targets
-
-    targets = get_targets()
+    from .services.sync_targets import target_records
+    targets = target_records()
+    if as_json:
+        click.echo(json.dumps(targets, ensure_ascii=False, indent=2))
+        return
     if not targets:
         click.echo("(no targets configured)")
     else:
         click.echo(f"{'名称':<20} 路径")
         click.echo("-" * 72)
         for item in targets:
-            click.echo(f"{item['name']:<20} {item['path']}")
+            click.echo(f"{item['name']:<20} {item['path']}  [{item['transport']}] {item['id']}")
     _echo_workspace_summary(heading="列出同步目标后的 skillreg 上下文")
 
 
 @target.command("add")
 @click.argument("path", type=click.Path())
 @click.option("--name", help="同步目标的显示名称。")
-def add_target(path: str, name: str | None) -> None:
+@click.option("--connection", help="SSH 连接 ID 或名称")
+@click.option("--scope", type=click.Choice(["global", "project"]), default="global")
+@click.option("--agent", help="Agent 类型")
+@click.option("--project-root", help="远端项目根目录")
+@click.option("--json", "as_json", is_flag=True, help="输出 JSON")
+def add_target(path: str, name: str | None, connection: str | None, scope: str, agent: str | None, project_root: str | None, as_json: bool) -> None:
     """添加同步目标 PATH。"""
-    from .services.sync_manager import add_target as _add
+    from .services.sync_targets import add_target as _add
 
-    resolved = str(Path(path).expanduser())
+    resolved = path if connection else str(Path(path).expanduser())
     try:
-        result = _add(name or _target_display_label(resolved), resolved)
+        result = _add(name or _target_display_label(resolved), resolved, connection, scope, agent, project_root)
     except ValueError as e:
         click.echo(f"✗ 添加同步目标失败: {e}", err=True)
         raise SystemExit(1)
+    if as_json:
+        click.echo(json.dumps(result, ensure_ascii=False, indent=2))
+        return
     click.echo(f"✓ 已添加同步目标: {result['name']}")
+    click.echo(f"  ID   : {result['id']}")
     click.echo(f"  路径 : {result['path']}")
     _echo_workspace_summary(heading="添加同步目标后的 skillreg 上下文")
 
@@ -462,9 +477,18 @@ def rename_target(old_path: str, new_path: str) -> None:
 @click.option("--target", "target_path", help="只查看一个同步目标。")
 @click.option("--skill", "skill_name", help="只查看一个 skill。")
 @click.option("--include-projects", is_flag=True, default=False, help="包含项目组同步目标。")
-def sync_status(target_path: str | None, skill_name: str | None, include_projects: bool) -> None:
+@click.option("--target-id", help="刷新指定本机或 SSH 目标的状态")
+def sync_status(target_path: str | None, skill_name: str | None, include_projects: bool, target_id: str | None) -> None:
     """查看各同步目标中的 skill 同步状态。"""
     from .services.sync_manager import get_sync_status
+    if target_id:
+        from .remote_cli import output
+        from .services.sync_runs import preview
+        try:
+            output(preview([target_id], [skill_name] if skill_name else None))
+        except ValueError as exc:
+            raise click.ClickException(str(exc)) from exc
+        return
 
     rows = get_sync_status(
         target=target_path,
@@ -491,14 +515,31 @@ def sync_status(target_path: str | None, skill_name: str | None, include_project
 @click.option("--project", "project_id", help="要同步的项目组 ID 或名称。")
 @click.option("--skill", "skill_names", multiple=True, help="要同步的 skill 名称，可重复传入。")
 @click.option("--dry-run", is_flag=True, default=False, help="只预览，不复制文件。")
+@click.option("--target-id", "target_ids", multiple=True, help="使用可追踪同步执行，可重复选择目标")
+@click.option("--preview-id", help="执行已经确认的预览")
+@click.option("--force", is_flag=True, help="确认覆盖预览中有差异的 Skill")
 def sync_execute(
     target_path: str | None,
     project_id: str | None,
     skill_names: tuple[str, ...],
     dry_run: bool,
+    target_ids: tuple[str, ...],
+    preview_id: str | None,
+    force: bool,
 ) -> None:
     """执行同步到目标目录或项目组。"""
     from .services import sync_manager
+    if target_ids or preview_id:
+        if target_path or project_id:
+            raise click.ClickException("--target-id / --preview-id cannot be combined with --target / --project")
+        from .remote_cli import execute
+        try:
+            execute(target_ids, skill_names, preview_id, force, dry_run)
+        except (ValueError, OSError) as exc:
+            raise click.ClickException(str(exc)) from exc
+        return
+    if force:
+        raise click.ClickException("Use --target-id or --preview-id with --force")
 
     skills = list(skill_names) or None
     results: list[dict] = []
@@ -994,6 +1035,8 @@ def _write_dashboard_meta(meta: dict) -> None:
         encoding="utf-8",
     )
 
+
+register_remote_commands(cli, target, sync)
 
 if __name__ == "__main__":
     main()

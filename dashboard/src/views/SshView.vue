@@ -1,255 +1,86 @@
 <template>
-  <div class="ssh-view">
-    <!-- Toolbar -->
-    <div class="ssh-toolbar">
-      <div class="ssh-toolbar-left">
-        <h2 class="ssh-title">SSH 远程主机</h2>
-        <span v-if="!loading" class="ssh-count">{{ hosts.length }} 台</span>
-      </div>
-      <div class="ssh-toolbar-actions">
-        <QButton type="ghost" size="small" @click="refreshAll">
-          <RefreshCw :size="14" :class="{ 'icon-spin': loading }" /> 刷新
-        </QButton>
-        <QButton type="primary" size="small" @click="openAddForm">
-          <Plus :size="14" /> 添加主机
-        </QButton>
-      </div>
-    </div>
-
-    <!-- Error -->
-    <div v-if="error" class="ssh-error">{{ error }}</div>
-
-    <!-- Empty state -->
-    <div v-if="!loading && !hosts.length" class="ssh-empty">
-      <QCard empty>
-        <div class="ssh-empty-content">
-          <Server :size="32" class="ssh-empty-icon" />
-          <p>暂无远程主机</p>
-          <p class="ssh-empty-hint">添加远程主机后，可管理远程 Skill 同步状态</p>
-          <QButton type="primary" size="medium" @click="openAddForm">
-            <Plus :size="14" /> 添加主机
-          </QButton>
+  <div class="ssh-page">
+    <header class="ssh-row ssh-header"><h2>SSH Skills</h2><div class="ssh-actions"><QButton type="ghost" @click="showHistory">执行记录{{ activeRuns ? ' · ' + activeRuns + ' 进行中' : '' }}</QButton><QButton v-if="activeConnection" type="secondary" @click="settingsOpen = true">设置</QButton></div></header>
+    <p v-if="error" class="ssh-error" role="alert">{{ error }}</p><QLoadingState v-if="loading">加载连接和目标…</QLoadingState>
+    <div v-else-if="loadError"><p class="ssh-error" role="alert">{{ loadError }}</p><QButton type="secondary" @click="load">重新加载</QButton></div>
+    <QCard v-else-if="!connections.length" class="ssh-empty"><Server :size="28" /><h3>连接你的开发机</h3><p class="ssh-muted">使用已有的 SSH Host 别名，选择全局 Agent 或项目内安装目录</p><QButton type="primary" @click="editConnection(null)">添加第一个连接</QButton></QCard>
+    <div v-else class="ssh-layout">
+      <SshNavigation :connections="connections" :targets="targets" :selected-connection="selectedConnection" :active-target-id="inventory.activeTargetId.value" @connection="selectedConnection = $event" @target="selectTarget" @add="editConnection(null)" />
+      <section v-if="activeConnection" class="ssh-workspace">
+        <div class="ssh-context"><strong>{{ activeConnection.name }}</strong><code :title="inventoryTarget?.path">{{ inventoryTarget?.path || '选择左侧目录以查看远端 Skills' }}</code><QButton type="text" size="small" @click="addTarget">添加目标</QButton></div>
+        <nav class="ssh-view-tabs" aria-label="Skill 管理视图"><button class="q-press" :aria-pressed="view === 'remote'" @click="view = 'remote'">远端 Skills</button><button class="q-press" :aria-pressed="view === 'install'" @click="view = 'install'">从 workspace 安装</button></nav>
+        <div v-show="view === 'remote'" class="ssh-remote-panel">
+          <TargetInventory v-if="inventoryTarget" :key="inventoryTarget.id" :target="inventoryTarget" :state="inventory.entries.value[inventoryTarget.id]" :source-names="sourceNames" :busy="busy" @refresh="inventory.scan(inventoryTarget)" @preview="previewInventorySkill" />
+          <div v-else class="ssh-directory-empty"><Server :size="28" /><h3>{{ connectionTargets.length ? '选择一个目录' : '添加第一个安装目录' }}</h3><p class="ssh-muted">{{ connectionTargets.length ? '按需探测其中的 Skills，读取说明或与 workspace 来源对比' : '发现已有的 Agent 目录，或指定项目内的安装目标' }}</p><QButton v-if="!connectionTargets.length" type="primary" @click="addTarget">添加目标</QButton></div>
         </div>
-      </QCard>
+        <SshInstallPanel v-show="view === 'install'" :skills="state.skills || []" v-model:selected-skills="selectedSkills" :selected-targets="selectedTargets" :targets="connectionTargets" :busy="busy" @targets="installTargetsOpen = true" @preview="preview" />
+      </section>
     </div>
-
-    <!-- Host grid -->
-    <div v-if="hosts.length" class="ssh-host-grid">
-      <SshHostCard
-        v-for="host in hosts"
-        :key="host.id"
-        :host="host"
-        :check-result="checks[host.id]"
-        :status-text="statusSummary(host.id)"
-        @select="enterHost(host.id)"
-        @edit="openEditForm(host)"
-        @delete="confirmDelete(host)"
-        @check="checkHost(host.id)"
-      />
-    </div>
-
-    <!-- Add/Edit Modal -->
-    <SshHostFormModal
-      v-model="formOpen"
-      :host="editingHost"
-      @submit="handleFormSubmit"
-    />
-
-    <!-- Delete Confirm Modal -->
-    <QModal
-      v-model="deleteConfirmOpen"
-      title="删除主机"
-      width="400px"
-    >
-      <p class="delete-confirm-text">
-        确定要删除主机 <strong>{{ deletingHost?.id }}</strong> 吗？此操作不可撤销。
-      </p>
-      <template #footer>
-        <QButton type="secondary" size="medium" @click="deleteConfirmOpen = false">取消</QButton>
-        <QButton type="danger" size="medium" :disabled="deleting" @click="handleDelete">
-          {{ deleting ? '删除中...' : '删除' }}
-        </QButton>
-      </template>
-    </QModal>
+    <SshSettings v-model="settingsOpen" :connection="activeConnection" :targets="connectionTargets" :observation-for="observationFor" :busy="busy" :error="actionError" @check="check" @edit="editConnection(activeConnection)" @remove="askRemove" @add-target="addTarget" @add-connection="editConnection(null)" />
+    <SshHistory v-model="historyOpen" :runs="runs" :error="error" @refresh="loadHistory" @open="showRun" />
+    <InstallTargetSelect v-model="installTargetsOpen" :targets="connectionTargets" :selected="selectedTargets" @apply="selectedTargets = $event" />
+    <ConnectionForm v-model="connectionOpen" :connection="editing" @saved="connectionSaved" />
+    <TargetPicker v-model="targetOpen" :connection="activeConnection" @saved="targetsSaved" />
+    <SyncPreview :preview="planned" :busy="busy" :error="actionError" @close="planned = null" @execute="execute" />
+    <p v-if="pollError && !currentRun" class="ssh-error" role="alert">{{ pollError }} · 正在重新获取进度，上次结果会保留</p>
+    <RunDetails :run="currentRun" :busy="busy" :error="actionError || pollError" @close="currentRun = null" @retry="retry" @cancel="cancel" />
+    <QModal :model-value="Boolean(removing)" title="移除配置" @update:model-value="!$event && (removing = null)"><p>移除 {{ removing?.item.name }} 的配置，已安装的远端文件会保留</p><template #footer><QButton type="secondary" @click="removing = null">取消</QButton><QButton type="primary" :disabled="busy" @click="remove">确认移除</QButton></template></QModal>
   </div>
 </template>
-
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { Server, Plus, RefreshCw } from 'lucide-vue-next'
-import QCard from '../components/QCard.vue'
+import { computed, ref, watch, nextTick } from 'vue'
+import { Server } from 'lucide-vue-next'
 import QButton from '../components/QButton.vue'
+import QCard from '../components/QCard.vue'
 import QModal from '../components/QModal.vue'
-import SshHostCard from '../components/ssh/SshHostCard.vue'
-import SshHostFormModal from '../components/ssh/SshHostFormModal.vue'
-import { useSshHosts } from '../composables/useSshHosts.js'
-import { useSshMode } from '../composables/useSshMode.js'
-
-const router = useRouter()
-const { enterRemoteMode } = useSshMode()
-const {
-  hosts, loading, error,
-  selectedHostId, checks,
-  loadHosts, addHost, updateHost, removeHost,
-  checkHost,
-} = useSshHosts()
-
-// ── Enter remote management mode ─────────────────
-
-function enterHost(hostId) {
-  enterRemoteMode(hostId)
-  router.push('/skills')
+import QLoadingState from '../components/QLoadingState.vue'
+import ConnectionForm from '../components/ssh/ConnectionForm.vue'
+import TargetPicker from '../components/ssh/TargetPicker.vue'
+import SyncPreview from '../components/ssh/SyncPreview.vue'
+import RunDetails from '../components/ssh/RunDetails.vue'
+import TargetInventory from '../components/ssh/TargetInventory.vue'
+import SshNavigation from '../components/ssh/SshNavigation.vue'
+import SshInstallPanel from '../components/ssh/SshInstallPanel.vue'
+import InstallTargetSelect from '../components/ssh/InstallTargetSelect.vue'
+import SshSettings from '../components/ssh/SshSettings.vue'
+import SshHistory from '../components/ssh/SshHistory.vue'
+import { useRemoteInventory } from '../composables/useRemoteInventory.js'
+import { useData } from '../composables/useData.js'
+import { useRemoteSync } from '../composables/useRemoteSync.js'
+import * as api from '../api/remoteSync.js'
+import { isActiveRun } from '../sources/remoteSyncState.js'
+import '../styles/remote-sync.css'
+import '../styles/ssh-workspace.css'
+const { state } = useData()
+const { connections, targets, runs, selectedConnection, selectedTargets, selectedSkills, loading, busy, error, actionError, loadError, pollError, load, planned, currentRun, activeConnection, connectionTargets, observationFor, connectionSaved, loadTargets, loadHistory, action, check, preview, previewFor, execute, openRun, retry, cancel } = useRemoteSync()
+const connectionOpen = ref(false), editing = ref(null), targetOpen = ref(false), removing = ref(null)
+const settingsOpen = ref(false), historyOpen = ref(false), installTargetsOpen = ref(false), view = ref('remote')
+const inventory = useRemoteInventory()
+const inventoryTarget = computed(() => connectionTargets.value.find(target => target.id === inventory.activeTargetId.value))
+const sourceNames = computed(() => new Set((state.skills || []).map(skill => skill.name)))
+const activeRuns = computed(() => runs.value.filter(isActiveRun).length)
+watch(selectedConnection, () => { inventory.activeTargetId.value = null })
+async function selectTarget(target) {
+  selectedConnection.value = target.connectionId
+  await nextTick()
+  selectedTargets.value = [target.id]
+  inventory.open(target)
 }
-
-// ── Status summary for cards ─────────────────────
-
-function statusSummary(hostId) {
-  const check = checks[hostId]
-  if (!check) return ''
-  if (!check.ok) return ''
-  return '在线'
+async function targetsSaved(added = []) {
+  await loadTargets()
+  if (added.length) { selectedTargets.value = [added[0].id]; view.value = 'remote'; inventory.added(added) }
 }
-
-// ── Host form ────────────────────────────────────
-
-const formOpen = ref(false)
-const editingHost = ref(null)
-
-function openAddForm() {
-  editingHost.value = null
-  formOpen.value = true
-}
-
-function openEditForm(host) {
-  editingHost.value = host
-  formOpen.value = true
-}
-
-async function handleFormSubmit(payload) {
-  try {
-    if (editingHost.value) {
-      await updateHost(editingHost.value.id, payload)
-    } else {
-      await addHost(payload)
-    }
-    formOpen.value = false
-    await checkHost(payload.id)
-  } catch (err) {
-    throw err
-  }
-}
-
-// ── Delete ───────────────────────────────────────
-
-const deleteConfirmOpen = ref(false)
-const deletingHost = ref(null)
-const deleting = ref(false)
-
-function confirmDelete(host) {
-  deletingHost.value = host
-  deleteConfirmOpen.value = true
-}
-
-async function handleDelete() {
-  if (!deletingHost.value || deleting.value) return
-  deleting.value = true
-  try {
-    await removeHost(deletingHost.value.id)
-    deleteConfirmOpen.value = false
-    deletingHost.value = null
-  } finally {
-    deleting.value = false
-  }
-}
-
-// ── Refresh all ──────────────────────────────────
-
-async function refreshAll() {
-  await loadHosts()
-  await Promise.allSettled(hosts.value.map(h => checkHost(h.id)))
-}
-
-onMounted(() => {
-  loadHosts().then(() => {
-    hosts.value.forEach(h => checkHost(h.id))
+function previewInventorySkill(name) { if (inventoryTarget.value) previewFor([inventoryTarget.value.id], [name]) }
+function editConnection(connection) { settingsOpen.value = false; editing.value = connection; connectionOpen.value = true }
+function addTarget() { settingsOpen.value = false; targetOpen.value = true }
+function askRemove(kind, item) { settingsOpen.value = false; removing.value = { kind, item } }
+function showHistory() { historyOpen.value = true; loadHistory() }
+function showRun(run) { historyOpen.value = false; openRun(run) }
+async function remove() {
+  await action(async () => {
+    if (removing.value.kind === 'connection') { await api.removeConnection(removing.value.item.id); connections.value = await api.fetchConnections(); selectedConnection.value = connections.value[0]?.id || '' }
+    else { await api.removeTarget(removing.value.item.id); selectedTargets.value = selectedTargets.value.filter(id => id !== removing.value.item.id); await loadTargets() }
+    removing.value = null
   })
-})
+}
 </script>
-
-<style scoped>
-.ssh-view {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.ssh-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24px;
-}
-
-.ssh-toolbar-left {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-
-.ssh-title {
-  font-size: var(--qqx-font-size-title);
-  font-weight: var(--qqx-font-semibold);
-  color: var(--qqx-text-primary);
-  margin: 0;
-}
-
-.ssh-count {
-  font-size: var(--qqx-font-size-small);
-  color: var(--qqx-text-secondary);
-}
-
-.ssh-toolbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ssh-error {
-  color: var(--qqx-error, #e53e3e);
-  font-size: var(--qqx-font-size-label);
-  padding: var(--qqx-space-md) var(--qqx-space-lg);
-  background: var(--qqx-error-light, #fef2f2);
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-xs);
-  margin-bottom: var(--qqx-space-lg);
-}
-
-.ssh-empty { margin-top: 40px; }
-
-.ssh-empty-content {
-  text-align: center;
-  padding: 40px 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-
-.ssh-empty-icon { color: var(--qqx-text-tertiary); }
-.ssh-empty-content p { font-size: var(--qqx-font-size-body); color: var(--qqx-text-primary); margin: 0; font-weight: var(--qqx-font-medium); }
-.ssh-empty-hint { font-size: var(--qqx-font-size-small); color: var(--qqx-text-secondary); font-weight: var(--qqx-font-regular); max-width: 360px; }
-
-.ssh-host-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-
-@media (max-width: 1023px) { .ssh-host-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 767px) { .ssh-host-grid { grid-template-columns: 1fr; } }
-
-.delete-confirm-text { font-size: 14px; color: var(--qqx-text-primary); line-height: 1.6; }
-
-.icon-spin { animation: spin 1s linear infinite; }
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-</style>

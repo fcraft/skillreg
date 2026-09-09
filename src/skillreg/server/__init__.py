@@ -57,6 +57,9 @@ def create_app() -> FastAPI:
 
     app.include_router(health_router)
 
+    from .remote_sync import router as remote_sync_router
+    app.include_router(remote_sync_router)
+
     # Skills / registry / sync routes (built progressively)
     try:
         from .skills import router as skills_router
