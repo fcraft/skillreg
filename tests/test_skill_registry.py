@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+import subprocess
+
 import skillreg.services.skill_registry as registry
 from skillreg.services.skill_registry import get_all, get_skill
 
@@ -128,7 +131,7 @@ def test_submodule_index_status_prefers_staged_gitlink(tmp_path, monkeypatch):
     def fake_run(cmd, cwd):
         if cmd == "git ls-files -s -- repos/demo":
             return "160000 feedbeeffeedbeeffeedbeeffeedbeeffeedbeef 0\trepos/demo"
-        if cmd == "git diff --name-only HEAD -- repos/demo":
+        if cmd == "git diff --cached --name-only HEAD -- repos/demo":
             return "repos/demo"
         if cmd == "git rev-parse --short HEAD":
             return "feedbee"
@@ -156,7 +159,7 @@ def test_submodule_index_status_ignores_dirty_submodule_worktree(
     def fake_run(cmd, cwd):
         if cmd == "git ls-files -s -- repos/demo":
             return "160000 feedbeeffeedbeeffeedbeeffeedbeeffeedbeef 0\trepos/demo"
-        if cmd == "git diff --name-only HEAD -- repos/demo":
+        if cmd == "git diff --cached --name-only HEAD -- repos/demo":
             return ""
         if cmd == "git rev-parse --short HEAD":
             return "feedbee"
@@ -166,4 +169,48 @@ def test_submodule_index_status_ignores_dirty_submodule_worktree(
 
     status = registry._get_submodule_index_status(tmp_path, "repos/demo")
 
+    assert status["indexDirty"] is False
+
+
+def test_submodule_index_status_ignores_real_dirty_submodule_worktree(tmp_path):
+    """子仓库工作树改动不应伪造父仓库 gitlink 改动"""
+    origin = tmp_path / "origin"
+    origin.mkdir()
+    workspace = tmp_path / "workspace"
+    (workspace / "repos").mkdir(parents=True)
+    git_env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "Test",
+        "GIT_AUTHOR_EMAIL": "test@example.com",
+        "GIT_COMMITTER_NAME": "Test",
+        "GIT_COMMITTER_EMAIL": "test@example.com",
+    }
+
+    def git(cwd, *args):
+        return subprocess.run(
+            ["git", *args], cwd=cwd, env=git_env,
+            capture_output=True, text=True, check=True,
+        )
+
+    git(origin, "init", "-q", "--initial-branch=main")
+    (origin / "dist" / "generated.js").parent.mkdir(parents=True)
+    (origin / "dist" / "generated.js").write_text("generated\n", encoding="utf-8")
+    git(origin, "add", ".")
+    git(origin, "commit", "-qm", "init")
+
+    git(workspace, "init", "-q", "--initial-branch=main")
+    git(workspace, "config", "user.email", "test@example.com")
+    git(workspace, "config", "user.name", "Test")
+    git(
+        workspace, "-c", "protocol.file.allow=always", "submodule", "add",
+        "-q", str(origin), "repos/demo",
+    )
+    git(workspace, "commit", "-qm", "add submodule")
+
+    (workspace / "repos/demo/dist/generated.js").unlink()
+
+    status = registry.get_submodule_status(workspace, "repos/demo", "main")
+
+    assert status["dirty"] is True
+    assert status["trackedDirty"] is True
     assert status["indexDirty"] is False

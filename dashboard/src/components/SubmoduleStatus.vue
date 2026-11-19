@@ -837,6 +837,7 @@ function showSyncButton(sub) {
   // - Main repo's submodule pointer is behind or ahead of submodule HEAD
   const needsSync = ['ahead', 'behind', 'diverged', 'missing', 'unknown']
   if (needsSync.includes(st.syncState)) return true
+  if (st.trackedDirty ?? st.dirty) return true
   if (st.indexBehind > 0 || st.indexAhead > 0) return true
   if (st.indexDirty) return true
   return false

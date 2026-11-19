@@ -336,7 +336,7 @@ def _get_submodule_index_status(
     index_dirty = False
     try:
         st = _run(
-            f"git diff --name-only HEAD -- {submodule_path}", cwd=str(workspace),
+            f"git diff --cached --name-only HEAD -- {submodule_path}", cwd=str(workspace),
         )
         index_dirty = len(st) > 0
     except RuntimeError:
@@ -369,6 +369,7 @@ def get_submodule_status(
     if not full.is_dir():
         return {
             "commit": None, "ahead": 0, "behind": 0, "dirty": False,
+            "trackedDirty": False,
             "syncState": "missing", "isDetached": False,
             "indexRef": None, "indexAhead": 0, "indexBehind": 0,
             "indexDirty": False, "checkedAt": None,
@@ -378,6 +379,10 @@ def get_submodule_status(
         commit = _run("git rev-parse --short HEAD", cwd=str(full))
         porcelain = _run("git status --porcelain", cwd=str(full))
         dirty = len(porcelain) > 0
+        try:
+            tracked_dirty = bool(_run("git diff --name-only HEAD -- .", cwd=str(full)))
+        except RuntimeError:
+            tracked_dirty = dirty
         detached = _is_head_detached(workspace, submodule_path)
 
         index_status = _get_submodule_index_status(workspace, submodule_path)
@@ -414,6 +419,7 @@ def get_submodule_status(
             "ahead": ahead,
             "behind": behind,
             "dirty": dirty,
+            "trackedDirty": tracked_dirty,
             "syncState": sync_state,
             "isDetached": detached,
             "indexRef": index_ref,
@@ -425,6 +431,7 @@ def get_submodule_status(
     except RuntimeError:
         return {
             "commit": None, "ahead": 0, "behind": 0, "dirty": False,
+            "trackedDirty": False,
             "syncState": "missing", "isDetached": False,
             "indexRef": None, "indexAhead": 0, "indexBehind": 0,
             "indexDirty": False, "checkedAt": None,
