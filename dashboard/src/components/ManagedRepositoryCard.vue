@@ -50,40 +50,36 @@ const displayName = computed(() => props.repo.path.replace(/^repos\//, ''))
 
 <style scoped>
 .managed-repo-card {
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-md);
-  background: var(--qqx-bg-card);
+  border: none;
+  border-radius: var(--sr-radius-md);
+  background: var(--sr-content-bg);
   overflow: hidden;
-  transition: border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.managed-repo-card--expanded,
-.managed-repo-card--selected {
-  border-color: var(--qqx-brand);
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard);
 }
 
 .managed-repo-card--selected {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--qqx-brand) 16%, transparent);
+  background: var(--sr-surface-selected);
+  box-shadow: inset 0 0 0 2px var(--sr-accent);
 }
 
 .managed-repo-row {
   display: flex;
   align-items: center;
-  gap: var(--qqx-space-md);
-  padding: var(--qqx-space-md) var(--qqx-space-lg);
+  gap: var(--sr-space-3);
+  padding: var(--sr-space-3) var(--sr-space-4);
   cursor: pointer;
   user-select: none;
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard);
 }
 
-.managed-repo-row:hover,
-.managed-repo-card--expanded .managed-repo-row {
-  background: var(--qqx-bg-surface);
+.managed-repo-row:hover {
+  background: var(--sr-bg-hover);
 }
 
 .expand-indicator {
   width: 12px;
   flex-shrink: 0;
-  color: var(--qqx-text-tertiary);
+  color: var(--sr-text-tertiary);
   font-size: 10px;
 }
 
@@ -98,29 +94,32 @@ const displayName = computed(() => props.repo.path.replace(/^repos\//, ''))
 .repo-name-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sr-space-2);
 }
 
 .repo-name {
-  color: var(--qqx-text-primary);
-  font-size: var(--qqx-font-size-label);
-  font-weight: var(--qqx-font-medium);
+  color: var(--sr-text-primary);
+  font-size: var(--sr-text-body);
+  font-weight: var(--sr-weight-semibold);
 }
 
 .managed-badge,
 .skill-count {
-  padding: 2px 6px;
-  border-radius: var(--qqx-radius-full);
-  background: var(--qqx-brand-light);
-  color: var(--qqx-brand);
-  font-size: 10px;
-  font-weight: var(--qqx-font-medium);
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: var(--sr-radius-badge);
+  background: var(--sr-role-blue-surface);
+  color: var(--sr-role-blue-ink);
+  font-size: var(--sr-text-meta);
+  font-weight: var(--sr-weight-semibold);
 }
 
 .skill-count {
   flex-shrink: 0;
-  padding: 1px 8px;
-  font-size: 11px;
+  background: var(--sr-bg-panel);
+  color: var(--sr-text-secondary);
 }
 
 .source-link,
@@ -128,48 +127,48 @@ const displayName = computed(() => props.repo.path.replace(/^repos\//, ''))
   border: 0;
   padding: 0;
   background: transparent;
-  color: var(--qqx-brand);
+  color: var(--sr-accent);
   cursor: pointer;
   font: inherit;
+  font-weight: var(--sr-weight-semibold);
   text-align: left;
 }
 
 .source-link {
   align-self: flex-start;
-  font-size: var(--qqx-font-size-small);
+  font-size: var(--sr-text-compact);
 }
 
 .skill-panel {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 8px 16px 8px 40px;
-  border-top: 1px solid var(--qqx-border-color);
-  background: var(--qqx-bg-surface);
+  padding: 8px 16px 12px 40px;
+  background: transparent;
 }
 
 .skill-panel-label {
-  color: var(--qqx-text-tertiary);
-  font-size: 11px;
-  font-weight: var(--qqx-font-semibold);
+  color: var(--sr-text-tertiary);
+  font-size: var(--sr-text-micro);
+  font-weight: var(--sr-weight-bold);
   text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .skill-link {
   display: flex;
   align-items: center;
-  gap: var(--qqx-space-sm);
-  font-size: var(--qqx-font-size-small);
-  font-weight: var(--qqx-font-medium);
+  gap: var(--sr-space-2);
+  font-size: var(--sr-text-compact);
 }
 
 .skill-link:disabled {
-  color: var(--qqx-text-tertiary);
+  color: var(--sr-text-tertiary);
   cursor: default;
 }
 
 .missing-label {
-  color: var(--qqx-warning);
-  font-size: var(--qqx-font-size-small);
+  color: var(--sr-role-amber-ink);
+  font-size: var(--sr-text-compact);
 }
 </style>

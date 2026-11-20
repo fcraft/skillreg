@@ -30,16 +30,16 @@ const { isRemoteMode, activeHost, exitRemoteMode } = useSshMode()
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--qqx-space-sm) var(--qqx-space-xl);
-  background: color-mix(in srgb, var(--qqx-brand, #0099ff) 8%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--qqx-brand, #0099ff) 20%, transparent);
+  padding: var(--sr-space-2) var(--sr-space-5);
+  background: var(--sr-role-blue-surface);
+  border-bottom: none;
 }
 
 .ssh-mode-banner-left {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--qqx-text-primary);
+  color: var(--sr-text-primary);
   font-size: 13px;
 }
 
@@ -49,7 +49,7 @@ const { isRemoteMode, activeHost, exitRemoteMode } = useSshMode()
 
 .ssh-mode-banner-host {
   font-weight: 600;
-  color: var(--qqx-brand, #0099ff);
+  color: var(--sr-role-blue-ink);
 }
 
 .ssh-mode-banner-addr {

@@ -596,28 +596,28 @@ watch(() => [state.skills, state.repoNodes, state.relationships], render, { deep
 }
 
 .graph-ctrl-btn {
-  padding: 4px 12px;
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-full);
-  background: var(--qqx-bg-surface);
-  color: var(--qqx-text-secondary);
+  padding: 5px 12px;
+  border: none;
+  border-radius: var(--sr-radius-sm);
+  background: var(--sr-control-bg);
+  color: var(--sr-text-secondary);
   font-size: var(--qqx-font-size-small);
   font-family: inherit;
   cursor: pointer;
-  transition: all var(--qqx-transition);
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard),
+              color var(--sr-duration-fast) var(--sr-ease-standard);
 }
 
 .graph-ctrl-btn:hover {
-  background: var(--qqx-bg-hover);
-  color: var(--qqx-text-primary);
-  border-color: var(--qqx-brand);
+  background: var(--sr-control-bg-hover);
+  color: var(--sr-text-primary);
 }
 
 .graph-container {
   flex: 1;
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-md);
-  background: var(--qqx-bg-surface);
+  border: none;
+  border-radius: var(--sr-radius-lg);
+  background: var(--sr-content-bg);
   overflow: hidden;
 }
 
@@ -636,9 +636,12 @@ watch(() => [state.skills, state.repoNodes, state.relationships], render, { deep
   position: absolute;
   top: 60px;
   right: 12px;
-  background: var(--qqx-bg-card);
-  border: 1px solid var(--qqx-border-color);
-  border-radius: 12px;
+  background: var(--sr-glass-bg);
+  border: none;
+  border-radius: var(--sr-radius-md);
+  box-shadow: var(--sr-shadow-sm);
+  backdrop-filter: var(--sr-glass-filter);
+  -webkit-backdrop-filter: var(--sr-glass-filter);
   padding: 10px 14px;
   display: flex;
   flex-direction: column;
@@ -684,9 +687,12 @@ watch(() => [state.skills, state.repoNodes, state.relationships], render, { deep
 .graph-popover {
   position: fixed;
   transform: translateX(-50%) translateY(-100%);
-  background: var(--qqx-bg-card);
-  border: 1px solid var(--qqx-border-color);
-  border-radius: 12px;
+  background: var(--sr-glass-bg);
+  border: none;
+  border-radius: var(--sr-radius-md);
+  box-shadow: var(--sr-shadow-md);
+  backdrop-filter: var(--sr-glass-filter);
+  -webkit-backdrop-filter: var(--sr-glass-filter);
   padding: 10px 14px;
   min-width: 200px;
   max-width: 280px;

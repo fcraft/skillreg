@@ -125,16 +125,12 @@ const syncStatusClass = computed(() => {
 
 <style scoped>
 .ssh-host-card {
-  transition: border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard);
   cursor: pointer;
 }
 
 .ssh-host-card--selected {
-  border-color: var(--qqx-brand);
-}
-
-.ssh-host-card--online {
-  /* subtle green tint on border-left handled by dot */
+  box-shadow: inset 0 0 0 2px var(--sr-accent);
 }
 
 .host-card-body {
@@ -151,27 +147,27 @@ const syncStatusClass = computed(() => {
 .host-status-dot {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  border-radius: var(--sr-radius-pill);
   flex-shrink: 0;
-  background: var(--qqx-text-secondary);
+  background: var(--sr-text-tertiary);
 }
 
 .host-status-dot--online {
-  background: #22c55e;
+  background: var(--sr-role-sage-solid);
 }
 
 .host-status-dot--offline {
-  background: var(--qqx-text-secondary);
+  background: var(--sr-text-tertiary);
 }
 
 .host-status-dot--loading {
-  background: var(--qqx-text-secondary);
+  background: var(--sr-text-tertiary);
   animation: dot-pulse 1.2s ease-in-out infinite;
 }
 
 .host-status-dot--unknown {
   background: transparent;
-  border: 1.5px solid var(--qqx-text-secondary);
+  border: 1.5px solid var(--sr-text-tertiary);
 }
 
 @keyframes dot-pulse {
@@ -180,10 +176,10 @@ const syncStatusClass = computed(() => {
 }
 
 .host-id {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--qqx-text-primary);
-  font-family: Inter, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: var(--sr-text-body);
+  font-weight: var(--sr-weight-semibold);
+  color: var(--sr-text-primary);
+  font-family: var(--sr-font-sans);
 }
 
 .host-more-btn {
@@ -191,76 +187,80 @@ const syncStatusClass = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border: none;
   background: transparent;
-  color: var(--qqx-text-secondary);
-  border-radius: var(--qqx-radius-xs);
+  color: var(--sr-text-secondary);
+  border-radius: var(--sr-radius-sm);
   cursor: pointer;
-  transition: all var(--qqx-transition);
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard),
+              color var(--sr-duration-fast) var(--sr-ease-standard);
 }
 
 .host-more-btn:hover {
-  background: var(--qqx-bg-hover);
-  color: var(--qqx-text-primary);
+  background: var(--sr-action-bg-hover);
+  color: var(--sr-text-primary);
 }
 
 .host-menu {
   position: absolute;
   right: 20px;
   top: 40px;
-  z-index: 100;
-  background: var(--qqx-bg-card);
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-xs);
-  padding: 4px;
-  min-width: 120px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: var(--sr-z-popover);
+  background: var(--sr-glass-bg);
+  backdrop-filter: var(--sr-glass-filter);
+  -webkit-backdrop-filter: var(--sr-glass-filter);
+  border: none;
+  border-radius: var(--sr-radius-md);
+  padding: 5px;
+  min-width: 132px;
+  box-shadow: var(--sr-shadow-md);
 }
 
 .host-menu-item {
   display: flex;
   align-items: center;
-  gap: var(--qqx-space-sm);
+  gap: var(--sr-space-2);
   width: 100%;
-  padding: 6px 10px;
+  min-height: 32px;
+  padding: 5px 8px;
   border: none;
   background: transparent;
-  color: var(--qqx-text-primary);
-  font-size: var(--qqx-font-size-small);
-  border-radius: var(--qqx-radius-xs);
+  color: var(--sr-text-primary);
+  font-size: var(--sr-text-compact);
+  border-radius: var(--sr-radius-menu-item);
   cursor: pointer;
-  transition: background var(--qqx-transition);
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard);
 }
 
 .host-menu-item:hover {
-  background: var(--qqx-bg-hover);
+  background: var(--sr-bg-hover);
 }
 
 .host-menu-item--danger {
-  color: var(--qqx-error, #e53e3e);
+  color: var(--sr-role-rose-ink);
 }
 
 .host-menu-item--danger:hover {
-  background: var(--qqx-error-light, #fef2f2);
+  background: var(--sr-role-rose-surface);
 }
 
 .host-label {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--qqx-text-primary);
+  font-size: var(--sr-text-body);
+  font-weight: var(--sr-weight-semibold);
+  color: var(--sr-text-primary);
   margin-bottom: 4px;
-  font-family: Inter, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--sr-font-sans);
 }
 
 .host-address,
 .host-user,
 .host-path {
-  font-size: 12px;
-  color: var(--qqx-text-secondary);
+  font-size: var(--sr-text-compact);
+  color: var(--sr-text-secondary);
   line-height: 1.6;
-  font-family: Inter, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--sr-font-sans);
 }
 
 .host-path {
@@ -268,6 +268,7 @@ const syncStatusClass = computed(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-bottom: 8px;
+  font-family: var(--sr-font-mono);
 }
 
 .host-status-section {
@@ -276,41 +277,40 @@ const syncStatusClass = computed(() => {
 }
 
 .host-status-loading {
-  font-size: 12px;
-  color: var(--qqx-text-secondary);
+  font-size: var(--sr-text-compact);
+  color: var(--sr-text-secondary);
 }
 
 .host-status-error {
-  font-size: 12px;
-  color: #e53e3e;
+  font-size: var(--sr-text-compact);
+  color: var(--sr-role-rose-ink);
 }
 
 .host-status-online {
-  font-size: 12px;
-  color: #22c55e;
+  font-size: var(--sr-text-compact);
+  color: var(--sr-role-sage-ink);
 }
 
 .host-status-unknown {
-  font-size: 12px;
-  color: var(--qqx-text-secondary);
+  font-size: var(--sr-text-compact);
+  color: var(--sr-text-secondary);
 }
 
 .host-status-sync {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--sr-text-compact);
+  font-weight: var(--sr-weight-semibold);
 }
 
 .host-status-sync--ok {
-  color: #22c55e;
+  color: var(--sr-role-sage-ink);
 }
 
 .host-status-sync--pending {
-  color: #f59e0b;
+  color: var(--sr-role-amber-ink);
 }
 
 .host-card-actions {
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid var(--qqx-border-color);
 }
 </style>

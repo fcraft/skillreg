@@ -112,8 +112,10 @@ function navToGraph() {
 <style scoped>
 .context-panel {
   width: 320px;
-  border-left: 1px solid var(--qqx-border-color);
-  background: var(--qqx-bg-card);
+  margin-left: var(--sr-space-4);
+  border: none;
+  border-radius: var(--sr-radius-lg);
+  background: var(--sr-inspector-bg);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -125,14 +127,13 @@ function navToGraph() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--qqx-space-lg) var(--qqx-space-xl);
-  border-bottom: 1px solid var(--qqx-border-color);
+  padding: var(--sr-space-4) var(--sr-space-5) var(--sr-space-3);
 }
 
 .context-title {
-  font-size: var(--qqx-font-size-title);
-  font-weight: var(--qqx-font-semibold);
-  color: var(--qqx-text-primary);
+  font-size: var(--sr-text-dialog-title);
+  font-weight: var(--sr-weight-semibold);
+  color: var(--sr-text-primary);
   margin: 0;
 }
 
@@ -140,96 +141,103 @@ function navToGraph() {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: var(--sr-control-height-sm);
+  height: var(--sr-control-height-sm);
   border: none;
   background: transparent;
-  color: var(--qqx-text-secondary);
+  color: var(--sr-text-secondary);
   font-size: 18px;
-  border-radius: var(--qqx-radius-xs);
+  border-radius: var(--sr-radius-sm);
   cursor: pointer;
-  transition: all var(--qqx-transition);
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard),
+              color var(--sr-duration-fast) var(--sr-ease-standard);
 }
+
 .context-close:hover {
-  background: var(--qqx-bg-hover);
-  color: var(--qqx-text-primary);
+  background: var(--sr-action-bg-hover);
+  color: var(--sr-text-primary);
 }
 
 .context-body {
-  padding: var(--qqx-space-lg) var(--qqx-space-xl);
+  padding: var(--sr-space-2) var(--sr-space-5) var(--sr-space-5);
   display: flex;
   flex-direction: column;
-  gap: var(--qqx-space-xl);
+  gap: var(--sr-space-5);
 }
 
 .context-section {
   display: flex;
   flex-direction: column;
-  gap: var(--qqx-space-sm);
+  gap: var(--sr-space-2);
 }
 
 .context-section h4 {
-  font-size: var(--qqx-font-size-small);
-  font-weight: var(--qqx-font-semibold);
-  color: var(--qqx-text-tertiary);
+  font-size: var(--sr-text-micro);
+  font-weight: var(--sr-weight-bold);
+  color: var(--sr-text-tertiary);
   margin: 0;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.04em;
 }
 
 .context-row {
   display: flex;
   align-items: center;
-  gap: var(--qqx-space-sm);
-  font-size: var(--qqx-font-size-small);
+  gap: var(--sr-space-2);
+  font-size: var(--sr-text-compact);
 }
 
 .context-label {
-  color: var(--qqx-text-tertiary);
+  color: var(--sr-text-tertiary);
   min-width: 48px;
 }
 
 .context-row code {
-  font-size: var(--qqx-font-size-small);
-  background: var(--qqx-bg-elevated);
-  padding: 1px 6px;
-  border-radius: var(--qqx-radius-xs);
+  font-size: var(--sr-text-compact);
+  background: var(--sr-bg-panel);
+  padding: 2px 6px;
+  border-radius: var(--sr-radius-xs);
 }
 
 .context-tag {
-  background: var(--qqx-bg-elevated);
-  padding: 1px 8px;
-  border-radius: var(--qqx-radius-full);
-  font-size: var(--qqx-font-size-small);
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  background: var(--sr-bg-panel);
+  padding: 0 8px;
+  border-radius: var(--sr-radius-badge);
+  font-size: var(--sr-text-meta);
+  font-weight: var(--sr-weight-semibold);
 }
 
 .context-link {
-  color: var(--qqx-brand);
+  color: var(--sr-accent);
   text-decoration: none;
-  font-size: var(--qqx-font-size-small);
-  transition: color var(--qqx-transition);
+  font-size: var(--sr-text-compact);
+  font-weight: var(--sr-weight-semibold);
 }
-.context-link:hover { color: var(--qqx-brand-hover); text-decoration: underline; }
+.context-link:hover { color: var(--sr-accent-strong); text-decoration: underline; }
 
 .context-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--qqx-space-xs);
+  gap: var(--sr-space-2);
 }
 
 .context-action-btn {
-  padding: 4px 12px;
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-full);
-  background: var(--qqx-bg-card);
-  color: var(--qqx-text-secondary);
-  font-size: var(--qqx-font-size-small);
+  min-height: var(--sr-control-height-sm);
+  padding: 0 12px;
+  border: none;
+  border-radius: var(--sr-radius-sm);
+  background: var(--sr-control-bg);
+  color: var(--sr-text-primary);
+  font-size: var(--sr-text-compact);
+  font-weight: var(--sr-weight-semibold);
   cursor: pointer;
-  transition: all var(--qqx-transition);
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard);
 }
+
 .context-action-btn:hover {
-  background: var(--qqx-bg-hover);
-  color: var(--qqx-text-primary);
-  border-color: var(--qqx-brand);
+  background: var(--sr-control-bg-hover);
 }
 </style>

@@ -25,6 +25,8 @@ const options = [
 const current = ref('light')
 
 function applyTheme(theme) {
+  document.documentElement.dataset.palette = 'mist'
+  document.documentElement.dataset.style = 'glass'
   if (theme === 'system') {
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
     document.documentElement.dataset.theme = prefersDark ? 'dark' : 'light'
@@ -54,37 +56,43 @@ onMounted(() => {
 
 <style scoped>
 .qqx-theme-switch {
-  display: flex;
+  display: inline-flex;
+  align-items: center;
   gap: 2px;
-  background: var(--qqx-bg-elevated);
-  border-radius: var(--qqx-radius-full);
+  height: var(--sr-control-height-sm);
   padding: 3px;
-  border: 1px solid var(--qqx-border-color);
+  border: none;
+  border-radius: var(--sr-radius-md);
+  background: var(--sr-control-bg);
 }
 
 .qqx-theme-switch__item {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
+  justify-content: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
   border: none;
   background: transparent;
-  color: var(--qqx-text-secondary);
-  font-size: var(--qqx-font-size-small);
-  border-radius: var(--qqx-radius-full);
-  transition: all var(--qqx-transition);
+  color: var(--sr-text-secondary);
+  font-size: var(--sr-text-compact);
+  font-weight: var(--sr-weight-medium);
+  border-radius: var(--sr-radius-sm);
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard),
+              color var(--sr-duration-fast) var(--sr-ease-standard);
   white-space: nowrap;
 }
 
-.qqx-theme-switch__item:hover {
-  color: var(--qqx-text-primary);
+.qqx-theme-switch__item:not(.qqx-theme-switch__item--active):hover {
+  color: var(--sr-text-primary);
 }
 
 .qqx-theme-switch__item--active {
-  background: var(--qqx-bg-card);
-  color: var(--qqx-text-primary);
-  font-weight: var(--qqx-font-medium);
-  box-shadow: var(--qqx-shadow-button);
+  background: var(--sr-bg-floating);
+  color: var(--sr-text-primary);
+  font-weight: var(--sr-weight-semibold);
+  box-shadow: var(--sr-shadow-sm);
 }
 
 .qqx-theme-switch__icon {
@@ -93,17 +101,26 @@ onMounted(() => {
 }
 
 .qqx-theme-switch__label {
-  font-size: var(--qqx-font-size-small);
+  font-size: var(--sr-text-compact);
 }
 
-/* ========== Responsive: Mobile ========== */
-@media (max-width: 767px) {
+@media (max-width: 760px) {
   .qqx-theme-switch__label {
     display: none;
   }
 
   .qqx-theme-switch__item {
-    padding: 4px 8px;
+    padding: 0 8px;
+  }
+}
+
+@media (pointer: coarse) {
+  .qqx-theme-switch {
+    height: auto;
+  }
+
+  .qqx-theme-switch__item {
+    min-height: 36px;
   }
 }
 </style>

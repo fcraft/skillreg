@@ -201,9 +201,9 @@ function skillStatusLabel(status) {
 <style scoped>
 .ssh-sync-panel {
   margin-top: 24px;
-  background: var(--qqx-bg-card, #fff);
-  border: 1px solid var(--qqx-border-color, #e7eaee);
-  border-radius: 12px;
+  background: var(--sr-content-bg);
+  border: none;
+  border-radius: var(--sr-radius-lg);
   overflow: hidden;
 }
 
@@ -223,7 +223,7 @@ function skillStatusLabel(status) {
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid var(--qqx-border-color, #e7eaee);
+  border-bottom: none;
   flex-wrap: wrap;
   gap: 8px;
 }
@@ -239,7 +239,7 @@ function skillStatusLabel(status) {
   font-size: 18px;
   font-weight: 600;
   color: var(--qqx-text-primary);
-  font-family: Inter, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--sr-font-sans);
 }
 
 .sync-panel-host-addr {
@@ -307,7 +307,7 @@ function skillStatusLabel(status) {
 .sync-panel-error-title {
   font-size: 14px;
   font-weight: 600;
-  color: #e53e3e;
+  color: var(--sr-role-rose-ink);
   margin-bottom: 4px;
 }
 
@@ -323,7 +323,7 @@ function skillStatusLabel(status) {
 }
 
 .sync-section + .sync-section {
-  border-top: 1px solid var(--qqx-border-color, #e7eaee);
+  border-top: none;
 }
 
 .sync-section-title {
@@ -331,7 +331,7 @@ function skillStatusLabel(status) {
   font-weight: 500;
   color: var(--qqx-text-primary);
   margin-bottom: 10px;
-  font-family: Inter, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--sr-font-sans);
 }
 
 /* Target row */
@@ -340,8 +340,9 @@ function skillStatusLabel(status) {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border: 1px solid var(--qqx-border-color);
-  border-radius: 8px;
+  border: none;
+  border-radius: var(--sr-radius-sm);
+  background: var(--sr-bg-panel);
   margin-bottom: 6px;
   font-size: 13px;
 }
@@ -353,14 +354,14 @@ function skillStatusLabel(status) {
   flex-shrink: 0;
   background: var(--qqx-text-secondary);
 }
-.sync-target-dot--ok { background: #22c55e; }
-.sync-target-dot--pending { background: #f59e0b; }
-.sync-target-dot--error { background: #e53e3e; }
+.sync-target-dot--ok { background: var(--sr-success); }
+.sync-target-dot--pending { background: var(--sr-warning); }
+.sync-target-dot--error { background: var(--sr-danger); }
 
 .sync-target-name {
   color: var(--qqx-text-primary);
   font-weight: 500;
-  font-family: monospace;
+  font-family: var(--sr-font-mono);
   font-size: 12px;
 }
 
@@ -376,8 +377,9 @@ function skillStatusLabel(status) {
 
 /* Skill table */
 .sync-skill-table {
-  border: 1px solid var(--qqx-border-color);
-  border-radius: 8px;
+  border: none;
+  border-radius: var(--sr-radius-md);
+  background: var(--sr-bg-panel);
   overflow: hidden;
 }
 
@@ -392,19 +394,21 @@ function skillStatusLabel(status) {
 }
 
 .sync-skill-header {
-  background: var(--qqx-bg-subtle, #f8f9fa);
+  background: var(--sr-bg-subtle);
   font-weight: 500;
   color: var(--qqx-text-secondary);
-  border-bottom: 1px solid var(--qqx-border-color);
+  border-bottom: none;
 }
 
 .sync-skill-row {
-  border-bottom: 1px solid var(--qqx-border-color);
+  border-bottom: none;
   color: var(--qqx-text-primary);
-  font-family: Inter, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--sr-font-sans);
 }
 
-.sync-skill-row:last-child { border-bottom: none; }
+.sync-skill-row:nth-child(even) {
+  background: var(--sr-content-bg);
+}
 
 .sync-skill-col--name {
   font-weight: 500;
@@ -414,11 +418,11 @@ function skillStatusLabel(status) {
 }
 
 .sync-skill-status { font-weight: 500; }
-.sync-skill-status--unchanged { color: #22c55e; }
-.sync-skill-status--updated { color: #f59e0b; }
-.sync-skill-status--new { color: #0099ff; }
-.sync-skill-status--missing { color: #e53e3e; }
-.sync-skill-status--dirty { color: #f59e0b; }
+.sync-skill-status--unchanged { color: var(--sr-role-sage-ink); }
+.sync-skill-status--updated { color: var(--sr-role-amber-ink); }
+.sync-skill-status--new { color: var(--sr-role-blue-ink); }
+.sync-skill-status--missing { color: var(--sr-role-rose-ink); }
+.sync-skill-status--dirty { color: var(--sr-role-amber-ink); }
 .sync-skill-status--unknown { color: var(--qqx-text-secondary); }
 
 /* Raw output */

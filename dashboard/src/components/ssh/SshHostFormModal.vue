@@ -139,9 +139,9 @@ async function handleSubmit() {
 
 .form-error {
   font-size: 12px;
-  color: #e53e3e;
+  color: var(--sr-role-rose-ink);
   padding: 8px 12px;
-  background: #fef2f2;
-  border-radius: 8px;
+  background: var(--sr-role-rose-surface);
+  border-radius: var(--sr-radius-sm);
 }
 </style>

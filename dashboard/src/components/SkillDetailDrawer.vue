@@ -77,90 +77,102 @@ async function loadTree() {
   z-index: var(--z-overlay-top);
   display: flex;
   justify-content: flex-end;
-  background: var(--qqx-bg-backdrop);
+  background: var(--sr-overlay-scrim);
 }
 
+/* Single glass layer on reading drawer; inner panes stay transparent */
 .drawer-panel {
   width: min(920px, calc(100vw - 32px));
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--qqx-bg-card);
-  box-shadow: var(--qqx-shadow-dropdown);
-  animation: slide-in var(--qqx-transition);
+  border-radius: var(--sr-radius-xl) 0 0 var(--sr-radius-xl);
+  background: var(--sr-glass-reading-bg);
+  backdrop-filter: var(--sr-glass-reading-filter);
+  -webkit-backdrop-filter: var(--sr-glass-reading-filter);
+  box-shadow: var(--sr-shadow-lg);
+  overflow: hidden;
+  animation: slide-in var(--sr-duration-slow) var(--sr-ease-smooth);
 }
 
 .drawer-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--qqx-space-lg);
-  padding: var(--qqx-space-xl);
-  border-bottom: 1px solid var(--qqx-border-color);
+  gap: var(--sr-space-4);
+  padding: var(--sr-space-5) var(--sr-space-5) var(--sr-space-4);
 }
 
 .drawer-header h2 {
   margin: 0;
-  color: var(--qqx-text-primary);
-  font-size: var(--qqx-font-size-title);
-  font-weight: var(--qqx-font-semibold);
+  color: var(--sr-text-primary);
+  font-size: var(--sr-text-page-title);
+  font-weight: var(--sr-weight-semibold);
+  letter-spacing: -0.015em;
 }
 
 .drawer-header p {
-  margin: var(--qqx-space-xs) 0 0;
-  color: var(--qqx-text-tertiary);
-  font-size: var(--qqx-font-size-small);
+  margin: var(--sr-space-1) 0 0;
+  color: var(--sr-text-tertiary);
+  font-size: var(--sr-text-compact);
+  font-family: var(--sr-font-mono);
 }
 
 .close-button {
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-full);
-  background: var(--qqx-bg-surface);
-  color: var(--qqx-text-secondary);
-  padding: 6px 14px;
+  min-height: var(--sr-control-height-sm);
+  border: none;
+  border-radius: var(--sr-radius-sm);
+  background: var(--sr-control-bg);
+  color: var(--sr-text-primary);
+  font-size: var(--sr-text-compact);
+  font-weight: var(--sr-weight-semibold);
+  padding: 0 12px;
   cursor: pointer;
-  transition: all var(--qqx-transition);
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard);
 }
 
 .close-button:hover {
-  background: var(--qqx-bg-hover);
-  color: var(--qqx-text-primary);
+  background: var(--sr-control-bg-hover);
 }
 
 .drawer-body {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: var(--sr-space-3);
+  padding: 0 var(--sr-space-5) var(--sr-space-5);
   overflow: hidden;
 }
 
 .tree-pane {
   min-width: 0;
   overflow: auto;
-  background: var(--qqx-bg-surface);
+  border-radius: var(--sr-radius-md);
+  background: var(--sr-content-bg);
+  padding: var(--sr-space-2);
 }
 
 .pane-title {
   position: sticky;
   top: 0;
   z-index: 1;
-  padding: var(--qqx-space-md) var(--qqx-space-lg);
-  border-bottom: 1px solid var(--qqx-border-color);
-  background: var(--qqx-bg-surface);
-  color: var(--qqx-text-primary);
-  font-size: var(--qqx-font-size-small);
-  font-weight: var(--qqx-font-medium);
+  padding: var(--sr-space-2) var(--sr-space-3);
+  color: var(--sr-text-tertiary);
+  font-size: var(--sr-text-micro);
+  font-weight: var(--sr-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .pane-state {
-  padding: var(--qqx-space-lg);
-  color: var(--qqx-text-tertiary);
-  font-size: var(--qqx-font-size-caption);
+  padding: var(--sr-space-4);
+  color: var(--sr-text-tertiary);
+  font-size: var(--sr-text-card-title);
 }
 
 .pane-state.error {
-  color: var(--qqx-brand);
+  color: var(--sr-role-rose-ink);
 }
 
 @keyframes slide-in {
@@ -168,14 +180,24 @@ async function loadTree() {
   to { transform: translateX(0); opacity: 1; }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 760px) {
   .drawer-panel {
     width: 100vw;
+    border-radius: 0;
+  }
+
+  .drawer-header {
+    padding: var(--sr-space-4);
   }
 
   .drawer-body {
     grid-template-columns: 1fr;
     grid-template-rows: minmax(180px, 36%) minmax(0, 1fr);
+    padding: 0 var(--sr-space-4) var(--sr-space-4);
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer-panel { animation: none; }
 }
 </style>

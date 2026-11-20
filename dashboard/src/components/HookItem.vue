@@ -52,23 +52,20 @@ defineEmits(['toggle'])
 </script>
 
 <style scoped>
+/* Uniform borderless Workbench card — zero left stripe, zero border */
 .hook-item {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: var(--qqx-space-lg);
-  background: var(--qqx-bg-card);
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-md);
-  transition: border-color var(--qqx-transition);
+  padding: var(--sr-space-4);
+  background: var(--sr-content-bg);
+  border: none;
+  border-radius: var(--sr-radius-md);
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard);
 }
 
 .hook-item:hover {
-  border-color: var(--qqx-brand);
-}
-
-.hook-item--installed {
-  border-left: 3px solid var(--qqx-success, #52c41a);
+  background: var(--sr-content-bg-hover);
 }
 
 .hook-item-main {
@@ -79,73 +76,82 @@ defineEmits(['toggle'])
 .hook-item-header {
   display: flex;
   align-items: center;
-  gap: var(--qqx-space-sm);
+  gap: var(--sr-space-2);
 }
 
 .hook-item-icon {
-  color: var(--qqx-text-tertiary);
+  color: var(--sr-text-tertiary);
   flex-shrink: 0;
 }
 
 .hook-item-name {
-  font-weight: var(--qqx-font-semibold);
-  font-size: var(--qqx-font-size-label);
-  color: var(--qqx-text-primary);
+  font-weight: var(--sr-weight-semibold);
+  font-size: var(--sr-text-body);
+  color: var(--sr-text-primary);
 }
 
 .hook-installed-badge {
-  display: inline-block;
-  padding: 1px 8px;
-  background: var(--qqx-success-bg, #f6ffed);
-  color: var(--qqx-success, #52c41a);
-  border: 1px solid var(--qqx-success-border, #b7eb8f);
-  border-radius: var(--qqx-radius-full);
-  font-size: var(--qqx-font-size-mini, 11px);
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  background: var(--sr-role-sage-surface);
+  color: var(--sr-role-sage-ink);
+  border: none;
+  border-radius: var(--sr-radius-badge);
+  font-size: var(--sr-text-meta);
+  font-weight: var(--sr-weight-semibold);
 }
 
 .hook-available-badge {
-  display: inline-block;
-  padding: 1px 8px;
-  background: var(--qqx-bg-subtle);
-  color: var(--qqx-text-tertiary);
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-full);
-  font-size: var(--qqx-font-size-mini, 11px);
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  background: var(--sr-bg-panel);
+  color: var(--sr-text-secondary);
+  border: none;
+  border-radius: var(--sr-radius-badge);
+  font-size: var(--sr-text-meta);
+  font-weight: var(--sr-weight-semibold);
 }
 
 .hook-item-desc {
-  margin: var(--qqx-space-xs) 0 0 0;
-  font-size: var(--qqx-font-size-small);
-  color: var(--qqx-text-secondary);
-  line-height: 1.5;
+  margin: var(--sr-space-1) 0 0 0;
+  font-size: var(--sr-text-card-title);
+  color: var(--sr-text-secondary);
+  line-height: 1.55;
 }
 
 .hook-item-meta {
   display: flex;
   align-items: center;
-  gap: var(--qqx-space-sm);
-  margin-top: var(--qqx-space-sm);
+  flex-wrap: wrap;
+  gap: var(--sr-space-2);
+  margin-top: var(--sr-space-2);
 }
 
 .hook-meta-tag {
-  display: inline-block;
-  padding: 1px 8px;
-  background: var(--qqx-bg-subtle);
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-xs);
-  font-size: var(--qqx-font-size-mini, 11px);
-  color: var(--qqx-text-tertiary);
-  font-family: var(--qqx-font-mono, monospace);
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  background: var(--sr-bg-panel);
+  border: none;
+  border-radius: var(--sr-radius-badge);
+  font-size: var(--sr-text-meta);
+  color: var(--sr-text-secondary);
+  font-family: var(--sr-font-mono);
 }
 
 .hook-meta-path {
-  font-size: var(--qqx-font-size-small);
-  color: var(--qqx-text-tertiary);
-  font-family: var(--qqx-font-mono, monospace);
+  font-size: var(--sr-text-compact);
+  color: var(--sr-text-tertiary);
+  font-family: var(--sr-font-mono);
 }
 
 .hook-item-actions {
   flex-shrink: 0;
-  margin-left: var(--qqx-space-lg);
+  margin-left: var(--sr-space-4);
 }
 </style>

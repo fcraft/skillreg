@@ -59,17 +59,17 @@ function formatSize(size = 0) {
   height: 100%;
   display: flex;
   flex-direction: column;
-  border-left: 1px solid var(--qqx-border-color);
-  background: var(--qqx-bg-card);
+  border-radius: var(--sr-radius-md);
+  background: var(--sr-content-bg);
+  overflow: hidden;
 }
 
 .preview-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--qqx-space-lg);
-  padding: var(--qqx-space-md) var(--qqx-space-lg);
-  border-bottom: 1px solid var(--qqx-border-color);
+  gap: var(--sr-space-4);
+  padding: var(--sr-space-3) var(--sr-space-4);
 }
 
 .file-name {
@@ -77,30 +77,31 @@ function formatSize(size = 0) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--qqx-text-primary);
-  font-size: var(--qqx-font-size-small);
-  font-weight: var(--qqx-font-medium);
+  color: var(--sr-text-primary);
+  font-size: var(--sr-text-compact);
+  font-weight: var(--sr-weight-semibold);
+  font-family: var(--sr-font-mono);
 }
 
 .file-meta {
   flex-shrink: 0;
-  color: var(--qqx-text-tertiary);
-  font-size: var(--qqx-font-size-small);
+  color: var(--sr-text-tertiary);
+  font-size: var(--sr-text-meta);
 }
 
 pre {
   flex: 1;
   margin: 0;
-  padding: var(--qqx-space-lg);
+  padding: var(--sr-space-4);
   overflow: auto;
-  background: var(--qqx-bg-elevated);
-  color: var(--qqx-text-primary);
-  font-size: var(--qqx-font-size-small);
-  line-height: 1.6;
+  background: transparent;
+  color: var(--sr-text-primary);
+  font-size: var(--sr-text-compact);
+  line-height: 1.65;
 }
 
 code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--sr-font-mono);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -109,20 +110,13 @@ code {
   flex: 1;
   display: grid;
   place-items: center;
-  padding: var(--qqx-space-xl);
-  color: var(--qqx-text-tertiary);
-  font-size: var(--qqx-font-size-caption);
+  padding: var(--sr-space-5);
+  color: var(--sr-text-tertiary);
+  font-size: var(--sr-text-card-title);
   text-align: center;
 }
 
 .empty-state.error {
-  color: var(--qqx-brand);
-}
-
-@media (max-width: 768px) {
-  .file-preview {
-    border-left: 0;
-    border-top: 1px solid var(--qqx-border-color);
-  }
+  color: var(--sr-role-rose-ink);
 }
 </style>

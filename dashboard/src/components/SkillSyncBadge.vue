@@ -60,26 +60,25 @@ function navigate() {
 .sync-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  padding: 1px 8px;
-  border-radius: var(--qqx-radius-full);
+  gap: 5px;
+  min-height: 22px;
+  font-size: var(--sr-text-meta);
+  font-weight: var(--sr-weight-semibold);
+  padding: 0 8px;
+  border-radius: var(--sr-radius-badge);
   cursor: pointer;
-  transition: filter 0.15s ease;
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard);
 }
-.sync-badge:hover { filter: brightness(0.92); }
 
-.sync-badge--ok { background: var(--qqx-success-light); color: var(--qqx-success); }
-.sync-badge--warn { background: var(--qqx-warning-light); color: var(--qqx-warning); }
-.sync-badge--none { background: var(--qqx-bg-elevated); color: var(--qqx-text-tertiary); }
+.sync-badge--ok { background: var(--sr-role-sage-surface); color: var(--sr-role-sage-ink); }
+.sync-badge--warn { background: var(--sr-role-amber-surface); color: var(--sr-role-amber-ink); }
+.sync-badge--none { background: var(--sr-content-bg); color: var(--sr-text-secondary); }
 
 .sync-dot {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: var(--sr-radius-pill);
   flex-shrink: 0;
+  background: currentColor;
 }
-.sync-badge--ok .sync-dot { background: var(--qqx-success); }
-.sync-badge--warn .sync-dot { background: var(--qqx-warning); }
-.sync-badge--none .sync-dot { background: var(--qqx-text-tertiary); }
 </style>
