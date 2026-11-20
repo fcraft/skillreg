@@ -5,7 +5,9 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query
 
 from ..services import sync_manager
+from ..services.sync_files import SyncError
 from .skills import skill_tree, skill_file, refresh_skills
+from .sync import raise_sync_http_error
 
 router = APIRouter(tags=["compat"])
 
@@ -27,7 +29,10 @@ def compat_sync_targets():
 
 @router.post("/api/sync-skills")
 def compat_sync_skills(target: str = Query(...), dry_run: bool = Query(False, alias="dryRun")):
-    return sync_manager.execute_sync(target, dry_run=dry_run)
+    try:
+        return sync_manager.execute_sync(target, dry_run=dry_run)
+    except (SyncError, ValueError, OSError) as exc:
+        raise_sync_http_error(exc)
 
 
 @router.get("/api/refresh-data")
@@ -43,8 +48,8 @@ def compat_target_file(
 ):
     try:
         return sync_manager.get_target_file(skill, target, path)
-    except ValueError as e:
-        raise HTTPException(400, str(e))
+    except (SyncError, ValueError, OSError) as exc:
+        raise_sync_http_error(exc)
 
 
 @router.get("/api/skill-diff")
@@ -55,8 +60,8 @@ def compat_skill_diff(skill: str = Query(...), target: str = Query(...)):
         for f in files:
             summary[f["status"]] = summary.get(f["status"], 0) + 1
         return {"files": files, "summary": summary}
-    except ValueError as e:
-        raise HTTPException(400, str(e))
+    except (SyncError, ValueError, OSError) as exc:
+        raise_sync_http_error(exc)
 
 
 @router.get("/api/skill-target-presence")
@@ -69,7 +74,10 @@ def compat_skill_presence(skill: str = Query(...)):
 
 @router.get("/api/target-skills")
 def compat_target_skills(target: str = Query(...)):
-    return sync_manager.list_target_skills(target)
+    try:
+        return sync_manager.list_target_skills(target)
+    except (SyncError, ValueError, OSError) as exc:
+        raise_sync_http_error(exc)
 
 
 @router.post("/api/remove-skill-from-target")
@@ -78,4 +86,7 @@ def compat_remove_skill_from_target(
     target: str = Query(...),
     force: bool = Query(False),
 ):
-    return sync_manager.remove_skill_from_target(skill, target, force=force)
+    try:
+        return sync_manager.remove_skill_from_target(skill, target, force=force)
+    except (SyncError, ValueError, OSError) as exc:
+        raise_sync_http_error(exc)

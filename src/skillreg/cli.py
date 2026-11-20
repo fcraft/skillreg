@@ -560,7 +560,7 @@ def sync_execute(
                 target_path, dry_run=dry_run, skills=skills,
             )
             results.append({"target": target_path, **result})
-    except (FileNotFoundError, ValueError) as e:
+    except (OSError, ValueError) as e:
         click.echo(f"✗ 同步失败: {e}", err=True)
         _echo_workspace_summary(heading="同步失败时的 skillreg 上下文")
         raise SystemExit(1)

@@ -70,20 +70,32 @@
 
         <!-- Sub Tab: 目标 -->
         <div v-if="installSubTab === 'targets'" class="im-body">
-          <div v-if="!targets.length" class="im-empty">暂无配置的目标目录</div>
-          <div v-for="t in targets" :key="t.name" class="im-row">
+          <div v-if="syncState.loading && !syncState.loaded" class="im-empty">加载同步目标...</div>
+          <div v-else-if="syncState.error && !targets.length" class="im-error im-error-row" role="alert">
+            <span>加载同步目标失败：{{ syncState.error }}</span>
+            <QButton type="text" size="small" @click="retryLoadSync">重试</QButton>
+          </div>
+          <div v-else-if="!targets.length" class="im-empty">暂无配置的目标目录</div>
+          <div v-for="t in targets" :key="t.id || t.path" class="im-row">
             <div class="im-row-info">
-              <span class="im-row-name">{{ t.name }}</span>
+              <span class="im-row-name">{{ t.label || t.name }}</span>
               <span class="im-row-path">→ {{ t.path }}/{{ skill.name }}</span>
             </div>
             <QButton v-if="isInstalled(t.path)" type="ghost" size="small" disabled>已安装</QButton>
-              <QButton v-else type="secondary" tint="brand" size="small" :disabled="installing" @click="doInstall(t.name)">安装</QButton>
+            <QButton v-else type="secondary" tint="brand" size="small" :disabled="installing" @click="doInstallTarget(t)">
+              {{ installingTarget === (t.id || t.path) ? '安装中...' : '安装' }}
+            </QButton>
           </div>
         </div>
 
         <!-- Sub Tab: 项目组 -->
         <div v-if="installSubTab === 'projects'" class="im-body">
-          <div v-if="!projects.length" class="im-empty">暂无项目组，在「项目组」页面创建</div>
+          <div v-if="projectsLoading && !projects.length" class="im-empty">加载项目组...</div>
+          <div v-else-if="projectsError && !projects.length" class="im-error im-error-row" role="alert">
+            <span>加载项目组失败：{{ projectsError }}</span>
+            <QButton type="text" size="small" @click="loadProjects">重试</QButton>
+          </div>
+          <div v-else-if="!projects.length" class="im-empty">暂无项目组，在「项目组」页面创建</div>
           <div v-for="p in projects" :key="p.id" class="im-project">
             <div class="im-project-header" @click="expandedProject = expandedProject === p.id ? null : p.id">
               <span class="im-chevron" :class="{ 'im-chevron--open': expandedProject === p.id }">
@@ -96,23 +108,28 @@
             <div v-if="expandedProject === p.id" class="im-project-body">
               <div v-for="t in p.targets" :key="t" class="im-target-block">
                 <div class="im-target-path" :title="t">{{ t }}</div>
-                <div v-if="discoveredMap[t]?.agent_dirs?.length" class="im-agent-list">
-                  <div v-for="d in discoveredMap[t].agent_dirs" :key="d.agent" class="im-agent-row">
+                <div v-if="discoveringTargets[t]" class="im-agent-loading">正在检测 agent 目录...</div>
+                <div v-else-if="discoveredMap[t]?.agent_dirs?.length" class="im-agent-list">
+                  <div v-for="d in discoveredMap[t].agent_dirs" :key="d.path" class="im-agent-row">
                     <span class="im-agent-badge">{{ d.agent }}</span>
                     <span class="im-agent-path">→ {{ d.path }}/{{ skill.name }}</span>
                     <QButton v-if="isInstalled(d.path)" type="ghost" size="small" disabled>已安装</QButton>
-                      <QButton v-else type="secondary" tint="brand" size="small" :disabled="installing" @click="doInstall(d.path)">安装</QButton>
+                    <QButton v-else type="secondary" tint="brand" size="small" :disabled="installing" @click="doInstallPath(d.path, `${d.agent} (${d.path})`)">
+                      {{ installingTarget === d.path ? '安装中...' : '安装' }}
+                    </QButton>
                   </div>
                 </div>
                 <div v-else class="im-agent-warn">
                   <TriangleAlert :size="14" />
                   <span>未发现 agent 目录，将安装到根目录: {{ t }}/{{ skill.name }}</span>
                   <QButton v-if="isInstalled(t)" type="ghost" size="small" disabled>已安装</QButton>
-                  <QButton v-else type="secondary" tint="brand" size="small" :disabled="installing" @click="doInstall(t)">安装</QButton>
+                  <QButton v-else type="secondary" tint="brand" size="small" :disabled="installing" @click="doInstallPath(t, t)">
+                    {{ installingTarget === t ? '安装中...' : '安装' }}
+                  </QButton>
                 </div>
               </div>
-              <QButton type="primary" size="small" :disabled="installing" @click="doInstallProject(p)" class="im-project-install-all">
-                一键安装到全部目标
+              <QButton type="primary" size="small" :disabled="installing || isProjectDiscovering(p)" @click="doInstallProject(p)" class="im-project-install-all">
+                {{ installingProject === p.id ? '安装中...' : '一键安装到全部目标' }}
               </QButton>
             </div>
           </div>
@@ -122,21 +139,26 @@
         <div v-if="installSubTab !== 'ssh'" class="im-custom">
           <div class="im-custom-label">自定义目录</div>
           <div class="im-custom-row">
-            <input v-model="customPath" class="im-custom-input" placeholder="输入目录路径..." @keydown.enter="doInstallCustom" />
+            <input v-model="customPath" class="im-custom-input" placeholder="输入绝对路径或 ~/ 开头路径，如 ~/.claude/skills" @keydown.enter="doInstallCustom" />
             <QButton type="primary" size="small" :disabled="!customPath.trim() || installing" @click="doInstallCustom">安装</QButton>
           </div>
           <div v-if="customPath.trim()" class="im-custom-preview">→ {{ customPath.trim() }}/{{ skill.name }}</div>
         </div>
 
-        <div v-if="installError" class="im-error">{{ installError }}</div>
-        <div v-if="installOk" class="im-ok">{{ installOk }}</div>
+        <div v-if="installError" class="im-error" role="alert">{{ installError }}</div>
+        <div v-if="installOk" class="im-ok" role="status">{{ installOk }}</div>
       </div>
 
       <!-- Tab: 同步状态 -->
       <div v-else-if="activeTab === 'sync'" key="sync" class="sdm-tab-content">
-        <div v-if="!syncState.loaded" class="sync-loading">加载同步状态...</div>
+        <div v-if="syncState.loading && !syncState.loaded" class="sync-loading">加载同步状态...</div>
+        <div v-else-if="syncState.error && !allTargetsWithStatus.length" class="im-error im-error-row" role="alert">
+          <span>加载同步状态失败：{{ syncState.error }}</span>
+          <QButton type="text" size="small" @click="retryLoadSync">重试</QButton>
+        </div>
         <div v-else-if="!allTargetsWithStatus.length" class="sync-empty">暂无可用的同步目标</div>
         <div v-else class="sync-list">
+          <div v-if="syncError" class="im-error" role="alert">{{ syncError }}</div>
           <div v-for="item in allTargetsWithStatus" :key="item.key" class="sync-card">
             <div class="sync-card-header">
               <div class="sync-card-info">
@@ -229,7 +251,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { FolderOpen, TriangleAlert, Download } from 'lucide-vue-next'
 import QModal from './QModal.vue'
@@ -240,6 +262,12 @@ import SkillSshInstall from './ssh/SkillSshInstall.vue'
 import { useSkillDetail } from '../composables/useSkillDetail.js'
 import { useSyncBridge } from '../composables/useSyncBridge.js'
 import { useToast } from '../composables/useToast.js'
+import {
+  buildTargetStatusItems,
+  formatInstallError,
+  parseSyncExecutionResult,
+  resolveProjectInstallTargets,
+} from '../sources/skillInstallState.js'
 import {
   executeSync, fetchProjects, fetchDiscover,
   fetchSkillDiff, fetchSkillFile, fetchTargetFile,
@@ -284,15 +312,48 @@ const tabs = [
 
 // ── Install state ──
 const installing = ref(false)
+const installingTarget = ref(null)
 const syncingTarget = ref(null)
 const installError = ref('')
 const installOk = ref('')
+const syncError = ref('')
 const customPath = ref('')
 const installSubTab = ref('targets')
 const projects = ref([])
+const projectsLoading = ref(false)
+const projectsError = ref('')
 const expandedProject = ref(null)
 const installingProject = ref(null)
 const discoveredMap = ref({})
+const discoveringTargets = ref({})
+
+let okTimer = null
+let projectsRequestId = 0
+
+function clearOkTimer() {
+  if (okTimer !== null) {
+    clearTimeout(okTimer)
+    okTimer = null
+  }
+}
+
+function setTransientInstallOk(message, { clearCustom = false } = {}) {
+  clearOkTimer()
+  installOk.value = message
+  okTimer = setTimeout(() => {
+    installOk.value = ''
+    if (clearCustom) customPath.value = ''
+    okTimer = null
+  }, 2500)
+}
+
+function isCurrentSkill(skillName) {
+  return Boolean(state.open && skill.value && skill.value.name === skillName)
+}
+
+onUnmounted(() => {
+  clearOkTimer()
+})
 
 // ── Install: computed from sync bridge ──
 const targets = computed(() => syncState.targets || [])
@@ -304,30 +365,7 @@ const targetStatusMap = computed(() => {
 })
 
 const allTargetsWithStatus = computed(() => {
-  const result = []
-  const statusMap = targetStatusMap.value
-  // Named targets
-  for (const t of syncState.targets) {
-    result.push({
-      key: t.name,
-      label: t.name,
-      path: t.path,
-      _project: false,
-      status: statusMap[t.path] || 'not-installed',
-    })
-  }
-  // Project targets
-  for (const t of syncState.projectTargets) {
-    result.push({
-      key: t.name,
-      label: t.name.split('/').pop() || t.name,
-      path: t.path || t.name,
-      _project: true,
-      _projectName: t._projectName,
-      status: statusMap[t.name] || 'not-installed',
-    })
-  }
-  return result
+  return buildTargetStatusItems(syncState.targets, syncState.projectTargets, targetStatusMap.value)
 })
 
 function isInstalled(targetKey) {
@@ -346,129 +384,222 @@ function statusLabel(status) {
   return map[status] || status
 }
 
-// ── Install: watch for tab switch to lazy-load ──
-watch(() => state.activeTab, async (tab) => {
-  if (tab === 'install') {
-    // Reset install state
+function isProjectDiscovering(project) {
+  return (project?.targets || []).some(t => Boolean(discoveringTargets.value[t]))
+}
+
+async function retryLoadSync() {
+  const currentName = skill.value?.name
+  await loadSyncStatus(true)
+  if (currentName && isCurrentSkill(currentName)) {
+    await refreshSkill(currentName)
+  }
+}
+
+// ── Install: watch for modal open, skill change, and tab switch ──
+watch(
+  [() => state.open, () => state.activeTab, () => state.skill?.name],
+  async ([isOpen, tab, skillName], prev) => {
+    clearOkTimer()
     installError.value = ''
     installOk.value = ''
-    installSubTab.value = 'targets'
-    expandedProject.value = null
-    customPath.value = ''
-    discoveredMap.value = {}
-    loadProjects()
-  }
-  if ((tab === 'install' || tab === 'sync') && !syncState.loaded) {
-    await loadSyncStatus()
-  }
-  if (tab === 'sync') {
-    // Lightweight per-skill refresh — only updates this skill's status entries
-    refreshSkill(skill.value.name)
-  }
-})
+    syncError.value = ''
+
+    if (!isOpen || !skillName) return
+
+    const tabChanged = !prev || prev[1] !== tab || prev[0] !== isOpen || prev[2] !== skillName
+    if (tab === 'install' && tabChanged) {
+      installSubTab.value = 'targets'
+      expandedProject.value = null
+      customPath.value = ''
+      discoveredMap.value = {}
+      discoveringTargets.value = {}
+      loadProjects()
+    }
+
+    if (tab === 'install' || tab === 'sync') {
+      if (!syncState.loaded || syncState.error) {
+        await loadSyncStatus(Boolean(syncState.error))
+      }
+      if (isCurrentSkill(skillName)) {
+        await refreshSkill(skillName)
+      }
+    }
+  },
+  { immediate: true },
+)
 
 // ── Install: project loading ──
 async function loadProjects() {
+  const requestId = ++projectsRequestId
+  projectsLoading.value = true
+  projectsError.value = ''
   try {
-    projects.value = await fetchProjects()
-    const allTargets = projects.value.flatMap(p => p.targets || [])
-    await Promise.allSettled(allTargets.map(t => fetchDiscoverForTarget(t)))
-  } catch { /* silently ignore */ }
+    const list = await fetchProjects()
+    if (requestId !== projectsRequestId) return
+    projects.value = list
+    const allTargets = [...new Set(list.flatMap(p => p.targets || []))]
+    await Promise.allSettled(allTargets.map(t => fetchDiscoverForTarget(t, requestId)))
+  } catch (e) {
+    if (requestId !== projectsRequestId) return
+    projectsError.value = formatInstallError(e, '加载项目组失败')
+  } finally {
+    if (requestId === projectsRequestId) {
+      projectsLoading.value = false
+    }
+  }
 }
 
-async function fetchDiscoverForTarget(targetPath) {
+async function fetchDiscoverForTarget(targetPath, requestId = projectsRequestId) {
+  discoveringTargets.value = { ...discoveringTargets.value, [targetPath]: true }
   try {
     const data = await fetchDiscover(targetPath)
-    discoveredMap.value[targetPath] = data
-  } catch { /* silently ignore */ }
+    if (requestId !== projectsRequestId) return
+    discoveredMap.value = { ...discoveredMap.value, [targetPath]: data }
+  } catch {
+    if (requestId !== projectsRequestId) return
+    discoveredMap.value = { ...discoveredMap.value, [targetPath]: { agent_dirs: [] } }
+  } finally {
+    if (requestId === projectsRequestId) {
+      const next = { ...discoveringTargets.value }
+      delete next[targetPath]
+      discoveringTargets.value = next
+    }
+  }
 }
 
 // ── Export state ──
 const exporting = ref(false)
 
 async function handleExport() {
-  if (exporting.value) return
+  const skillName = skill.value?.name
+  if (exporting.value || !skillName) return
   exporting.value = true
-  try { await exportSkill(skill.value.name) } catch (e) { console.error('Export failed:', e) }
+  try { await exportSkill(skillName) } catch (e) { console.error('Export failed:', e) }
   finally { exporting.value = false }
 }
 
 // ── Install: actions ──
-async function doInstall(target) {
+async function runSingleInstall(targetIdentifier, displayLabel, { clearCustomOnSuccess = false } = {}) {
+  const skillName = skill.value?.name
+  if (!skillName || !targetIdentifier) return
   installing.value = true
+  installingTarget.value = targetIdentifier
+  clearOkTimer()
   installError.value = ''
   installOk.value = ''
   try {
-    await executeSync(target, { skills: [skill.value.name] })
-    installOk.value = `已安装到 ${target}`
-    setTimeout(() => { installOk.value = '' }, 2000)
-    refreshSkill(skill.value.name)
-    toast.success(`已安装 ${skill.value.name} → ${target}`)
+    const result = await executeSync(targetIdentifier, { skills: [skillName] })
+    const parsed = parseSyncExecutionResult(result, { skillName, fallback: '安装失败' })
+    if (!parsed.ok) {
+      throw new Error(parsed.message)
+    }
+    await refreshSkill(skillName)
+    if (isCurrentSkill(skillName)) {
+      setTransientInstallOk(`已安装到 ${displayLabel}`, { clearCustom: clearCustomOnSuccess })
+    }
+    toast.success(`已安装 ${skillName} → ${displayLabel}`)
   } catch (e) {
-    installError.value = e.message || '安装失败'
+    const message = formatInstallError(e, '安装失败')
+    if (isCurrentSkill(skillName)) {
+      installError.value = message
+    }
+    toast.error(`安装 ${skillName} 失败：${message}`)
   } finally {
     installing.value = false
+    installingTarget.value = null
   }
 }
 
+function doInstallTarget(targetObj) {
+  const identifier = targetObj.id || targetObj.path
+  const label = targetObj.label || targetObj.name || targetObj.path
+  return runSingleInstall(identifier, label)
+}
+
+function doInstallPath(targetPath, displayLabel = targetPath) {
+  return runSingleInstall(targetPath, displayLabel)
+}
+
 async function doSyncTarget(item) {
+  const skillName = skill.value?.name
+  if (!skillName || !item) return
   syncingTarget.value = item.key
-  installError.value = ''
+  syncError.value = ''
   try {
-    await executeSync(item.key, { skills: [skill.value.name] })
-    refreshSkill(skill.value.name)
-    toast.success(`${skill.value.name} → ${item.label} 同步完成`)
+    const targetIdentifier = item.target || item.path || item.key
+    const result = await executeSync(targetIdentifier, { skills: [skillName] })
+    const parsed = parseSyncExecutionResult(result, { skillName, fallback: '同步失败' })
+    if (!parsed.ok) {
+      throw new Error(parsed.message)
+    }
+    await refreshSkill(skillName)
+    toast.success(`${skillName} → ${item.label} 同步完成`)
   } catch (e) {
-    installError.value = e.message || '同步失败'
+    const message = formatInstallError(e, '同步失败')
+    if (isCurrentSkill(skillName)) {
+      syncError.value = `${item.label}：${message}`
+    }
+    toast.error(`同步 ${skillName} 失败：${message}`)
   } finally {
     syncingTarget.value = null
   }
 }
 
 async function doInstallProject(proj) {
-  const targets = proj.targets || []
-  if (!targets.length) return
+  const skillName = skill.value?.name
+  const rawTargets = proj?.targets || []
+  if (!skillName || !rawTargets.length) return
   installing.value = true
   installingProject.value = proj.id
+  clearOkTimer()
   installError.value = ''
   installOk.value = ''
-  const errors = []
-  for (const t of targets) {
-    try {
-      await executeSync(t, { skills: [skill.value.name] })
-    } catch (e) {
-      errors.push(`${t}: ${e.message || '失败'}`)
+
+  try {
+    const undiscovered = rawTargets.filter(t => discoveredMap.value[t] === undefined)
+    if (undiscovered.length) {
+      await Promise.allSettled(undiscovered.map(t => fetchDiscoverForTarget(t)))
     }
+    const destinations = resolveProjectInstallTargets(proj, discoveredMap.value)
+    if (!destinations.length) return
+
+    const errors = []
+    for (const dest of destinations) {
+      try {
+        const result = await executeSync(dest.path, { skills: [skillName] })
+        const parsed = parseSyncExecutionResult(result, { skillName, fallback: '安装失败' })
+        if (!parsed.ok) {
+          throw new Error(parsed.message)
+        }
+      } catch (e) {
+        errors.push(`${dest.label}: ${formatInstallError(e, '安装失败')}`)
+      }
+    }
+    await refreshSkill(skillName)
+    if (errors.length) {
+      const msg = `${errors.length}/${destinations.length} 个目标失败：${errors.join('；')}`
+      if (isCurrentSkill(skillName)) {
+        installError.value = msg
+      }
+      toast.error(msg)
+    } else {
+      const msg = `已安装到 ${proj.name}（${destinations.length} 个目标）`
+      if (isCurrentSkill(skillName)) {
+        setTransientInstallOk(msg)
+      }
+      toast.success(`已安装 ${skillName} → ${proj.name}（${destinations.length} 个目标）`)
+    }
+  } finally {
+    installing.value = false
+    installingProject.value = null
   }
-  if (errors.length) {
-    installError.value = `${errors.length}/${targets.length} 个目标失败: ${errors.join('; ')}`
-  } else {
-    installOk.value = `已安装到 ${proj.name}（${targets.length} 个目标）`
-    setTimeout(() => { installOk.value = '' }, 2000)
-    toast.success(`已安装 ${skill.value.name} → ${proj.name}（${targets.length} 个目标）`)
-  }
-  installing.value = false
-  installingProject.value = null
-  refreshSkill(skill.value.name)
 }
 
 async function doInstallCustom() {
   const path = customPath.value.trim()
   if (!path) return
-  installing.value = true
-  installError.value = ''
-  installOk.value = ''
-  try {
-    await executeSync(path, { skills: [skill.value.name] })
-    installOk.value = `已安装到 ${path}`
-    setTimeout(() => { installOk.value = ''; customPath.value = '' }, 2000)
-    refreshSkill(skill.value.name)
-    toast.success(`已安装 ${skill.value.name} → ${path}`)
-  } catch (e) {
-    installError.value = e.message || '安装失败'
-  } finally {
-    installing.value = false
-  }
+  await runSingleInstall(path, path, { clearCustomOnSuccess: true })
 }
 
 // ── Diff state ──
@@ -495,9 +626,12 @@ const diffChangedFiles = computed(() => {
 })
 
 function openDiff(item) {
+  const skillName = skill.value?.name
+  if (!skillName || !item) return
+  const targetIdentifier = item.target || item.path || item.key
   showDiff.value = true
-  diffSkill.value = skill.value.name
-  diffTarget.value = item.key
+  diffSkill.value = skillName
+  diffTarget.value = targetIdentifier
   diffTargetLabel.value = item._project ? `${item._projectName || ''}/${item.label}` : item.label
   diffLoading.value = true
   diffError.value = null
@@ -507,12 +641,12 @@ function openDiff(item) {
   previewSource.value = ''
   previewTarget.value = ''
   previewError.value = ''
-  fetchSkillDiff(skill.value.name, item.key)
+  fetchSkillDiff(skillName, targetIdentifier)
     .then(data => {
       diffFiles.value = data.files || []
       diffSummary.value = data.summary || {}
     })
-    .catch(e => { diffError.value = e.message })
+    .catch(e => { diffError.value = formatInstallError(e, '加载差异失败') })
     .finally(() => { diffLoading.value = false })
 }
 
@@ -528,20 +662,23 @@ async function openFilePreview(file) {
     let repoPromise = Promise.resolve('')
     let targetPromise = Promise.resolve('')
 
-    if (file.status !== 'removed') {
-      repoPromise = fetchSkillFile(skillName, filePath)
-        .then(data => data.content || '')
-    }
+    // removed: exists in source, missing in target
+    // added: exists in target, missing in source
+    // modified: exists in both
     if (file.status !== 'added') {
+      repoPromise = fetchSkillFile(skillName, filePath)
+        .then(data => data.exists === false ? '(文件不存在)' : (data.content || ''))
+    }
+    if (file.status !== 'removed') {
       targetPromise = fetchTargetFile(skillName, targetName, filePath)
-        .then(data => data.content || '')
+        .then(data => data.exists === false ? '(文件不存在)' : (data.content || ''))
     }
 
     const [repo, target] = await Promise.all([repoPromise, targetPromise])
     previewSource.value = repo
     previewTarget.value = target
   } catch (e) {
-    previewError.value = e.message
+    previewError.value = formatInstallError(e, '加载文件内容失败')
   } finally {
     previewLoading.value = false
   }
@@ -951,6 +1088,12 @@ function closeFilePreview() {
   min-width: 0;
 }
 
+.im-agent-loading {
+  font-size: var(--qqx-font-size-small);
+  color: var(--qqx-text-tertiary);
+  padding: 6px 8px;
+}
+
 .im-agent-warn {
   display: flex;
   align-items: flex-start;
@@ -1030,6 +1173,14 @@ function closeFilePreview() {
   color: var(--qqx-error);
   background: var(--qqx-error-light);
   border-radius: var(--qqx-radius-xs);
+  word-break: break-word;
+}
+
+.im-error-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--qqx-space-sm);
 }
 
 .im-ok {

@@ -13,12 +13,27 @@ _LOCK = RLock()
 
 
 def display_name(path: str) -> str:
-    parts = Path(path).parts
-    return (
-        parts[-2].lstrip(".")
-        if len(parts) > 1 and parts[-1] == "skills"
-        else Path(path).name
-    )
+    resolved = Path(path).expanduser()
+    parts = [p for p in resolved.parts if p not in ("/", "\\", "")]
+    if len(parts) >= 2 and parts[-1] == "skills":
+        parent = parts[-2]
+        if parent.startswith(".") and len(parent) > 1:
+            return parent[1:]
+        return parent
+    return resolved.name or str(resolved)
+
+
+def _local_path_matches(record_path: str, identifier: str) -> bool:
+    left = Path(record_path).expanduser()
+    right = Path(identifier).expanduser()
+    if left == right:
+        return True
+    if left.is_absolute() and right.is_absolute():
+        try:
+            return left.resolve() == right.resolve()
+        except OSError:
+            return False
+    return False
 
 
 def target_records(cfg=None) -> list[dict]:
@@ -68,7 +83,7 @@ def resolve_target(identifier: str, *, allow_path: bool = False, cfg=None) -> di
         if r["name"] == identifier
         or (
             r["transport"] == "local"
-            and Path(r["path"]).expanduser() == Path(identifier).expanduser()
+            and _local_path_matches(r["path"], identifier)
         )
     ]
     if len(matches) == 1:
@@ -117,7 +132,12 @@ def add_target(
         if not path.startswith(("/", "~/")):
             raise SyncError("Remote path must be absolute or start with ~/")
     else:
-        path = str(Path(path).expanduser().absolute())
+        expanded = Path(path).expanduser()
+        if expanded.is_symlink():
+            path = str(expanded.absolute())
+        else:
+            abs_path = expanded.absolute()
+            path = str(abs_path.parent.resolve() / abs_path.name)
     with _LOCK:
         cfg = load_config()
         records = target_records(cfg)

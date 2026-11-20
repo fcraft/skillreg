@@ -241,8 +241,8 @@
           <label class="form-label">路径</label>
           <div class="form-input-row">
             <input v-model="newTarget.path" type="text" class="form-input form-input-flex" placeholder="例如: ~/.agents/skills" />
-            <QButton type="secondary" size="large" :disabled="!directoryPickerSupported" @click="pickDirectory">
-              <FolderOpen :size="14" /> 选择目录
+            <QButton type="secondary" size="large" :disabled="pickingDirectory" @click="pickDirectory">
+              <FolderOpen :size="14" /> {{ pickingDirectory ? '选择中...' : '选择目录' }}
             </QButton>
           </div>
         </div>
@@ -494,11 +494,11 @@ import {
   fetchProjects, fetchTargetSkills,
   addSyncTarget, removeSyncTarget, renameSyncTarget,
   removeSkillFromTarget as removeSkillApi, discoverHomeAgentDirs,
-  fetchDiscover,
+  fetchDiscover, selectWorkspaceDirectory,
 } from '../api/index.js'
 
 const toast = useToast()
-const { state: bridgeState } = useSyncBridge()
+const { state: bridgeState, mergeTargetStatus } = useSyncBridge()
 const route = useRoute()
 const router = useRouter()
 
@@ -544,6 +544,7 @@ async function syncProject(proj) {
   try {
     for (const t of (proj.targets || [])) {
       const data = await executeSync(t)
+      if (!data?.success) throw new Error(data?.stderr || '同步失败')
       const { skillCount, fileCount } = parseSyncCount(data.stdout || '')
       totalFiles += fileCount
       totalSkills += skillCount
@@ -563,6 +564,7 @@ async function syncProjectTarget(proj, targetPath) {
   error.value = null
   try {
     const data = await executeSync(targetPath)
+    if (!data?.success) throw new Error(data?.stderr || '同步失败')
     const { skillCount, fileCount } = parseSyncCount(data.stdout || '')
     await refreshTargets([targetPath])
     toast.success(`同步 ${getTargetLabel(targetPath)}: ${skillCount} skill · ${fileCount} 文件`)
@@ -577,6 +579,7 @@ async function installProjectSkill(skillName, targetPath) {
   installingSkill.value = skillName
   try {
     const data = await executeSync(targetPath, { skills: [skillName] })
+    if (!data?.success) throw new Error(data?.stderr || '安装失败')
     const { fileCount } = parseSyncCount(data.stdout || '')
     await refreshTargets([targetPath])
     toast.success(`已安装 ${skillName} → ${getTargetLabel(targetPath)} (${fileCount} 文件)`)
@@ -595,6 +598,7 @@ async function installProjectAll(proj) {
   try {
     for (const t of (proj.targets || [])) {
       const data = await executeSync(t)
+      if (!data?.success) throw new Error(data?.stderr || '安装失败')
       const { skillCount, fileCount } = parseSyncCount(data.stdout || '')
       totalFiles += fileCount
       totalSkills += skillCount
@@ -807,19 +811,25 @@ const addTargetOpen = ref(false)
 const addTargetSaving = ref(false)
 const addTargetError = ref('')
 const newTarget = ref({ name: '', path: '' })
-
-// Browser support check for File System Access API
-const directoryPickerSupported = typeof window !== 'undefined' && 'showDirectoryPicker' in window
+const pickingDirectory = ref(false)
 
 async function pickDirectory() {
+  if (pickingDirectory.value) return
+  pickingDirectory.value = true
+  addTargetError.value = ''
   try {
-    const handle = await window.showDirectoryPicker({ mode: 'readwrite' })
-    // handle.name is the leaf directory name (e.g. "skills")
-    // Pre-fill with ~/<name> as a convenience — user can adjust
-    const picked = handle.name
-    newTarget.value.path = picked.startsWith('~') ? picked : `~/${picked}`
-  } catch {
-    // User cancelled or API error — silently ignore
+    const result = await selectWorkspaceDirectory(newTarget.value.path || null)
+    if (!result.cancelled && result.path) {
+      newTarget.value.path = result.path
+    }
+  } catch (e) {
+    if (e?.code === 'directory_picker_unavailable' || e?.status === 501) {
+      addTargetError.value = '当前环境不支持系统目录选择器，请直接手动输入绝对路径或 ~/ 开头路径'
+    } else {
+      addTargetError.value = e?.message || '无法打开目录选择器，请手动输入路径'
+    }
+  } finally {
+    pickingDirectory.value = false
   }
 }
 
@@ -915,6 +925,7 @@ async function loadAll(fullRefresh = false) {
 
     skills.value = data.skills || []
     targets.value = (config.targets || []).map(t => ({
+      id: t.id || null,
       name: t.name,
       path: t.path,
       label: t.label || t.name,
@@ -959,9 +970,8 @@ async function loadStatusForTarget(targetName) {
         statusMap.value[row.name][targetKey] = row.status
       }
     }
-    // Sync to bridge for cross-page display
-    bridgeState.statusMap = { ...statusMap.value }
-    bridgeState.targets = [...targets.value]
+    // Merge fresh status rows into shared bridge without wiping unrelated targets
+    mergeTargetStatus(targetName, rows, targets.value)
   } catch {
     // silently ignore — status stays stale
   }
@@ -1278,8 +1288,19 @@ async function executeSyncAll() {
 }
 
 function syncToBridge() {
-  bridgeState.statusMap = { ...statusMap.value }
-  bridgeState.targets = [...targets.value]
+  for (const [skillName, targetEntries] of Object.entries(statusMap.value)) {
+    bridgeState.statusMap[skillName] = {
+      ...(bridgeState.statusMap[skillName] || {}),
+      ...targetEntries,
+    }
+  }
+  bridgeState.targets = targets.value.map(t => ({
+    id: t.id || null,
+    name: t.name,
+    label: t.label || t.name,
+    path: t.path,
+    _project: false,
+  }))
 }
 
 // ---- Sync Actions ----
