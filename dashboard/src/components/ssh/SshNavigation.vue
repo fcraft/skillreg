@@ -8,7 +8,7 @@
             <Server :size="16" /><span><strong>{{ connection.name }}</strong><small>{{ connection.host }}</small></span><ChevronDown :size="14" :class="{ 'ssh-nav-collapsed': selectedConnection !== connection.id }" />
           </button>
           <div v-if="selectedConnection === connection.id" class="ssh-nav-targets">
-            <button v-for="target in connectionTargets(connection.id)" :key="target.id" class="ssh-directory q-press" :class="{ selected: activeTargetId === target.id }" :aria-current="activeTargetId === target.id ? 'location' : undefined" :title="target.path" @click="$emit('target', target)"><Folder :size="14" /><span>{{ target.name }}</span></button>
+            <button v-for="target in connectionTargets(connection.id)" :key="target.id" class="ssh-directory q-press" :class="{ selected: activeTargetId === target.id }" :aria-current="activeTargetId === target.id ? 'location' : undefined" :title="target.path" @click="$emit('target', target)"><ProviderIcon :target="target" :size="15" /><span>{{ target.name }}</span></button>
             <p v-if="!connectionTargets(connection.id).length" class="ssh-muted">尚未添加目录</p>
           </div>
         </section>
@@ -21,9 +21,10 @@
   </nav>
 </template>
 <script setup>
-import { ChevronDown, Folder, Plus, Server } from 'lucide-vue-next'
+import { ChevronDown, Plus, Server } from 'lucide-vue-next'
 import QButton from '../QButton.vue'
 import QSelect from '../QSelect.vue'
+import ProviderIcon from '../ProviderIcon.vue'
 const props = defineProps({ connections: Array, targets: Array, selectedConnection: String, activeTargetId: String })
 const emit = defineEmits(['connection', 'target', 'add'])
 const connectionTargets = id => props.targets.filter(target => target.connectionId === id)

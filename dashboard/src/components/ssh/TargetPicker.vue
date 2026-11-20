@@ -7,7 +7,7 @@
       <QButton type="secondary" :disabled="busy || (scope === 'project' && !root)" @click="discover">{{ busy ? '发现中…' : '发现 Agent 目录' }}</QButton>
       <div v-if="discovered" class="ssh-target-options">
         <p v-if="!candidates.length" class="ssh-muted">没有发现 Agent 目录，可手动填写安装路径</p>
-        <QCheckbox v-for="item in candidates" :key="item.path" class="ssh-option" :model-value="selected.includes(item.path)" @update:model-value="selected = $event ? [...selected, item.path] : selected.filter(path => path !== item.path)"><span>{{ item.name || item.agentKind }}<code>{{ item.path }}</code></span></QCheckbox>
+        <QCheckbox v-for="item in candidates" :key="item.path" class="ssh-option" :model-value="selected.includes(item.path)" @update:model-value="selected = $event ? [...selected, item.path] : selected.filter(path => path !== item.path)"><span><span class="ssh-provider-label"><ProviderIcon :target="item" :size="16" /><span>{{ item.name || item.agentKind }}</span></span><code>{{ item.path }}</code></span></QCheckbox>
       </div>
       <QDisclosure id="ssh-manual-target" title="手动指定目录"><div class="ssh-form ssh-advanced">
         <label>目标名称<input v-model="manualName" class="ssh-input" placeholder="项目 Codex" /></label>
@@ -25,6 +25,7 @@ import QButton from '../QButton.vue'
 import QDisclosure from '../QDisclosure.vue'
 import QCheckbox from '../QCheckbox.vue'
 import QSelect from '../QSelect.vue'
+import ProviderIcon from '../ProviderIcon.vue'
 import { discoverTargets, addTarget } from '../../api/remoteSync.js'
 const props = defineProps({ modelValue: Boolean, connection: Object })
 const emit = defineEmits(['update:modelValue', 'saved'])

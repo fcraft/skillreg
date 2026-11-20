@@ -7,6 +7,7 @@ import pytest
 import skillreg.config as cfgmod
 import skillreg.cli as climod
 from skillreg.server import health as health_api
+from skillreg.services import sync_manager
 
 
 @pytest.fixture(autouse=True)
@@ -17,3 +18,5 @@ def isolate_skillreg_config(tmp_path, monkeypatch):
     monkeypatch.setattr(cfgmod, "CONFIG_FILE", cfg_path)
     monkeypatch.setattr(climod, "CONFIG_FILE", cfg_path)
     monkeypatch.setattr(health_api, "CONFIG_FILE", cfg_path)
+    monkeypatch.setattr(sync_manager, "_PROJECTS_DIR", cfg_path.parent)
+    monkeypatch.setattr(sync_manager, "_PROJECTS_FILE", cfg_path.parent / "projects.json")

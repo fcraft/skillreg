@@ -312,6 +312,7 @@
           :class="{ 'repo-install-target-row--selected': installRepo.target === t.path }"
         >
           <input type="radio" name="install-target" :value="t.path" v-model="installRepo.target" />
+          <ProviderIcon :target="t" :size="18" class="repo-install-target-icon" />
           <div class="repo-install-target-info">
             <span class="repo-install-target-name">
               {{ t.label || t.name }}
@@ -423,6 +424,7 @@ import QModal from './QModal.vue'
 import QButton from './QButton.vue'
 import QInput from './QInput.vue'
 import ManagedRepositoryCard from './ManagedRepositoryCard.vue'
+import ProviderIcon from './ProviderIcon.vue'
 
 function displayPath(p) {
   return p.replace(/^repos\//, '')
@@ -1666,6 +1668,10 @@ async function handleFixDetached(sub) {
 .repo-install-target-row--selected {
   background: var(--sr-surface-selected);
   box-shadow: inset 0 0 0 2px var(--sr-accent);
+}
+
+.repo-install-target-icon {
+  color: var(--sr-text-primary);
 }
 
 .repo-install-target-info {

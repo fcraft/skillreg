@@ -3,7 +3,7 @@
     <div v-if="preview" class="ssh-form">
       <p class="ssh-muted">来源：{{ preview.workspace }}</p>
       <section v-for="item in preview.targets" :key="item.target.id" class="ssh-preview-target">
-        <h3>{{ item.target.name }}</h3><code class="ssh-path">{{ item.target.path }}</code>
+        <h3 class="ssh-provider-label"><ProviderIcon :target="item.target" :size="16" /><span>{{ item.target.name }}</span></h3><code class="ssh-path">{{ item.target.path }}</code>
         <p v-if="item.error" class="ssh-error">{{ item.error.message }} · 此目标无法执行</p>
         <QDisclosure v-for="skill in item.skills" :id="`diff-${item.target.id}-${skill.name}`" :key="skill.name" class="ssh-file-diff">
           <template #title><span class="ssh-row"><span>{{ skill.name }}</span><span :class="`ssh-status-${skill.status}`">{{ statusLabel(skill.status) }}</span></span></template>
@@ -23,6 +23,7 @@ import QModal from '../QModal.vue'
 import QCheckbox from '../QCheckbox.vue'
 import QButton from '../QButton.vue'
 import QDisclosure from '../QDisclosure.vue'
+import ProviderIcon from '../ProviderIcon.vue'
 import { statusLabel, changeLabel } from '../../sources/remoteSyncState.js'
 const props = defineProps({ preview: Object, busy: Boolean, error: String })
 defineEmits(['close', 'execute'])

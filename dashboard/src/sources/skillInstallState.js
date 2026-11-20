@@ -3,6 +3,8 @@
  * installation and sync status views.
  */
 
+import { resolveProviderIconKey } from './providerIcons.js'
+
 export function extractSyncErrorMessage(result, fallback = '安装失败') {
   if (!result || typeof result !== 'object') return fallback
   const raw =
@@ -81,6 +83,7 @@ export function resolveProjectInstallTargets(project, discoveredMap = {}) {
           path: dir.path,
           label: dir.agent ? `${dir.agent} (${dir.path})` : dir.path,
           agent: dir.agent || null,
+          icon: resolveProviderIconKey(dir),
           root: rootPath,
         })
       }
@@ -90,6 +93,7 @@ export function resolveProjectInstallTargets(project, discoveredMap = {}) {
         path: rootPath,
         label: rootPath,
         agent: null,
+        icon: resolveProviderIconKey(rootPath),
         root: rootPath,
       })
     }
@@ -128,6 +132,7 @@ export function buildTargetStatusItems(targets = [], projectTargets = [], status
       builtin: Boolean(t.builtin),
       shared: Boolean(t.shared),
       agentKind: t.agentKind || null,
+      icon: resolveProviderIconKey(t),
       _project: false,
       status: statusMap[t.path] || 'not-installed',
     })
@@ -140,6 +145,8 @@ export function buildTargetStatusItems(targets = [], projectTargets = [], status
       target: targetPath,
       label: projectTargetDisplayLabel(t),
       path: targetPath,
+      agentKind: t._agent || t.agentKind || null,
+      icon: resolveProviderIconKey(t),
       _project: true,
       _projectName: t._projectName,
       status: statusMap[targetPath] || 'not-installed',

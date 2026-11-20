@@ -77,6 +77,7 @@
           </div>
           <div v-else-if="!targets.length" class="im-empty">未自动探测到常见 Agent 目录，可在下方输入自定义目录或在「Sync 工具」中添加目标</div>
           <div v-for="t in targets" :key="t.id || t.path" class="im-row">
+            <ProviderIcon :target="t" :size="18" class="im-row-icon" />
             <div class="im-row-info">
               <div class="im-row-title">
                 <span class="im-row-name">{{ t.label || t.name }}</span>
@@ -114,7 +115,10 @@
                 <div v-if="discoveringTargets[t]" class="im-agent-loading">正在检测 agent 目录...</div>
                 <div v-else-if="discoveredMap[t]?.agent_dirs?.length" class="im-agent-list">
                   <div v-for="d in discoveredMap[t].agent_dirs" :key="d.path || d.agent" class="im-agent-row">
-                    <span class="im-agent-badge">{{ d.name || d.agent }}</span>
+                    <span class="im-agent-badge">
+                      <ProviderIcon :target="d" :size="14" />
+                      <span>{{ d.name || d.agent }}</span>
+                    </span>
                     <span class="im-agent-path">→ {{ d.path }}/{{ skill.name }}</span>
                     <QButton v-if="isInstalled(d.path)" type="ghost" size="small" disabled>已安装</QButton>
                     <QButton v-else type="secondary" tint="brand" size="small" :disabled="installing" @click="doInstallPath(d.path, `${d.name || d.agent} (${d.path})`)">
@@ -165,6 +169,7 @@
           <div v-for="item in allTargetsWithStatus" :key="item.key" class="sync-card">
             <div class="sync-card-header">
               <div class="sync-card-info">
+                <ProviderIcon :target="item" :size="16" class="sync-card-icon" />
                 <span class="sync-card-name">{{ item.label }}</span>
                 <span v-if="targetBadgeText(item)" class="im-row-badge" :class="{ 'im-row-badge--shared': item.shared }">{{ targetBadgeText(item) }}</span>
                 <span v-if="item._projectName" class="sync-card-project">{{ item._projectName }}</span>
@@ -263,6 +268,7 @@ import QButton from './QButton.vue'
 import QDiffViewer from './QDiffViewer.vue'
 import SkillDetailDrawer from './SkillDetailDrawer.vue'
 import SkillSshInstall from './ssh/SkillSshInstall.vue'
+import ProviderIcon from './ProviderIcon.vue'
 import { useSkillDetail } from '../composables/useSkillDetail.js'
 import { useSyncBridge } from '../composables/useSyncBridge.js'
 import { useToast } from '../composables/useToast.js'
@@ -965,6 +971,10 @@ function closeFilePreview() {
   background: var(--sr-content-bg-hover);
 }
 
+.im-row-icon {
+  color: var(--sr-text-primary);
+}
+
 .im-row-info {
   display: flex;
   flex-direction: column;
@@ -1104,6 +1114,7 @@ function closeFilePreview() {
 .im-agent-badge {
   display: inline-flex;
   align-items: center;
+  gap: 5px;
   min-height: 22px;
   font-size: var(--sr-text-meta);
   font-weight: var(--sr-weight-semibold);
@@ -1277,6 +1288,10 @@ function closeFilePreview() {
   align-items: center;
   gap: var(--sr-space-2);
   min-width: 0;
+}
+
+.sync-card-icon {
+  color: var(--sr-text-primary);
 }
 
 .sync-card-name {

@@ -48,6 +48,7 @@ async function doLoadSyncStatus(force = false) {
                 _projectId: row._projectId,
                 _projectRoot: row._projectRoot || null,
                 _agent: row._agent || null,
+                _icon: row._icon || null,
               })
             }
           }
