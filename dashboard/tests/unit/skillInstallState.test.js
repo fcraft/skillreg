@@ -99,6 +99,8 @@ test('buildTargetStatusItems preserves unambiguous target identifiers even with 
   assert.equal(items[1].target, 'id-2')
   assert.equal(items[2].target, '/work/app/.codex/skills')
   assert.equal(items[2].label, 'app · codex')
+  assert.equal(items[2].icon, 'codex')
+  assert.equal(items[0].icon, 'claude')
   assert.equal(items[2].status, 'changed')
 })
 

@@ -65,6 +65,40 @@ AGENTS = [
     "tcodex",
     "agent",
 ]
+DEFAULT_ICON = "custom"
+AGENT_ICONS = {
+    "agents": "agents",
+    "claude": "claude",
+    "codex": "codex",
+    "cursor": "cursor",
+    "gemini": "gemini",
+    "antigravity": "antigravity",
+    "copilot": "copilot",
+    "opencode": "opencode",
+    "codebuddy": "codebuddy",
+    "workbuddy": "workbuddy",
+    "pi": "pi",
+    "cline": "cline",
+    "droid": "droid",
+    "kimi": "kimi",
+    "qwen": "qwen",
+    "qoder": "qoder",
+    "kiro": "kiro",
+    "crush": "crush",
+    "vibe": "vibe",
+    "hermes": "hermes",
+    "dsh": "dsh",
+    "commandcode": "commandcode",
+    "devin": "devin",
+    "grok": "grok",
+    "zcode": "zcode",
+    "alma": "alma",
+    "omp": "omp",
+    "minimax-code": "minimax-code",
+    "tclaude": "claude",
+    "tcodex": "codex",
+    "agent": "agent",
+}
 # (agent_id, display_name, root_parts, skills_subdir, env_var, xdg_subpath, shared)
 GLOBAL_AGENT_SPECS = [
     ("agents", "Shared Agents", (".agents",), "skills", None, None, True),
@@ -553,6 +587,7 @@ def discover_targets(root_arg=None):
                 result.append(
                     {
                         "agentKind": agent,
+                        "icon": AGENT_ICONS.get(agent, DEFAULT_ICON),
                         "name": name,
                         "path": canonical,
                         "exists": target.is_dir(),
@@ -582,6 +617,7 @@ def discover_targets(root_arg=None):
                 result.append(
                     {
                         "agentKind": agent,
+                        "icon": AGENT_ICONS.get(agent, DEFAULT_ICON),
                         "name": name,
                         "path": canonical,
                         "exists": target.is_dir(),

@@ -54,6 +54,7 @@
               @click="switchTarget(t.path)"
             >
               <span class="target-tab-header">
+                <ProviderIcon :target="t" :size="16" class="target-tab-icon" />
                 <span class="target-tab-name">{{ t._label || t.label || t.name }}</span>
                 <span v-if="targetBadgeText(t)" class="target-tab-badge" :class="{ 'target-tab-badge--shared': t.shared }">{{ targetBadgeText(t) }}</span>
               </span>
@@ -98,7 +99,10 @@
       <!-- Skill List for Active Target -->
       <QCard class="skill-list-card">
         <template #header>
-          <span class="card-target-label">Target: {{ activeTargetLabel }}</span>
+          <span class="card-target-label">
+            <ProviderIcon v-if="activeTargetObj" :target="activeTargetObj" :size="15" class="card-target-icon" />
+            <span>Target: {{ activeTargetLabel }}</span>
+          </span>
         </template>
 
         <!-- Installed Skills Section -->
@@ -171,7 +175,10 @@
                 <div v-for="t in p.targets" :key="t" class="sp-matrix-header-target" :title="t">
                   <span class="sp-matrix-col-label">{{ getTargetLabel(t) }}</span>
                   <div class="sp-matrix-col-agents">
-                    <span v-for="d in (discoveredProjectMap[t]?.agent_dirs || [])" :key="d.agent" class="sp-agent-tag">{{ d.agent }}</span>
+                    <span v-for="d in (discoveredProjectMap[t]?.agent_dirs || [])" :key="d.agent" class="sp-agent-tag">
+                      <ProviderIcon :target="d" :size="12" />
+                      <span>{{ d.agent }}</span>
+                    </span>
                     <span v-if="!(discoveredProjectMap[t]?.agent_dirs?.length)" class="sp-agent-tag sp-agent-tag--warn">直接</span>
                   </div>
                   <div class="sp-matrix-col-actions">
@@ -269,6 +276,7 @@
               :title="formatDisplayPath(agent.path, agent.rel_path)"
               @click="applyAgentPreset(agent)"
             >
+              <ProviderIcon :target="agent" :size="14" />
               <span>{{ agent.name }}</span>
               <code class="preset-chip-path">{{ formatDisplayPath(agent.path, agent.rel_path) }}</code>
             </button>
@@ -352,7 +360,10 @@
           <div class="sync-all-section-title">配置目标 ({{ syncAllNamedTargets.length }})</div>
           <div v-for="t in syncAllNamedTargets" :key="t.path" class="sync-all-target-row">
             <div class="sync-all-target-info">
-              <span class="sync-all-target-name">{{ t.label || t.name }}</span>
+              <span class="sync-all-target-name">
+                <ProviderIcon :target="t" :size="15" />
+                <span>{{ t.label || t.name }}</span>
+              </span>
               <span class="sync-all-target-path" :title="t.path">{{ formatDisplayPath(t.path) }}</span>
             </div>
             <span class="sync-all-target-skill-count">
@@ -372,7 +383,10 @@
             </div>
             <div v-for="t in group.targets" :key="t.path" class="sync-all-target-row">
               <div class="sync-all-target-info">
-                <span class="sync-all-target-name">{{ getTargetLabel(t.path) }}</span>
+                <span class="sync-all-target-name">
+                  <ProviderIcon :path="t.path" :size="15" />
+                  <span>{{ getTargetLabel(t.path) }}</span>
+                </span>
                 <span class="sync-all-target-path" :title="t.path">{{ formatDisplayPath(t.path) }}</span>
               </div>
               <span class="sync-all-target-skill-count">
@@ -486,6 +500,7 @@
                 class="discover-row"
                 :class="{ 'discover-row--muted': !agent.active }"
               >
+                <ProviderIcon :target="agent" :size="18" class="discover-icon" />
                 <div class="discover-info">
                   <div class="discover-name-line">
                     <span class="discover-agent">{{ agent.name }}</span>
@@ -533,6 +548,7 @@
                 :key="agent.id"
                 class="discover-row"
               >
+                <ProviderIcon :target="agent" :size="18" class="discover-icon" />
                 <div class="discover-info">
                   <div class="discover-name-line">
                     <span class="discover-agent">{{ agent.name }}</span>
@@ -588,6 +604,7 @@ import QButton from './QButton.vue'
 import QCheckbox from './QCheckbox.vue'
 import QModal from './QModal.vue'
 import QDiffViewer from './QDiffViewer.vue'
+import ProviderIcon from './ProviderIcon.vue'
 import { useSyncBridge } from '../composables/useSyncBridge.js'
 import { useSkillDetail } from '../composables/useSkillDetail.js'
 import { useToast } from '../composables/useToast.js'
@@ -1144,13 +1161,17 @@ const allTargets = computed(() => {
   return targets.value.map(t => ({ ...t, _label: t.label || t.name, _project: false }))
 })
 
+const activeTargetObj = computed(() => {
+  return allTargets.value.find(t => t.path === activeTarget.value) || null
+})
+
 const activeTargetShort = computed(() => {
-  const t = allTargets.value.find(t => t.path === activeTarget.value)
+  const t = activeTargetObj.value
   return t ? (t._label || t.label || t.name) : activeTarget.value
 })
 
 const activeTargetLabel = computed(() => {
-  const t = allTargets.value.find(t => t.path === activeTarget.value)
+  const t = activeTargetObj.value
   return t ? `${t._label || t.label || t.name} · ${formatDisplayPath(t.path)}` : formatDisplayPath(activeTarget.value)
 })
 
@@ -2210,10 +2231,17 @@ async function hideBuiltinTarget(t) {
 }
 
 .card-target-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: var(--sr-text-compact);
   font-family: var(--sr-font-mono);
   color: var(--sr-text-tertiary);
   font-weight: var(--sr-weight-regular);
+}
+
+.card-target-icon {
+  color: var(--sr-text-primary);
 }
 
 .skill-list {
@@ -2737,6 +2765,9 @@ async function hideBuiltinTarget(t) {
 }
 
 .sp-agent-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: var(--sr-text-micro);
   font-weight: var(--sr-weight-semibold);
   background: var(--sr-role-blue-surface);
@@ -2918,6 +2949,9 @@ async function hideBuiltinTarget(t) {
 }
 
 .sync-all-target-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: var(--sr-text-card-title);
   font-weight: var(--sr-weight-semibold);
   color: var(--sr-text-primary);
@@ -3187,6 +3221,14 @@ async function hideBuiltinTarget(t) {
 }
 
 .discover-row--muted .discover-agent {
+  color: var(--sr-text-secondary);
+}
+
+.discover-icon {
+  color: var(--sr-text-primary);
+}
+
+.discover-row--muted .discover-icon {
   color: var(--sr-text-secondary);
 }
 

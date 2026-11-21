@@ -6,7 +6,7 @@
       <p class="ssh-muted">{{ run.createdAt }}<template v-if="isActiveRun(run)"> · {{ run.currentSkill || '准备中' }}</template></p><code class="ssh-path">{{ run.id }}</code><p class="ssh-muted">来源：{{ run.workspace }}</p>
       <p v-if="run.error" class="ssh-error">{{ run.error.message }}</p>
       <section v-for="result in run.results" :key="result.target.id" class="ssh-preview-target">
-        <div class="ssh-row"><strong>{{ result.target.name }}</strong><span>{{ statusLabel(result.state) }}</span></div><code class="ssh-path">{{ result.target.path }}</code>
+        <div class="ssh-row"><strong class="ssh-provider-label"><ProviderIcon :target="result.target" :size="16" /><span>{{ result.target.name }}</span></strong><span>{{ statusLabel(result.state) }}</span></div><code class="ssh-path">{{ result.target.path }}</code>
         <p v-if="result.error" class="ssh-error">{{ result.error.message }}</p>
         <div v-for="skill in result.skills" :key="skill.name" class="ssh-run-skill">
           <div class="ssh-row"><span>{{ skill.name }}</span><span>{{ statusLabel(skill.state) }}{{ skill.changed === false ? ' · 内容一致' : '' }}</span></div>
@@ -25,6 +25,7 @@
 <script setup>
 import QModal from '../QModal.vue'
 import QButton from '../QButton.vue'
+import ProviderIcon from '../ProviderIcon.vue'
 import { isActiveRun, statusLabel } from '../../sources/remoteSyncState.js'
 defineProps({ run: Object, busy: Boolean, error: String })
 defineEmits(['close', 'retry', 'cancel'])

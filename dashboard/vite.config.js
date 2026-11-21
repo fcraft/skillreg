@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { readFileSync } from 'node:fs'
+import { providerIconLicenses } from './scripts/providerIconLicenses.js'
 
 function readDashboardVersion() {
   const pyprojectUrl = new URL('../pyproject.toml', import.meta.url)
@@ -125,7 +126,7 @@ export default defineConfig({
   define: {
     __SKILLREG_DASHBOARD_VERSION__: JSON.stringify(readDashboardVersion()),
   },
-  plugins: [vue(), autoStartServer()],
+  plugins: [vue(), autoStartServer(), providerIconLicenses()],
   server: {
     port: 17880,
     proxy: {

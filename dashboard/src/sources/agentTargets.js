@@ -2,6 +2,8 @@
  * Pure state helpers for built-in coding agent directories and sync targets.
  */
 
+import { resolveProviderIconKey } from './providerIcons.js'
+
 export function formatAgentDisplayPath(targetPath, relPath = null) {
   if (relPath && !String(relPath).startsWith('/') && !/^[A-Za-z]:[\\/]/.test(String(relPath))) {
     return `~/${String(relPath).replace(/^\/+/, '')}`
@@ -38,6 +40,7 @@ export function normalizeTarget(raw) {
     builtin,
     source: builtin ? 'builtin' : (raw.source || 'custom'),
     agentKind: raw.agentKind || null,
+    icon: resolveProviderIconKey(raw),
     detectedBy: raw.detectedBy || null,
     exists: raw.exists ?? true,
     shared: Boolean(raw.shared),

@@ -35,6 +35,7 @@
           :class="['rsv-target-tab', { 'rsv-target-tab--active': activeTarget === t.name }]"
           @click="activeTarget = t.name"
         >
+          <ProviderIcon :target="t" :size="16" />
           <span class="rsv-target-tab-name">{{ t.name }}</span>
           <span class="rsv-target-tab-path">{{ t.path }}</span>
           <span class="rsv-target-tab-count">{{ t.total }} skills</span>
@@ -45,6 +46,7 @@
       <QCard v-if="activeTargetData" class="rsv-target-detail">
         <template #header>
           <div class="rsv-target-header">
+            <ProviderIcon :target="activeTargetData" :size="16" />
             <span class="rsv-target-title">{{ activeTargetData.name }}</span>
             <span class="rsv-target-path">{{ activeTargetData.path }}</span>
             <QButton type="primary" size="small" :disabled="syncing" @click="syncTarget(activeTargetData.name)">
@@ -77,6 +79,7 @@ import { ref, computed } from 'vue'
 import { RefreshCw } from 'lucide-vue-next'
 import QCard from '../QCard.vue'
 import QButton from '../QButton.vue'
+import ProviderIcon from '../ProviderIcon.vue'
 import { useSshMode } from '../../composables/useSshMode.js'
 import { useRemoteData } from '../../composables/useRemoteData.js'
 

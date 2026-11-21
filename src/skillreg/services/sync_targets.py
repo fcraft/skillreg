@@ -33,6 +33,19 @@ def _storable_record(record: dict) -> dict:
     return {key: record.get(key) for key in _STORED_RECORD_KEYS}
 
 
+def _resolve_record_icon(record: dict) -> str:
+    agent_kind = record.get("agentKind")
+    if agent_kind:
+        spec = agent_catalog.get_agent_spec(agent_kind)
+        if spec is not None:
+            return spec.icon
+    path = record.get("path")
+    if path:
+        is_remote = record.get("transport", "local") != "local"
+        return agent_catalog.icon_for_path(path, remote=is_remote)
+    return agent_catalog.DEFAULT_CUSTOM_ICON
+
+
 def display_name(path: str) -> str:
     matched = agent_catalog.match_agent_for_path(path)
     if matched is not None:
@@ -103,6 +116,7 @@ def configured_target_records(cfg=None) -> list[dict]:
         )
         record["builtin"] = False
         record["source"] = "custom"
+        record["icon"] = _resolve_record_icon(record)
         records.append(record)
     return records
 
@@ -143,6 +157,7 @@ def builtin_target_records(cfg=None, *, include_disabled: bool = False) -> list[
                 "connectionId": None,
                 "scope": "global",
                 "agentKind": item["id"],
+                "icon": item["icon"],
                 "projectRoot": None,
                 "skills": skills,
                 "builtin": True,
@@ -232,6 +247,7 @@ def resolve_target(
     if allow_path:
         path = Path(identifier).expanduser()
         if path.is_absolute() or "/" in identifier:
+            matched_agent = agent_catalog.match_agent_for_path(path)
             return {
                 "id": str(
                     uuid.uuid5(
@@ -242,6 +258,12 @@ def resolve_target(
                 "path": str(path.absolute()),
                 "transport": "local",
                 "connectionId": None,
+                "agentKind": matched_agent.id if matched_agent else None,
+                "icon": (
+                    matched_agent.icon
+                    if matched_agent
+                    else agent_catalog.DEFAULT_CUSTOM_ICON
+                ),
                 "skills": [],
                 "builtin": False,
                 "source": "custom",
@@ -306,7 +328,12 @@ def add_target(
                 cfg.agents[agent_kind] = {**cfg.agents[agent_kind], "enabled": True}
         cfg.targets = [_storable_record(r) for r in records] + [record]
         save_config(cfg)
-        return {**record, "builtin": False, "source": "custom"}
+        return {
+            **record,
+            "icon": _resolve_record_icon(record),
+            "builtin": False,
+            "source": "custom",
+        }
 
 
 def update_target(identifier: str, **changes) -> dict:
@@ -331,12 +358,19 @@ def update_target(identifier: str, **changes) -> dict:
                 }
                 cfg.targets = [_storable_record(r) for r in configured] + [promoted]
                 save_config(cfg)
-                return {**promoted, "builtin": False, "source": "custom"}
+                return {
+                    **promoted,
+                    "icon": _resolve_record_icon(promoted),
+                    "builtin": False,
+                    "source": "custom",
+                }
             selected.update(allowed)
+            selected["icon"] = _resolve_record_icon(selected)
             save_config(cfg)
             return selected
 
         selected.update(allowed)
+        selected["icon"] = _resolve_record_icon(selected)
         cfg.targets = [
             _storable_record(selected if r["id"] == selected["id"] else r)
             for r in configured
@@ -381,4 +415,4 @@ def set_builtin_agent_enabled(agent_id: str, enabled: bool) -> dict:
         entry["enabled"] = bool(enabled)
         cfg.agents[spec.id] = entry
         save_config(cfg)
-    return {"id": spec.id, "name": spec.name, "enabled": bool(enabled)}
+    return {"id": spec.id, "name": spec.name, "icon": spec.icon, "enabled": bool(enabled)}

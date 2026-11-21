@@ -12,8 +12,10 @@ import os
 import shutil
 import uuid
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Callable, Mapping
+
+DEFAULT_CUSTOM_ICON = "custom"
 
 
 # Runtime folders frequently left behind after uninstalling an agent (never
@@ -39,6 +41,7 @@ class AgentSpec:
     id: str
     name: str
     global_root: str
+    icon: str
     skills_subdir: str = "skills"
     aliases: tuple[str, ...] = ()
     project_rel: str | None = None
@@ -59,6 +62,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="agents",
         name="Shared Agents",
+        icon="agents",
         aliases=("shared", "shared-agents"),
         global_root=".agents",
         project_rel=".agents/skills",
@@ -69,6 +73,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="claude",
         name="Claude Code",
+        icon="claude",
         aliases=("claude-code",),
         global_root=".claude",
         project_rel=".claude/skills",
@@ -79,6 +84,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="codex",
         name="Codex",
+        icon="codex",
         aliases=("codex-cli",),
         global_root=".codex",
         project_rel=".codex/skills",
@@ -90,6 +96,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="cursor",
         name="Cursor",
+        icon="cursor",
         aliases=("cursor-cli", "cursor-agent"),
         global_root=".cursor",
         project_rel=".cursor/skills",
@@ -99,6 +106,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="gemini",
         name="Gemini CLI",
+        icon="gemini",
         aliases=("gemini-cli",),
         global_root=".gemini",
         project_rel=".gemini/skills",
@@ -109,6 +117,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="antigravity",
         name="Antigravity",
+        icon="antigravity",
         aliases=("agy",),
         global_root=".gemini/config",
         bins=("agy",),
@@ -116,6 +125,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="copilot",
         name="GitHub Copilot",
+        icon="copilot",
         aliases=("gh-copilot", "copilot-cli"),
         global_root=".copilot",
         project_rel=".copilot/skills",
@@ -126,6 +136,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="opencode",
         name="OpenCode",
+        icon="opencode",
         aliases=("oc",),
         global_root=".config/opencode",
         project_rel=".opencode/skills",
@@ -138,6 +149,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="codebuddy",
         name="CodeBuddy",
+        icon="codebuddy",
         aliases=("codebuddy-code", "cbc"),
         global_root=".codebuddy",
         project_rel=".codebuddy/skills",
@@ -148,6 +160,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="workbuddy",
         name="WorkBuddy",
+        icon="workbuddy",
         aliases=("workbuddy-ai",),
         global_root=".workbuddy",
         env_var="WORKBUDDY_CONFIG_DIR",
@@ -155,6 +168,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="pi",
         name="Pi",
+        icon="pi",
         aliases=("pi-coding-agent",),
         global_root=".pi/agent",
         project_rel=".pi/skills",
@@ -165,6 +179,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="cline",
         name="Cline",
+        icon="cline",
         aliases=("cline-cli",),
         global_root=".cline",
         project_rel=".cline/skills",
@@ -175,6 +190,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="droid",
         name="Droid",
+        icon="droid",
         aliases=("factory", "factory-droid"),
         global_root=".factory",
         project_rel=".factory/skills",
@@ -185,6 +201,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="kimi",
         name="Kimi Code",
+        icon="kimi",
         aliases=("kimi-code", "kimi-cli"),
         global_root=".kimi-code",
         env_var="KIMI_CODE_HOME",
@@ -194,6 +211,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="qwen",
         name="Qwen Code",
+        icon="qwen",
         aliases=("qwen-code", "qwen-cli"),
         global_root=".qwen",
         project_rel=".qwen/skills",
@@ -204,6 +222,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="qoder",
         name="Qoder",
+        icon="qoder",
         aliases=("qoder-cli", "qoder-cn"),
         global_root=".qoder",
         project_rel=".qoder/skills",
@@ -213,6 +232,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="kiro",
         name="Kiro",
+        icon="kiro",
         aliases=("kiro-cli",),
         global_root=".kiro",
         project_rel=".kiro/skills",
@@ -222,6 +242,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="crush",
         name="Crush",
+        icon="crush",
         global_root=".config/crush",
         xdg_subpath="crush",
         bins=("crush",),
@@ -230,6 +251,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="vibe",
         name="Mistral Vibe",
+        icon="vibe",
         aliases=("mistral-vibe",),
         global_root=".vibe",
         env_var="VIBE_HOME",
@@ -239,6 +261,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="hermes",
         name="Hermes Agent",
+        icon="hermes",
         aliases=("hermes-agent",),
         global_root=".hermes",
         env_var="HERMES_HOME",
@@ -247,6 +270,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="dsh",
         name="DeepSeek Harness",
+        icon="dsh",
         aliases=("deepseek-harness",),
         global_root=".dsh",
         project_rel=".dsh/skills",
@@ -258,6 +282,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="commandcode",
         name="Command Code",
+        icon="commandcode",
         aliases=("command-code",),
         global_root=".commandcode",
         project_rel=".commandcode/skills",
@@ -268,6 +293,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="devin",
         name="Devin",
+        icon="devin",
         aliases=("devin-cli",),
         global_root=".config/devin",
         xdg_subpath="devin",
@@ -277,6 +303,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="grok",
         name="Grok Build",
+        icon="grok",
         aliases=("grok-build",),
         global_root=".grok",
         env_var="GROK_HOME",
@@ -285,18 +312,21 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="zcode",
         name="ZCode",
+        icon="zcode",
         global_root=".zcode",
         reads_shared=True,
     ),
     AgentSpec(
         id="alma",
         name="Alma",
+        icon="alma",
         global_root=".config/alma",
         reads_shared=True,
     ),
     AgentSpec(
         id="omp",
         name="Oh-My-Pi",
+        icon="omp",
         aliases=("oh-my-pi",),
         global_root=".omp/agent",
         bins=("omp",),
@@ -305,6 +335,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="minimax-code",
         name="MiniMax Code",
+        icon="minimax-code",
         aliases=("minimax",),
         global_root=".minimax",
         env_var="MINIMAX_DATA_DIR",
@@ -313,6 +344,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="tclaude",
         name="tclaude",
+        icon="claude",
         global_root=".tclaude",
         project_rel=".tclaude/skills",
         project_root=".tclaude",
@@ -321,6 +353,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="tcodex",
         name="tcodex",
+        icon="codex",
         global_root=".tcodex",
         project_rel=".tcodex/skills",
         project_root=".tcodex",
@@ -329,6 +362,7 @@ BUILTIN_AGENTS: tuple[AgentSpec, ...] = (
     AgentSpec(
         id="agent",
         name="agent",
+        icon="agent",
         global_root=".agent",
         project_rel=".agent/skills",
         project_root=".agent",
@@ -582,6 +616,7 @@ def detect_home_agents(
             "id": spec.id,
             "agent": spec.id,
             "name": spec.name,
+            "icon": spec.icon,
             "aliases": list(spec.aliases),
             "rel_path": rel_path,
             "root_path": str(root_dir.absolute()),
@@ -636,6 +671,7 @@ def discover_project_agent_dirs(root_path: str | Path) -> list[dict]:
             "agent": spec.id,
             "id": spec.id,
             "name": spec.name,
+            "icon": spec.icon,
             "rel_path": spec.project_rel,
             "path": canonical,
             "exists": skills_dir.is_dir(),
@@ -674,3 +710,64 @@ def match_agent_for_path(
             return spec
 
     return None
+
+
+def _build_remote_suffix_table() -> list[tuple[tuple[str, ...], AgentSpec]]:
+    entries: list[tuple[tuple[str, ...], AgentSpec]] = []
+    for spec in BUILTIN_AGENTS:
+        global_suffix = tuple(spec.default_rel_path.split("/"))
+        entries.append((global_suffix, spec))
+        if spec.id == "kimi":
+            entries.append(((".kimi", spec.skills_subdir), spec))
+        if spec.project_rel:
+            project_suffix = tuple(spec.project_rel.split("/"))
+            if project_suffix != global_suffix:
+                entries.append((project_suffix, spec))
+    # Match longer suffixes (e.g. .gemini/config/skills) before shorter ones (.gemini/skills).
+    entries.sort(key=lambda item: len(item[0]), reverse=True)
+    return entries
+
+
+_REMOTE_SUFFIX_TABLE: list[tuple[tuple[str, ...], AgentSpec]] = _build_remote_suffix_table()
+
+
+def match_agent_for_remote_path(path: str | None) -> AgentSpec | None:
+    """Identify a built-in AgentSpec from a remote/POSIX path by known suffixes."""
+    if not path:
+        return None
+    normalized = str(path).replace("\\", "/").strip()
+    if not normalized:
+        return None
+    parts = tuple(p for p in PurePosixPath(normalized).parts if p not in ("", "/", "~"))
+    if not parts:
+        return None
+    for suffix, spec in _REMOTE_SUFFIX_TABLE:
+        if len(parts) >= len(suffix) and parts[-len(suffix):] == suffix:
+            return spec
+    return None
+
+
+def icon_for_agent(identifier: str | None) -> str:
+    """Return the stable icon key for a built-in agent ID/alias, or default custom icon."""
+    if not identifier:
+        return DEFAULT_CUSTOM_ICON
+    spec = get_agent_spec(identifier)
+    return spec.icon if spec is not None else DEFAULT_CUSTOM_ICON
+
+
+def icon_for_path(
+    path: str | Path | None,
+    *,
+    home: Path | None = None,
+    env: Mapping[str, str] | None = None,
+    remote: bool = False,
+) -> str:
+    """Return the stable icon key inferred from a local or remote target path."""
+    if not path:
+        return DEFAULT_CUSTOM_ICON
+    matched = (
+        match_agent_for_remote_path(str(path))
+        if remote
+        else match_agent_for_path(path, home=home, env=env)
+    )
+    return matched.icon if matched is not None else DEFAULT_CUSTOM_ICON

@@ -11,6 +11,7 @@
 
     <div v-for="target in targets" :key="target.name" class="target-card">
       <div class="target-header">
+        <ProviderIcon :target="target" :size="18" class="target-icon" />
         <div class="target-info">
           <span class="target-name">{{ target.name }}</span>
           <span class="target-path" :title="target.path">{{ target.path }}</span>
@@ -45,6 +46,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import ProviderIcon from './ProviderIcon.vue'
 
 const emit = defineEmits(['synced'])
 

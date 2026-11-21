@@ -57,6 +57,7 @@
           <div class="sync-section-title">Target 同步状态</div>
           <div v-for="t in targets" :key="t.name" class="sync-target-row">
             <span :class="['sync-target-dot', targetDotClass(t.status)]" />
+            <ProviderIcon :target="t" :size="16" />
             <span class="sync-target-name">{{ t.name }}</span>
             <span class="sync-target-status">{{ targetStatusLabel(t) }}</span>
             <span class="sync-target-count">{{ t.skillCount || 0 }}/{{ t.totalCount || 0 }} skills</span>
@@ -104,6 +105,7 @@
 import { computed } from 'vue'
 import { RefreshCw, Rocket } from 'lucide-vue-next'
 import QButton from '../QButton.vue'
+import ProviderIcon from '../ProviderIcon.vue'
 
 const props = defineProps({
   host: { type: Object, default: null },
@@ -132,7 +134,7 @@ const targets = computed(() => {
     const targetMatch = line.match(/^(?:Target:\s*)?(\.\S+?\/\S+)/)
     if (targetMatch) {
       if (currentTarget) result.push(currentTarget)
-      currentTarget = { name: targetMatch[1], status: 'ok', skillCount: 0, totalCount: 0 }
+      currentTarget = { name: targetMatch[1], path: targetMatch[1], status: 'ok', skillCount: 0, totalCount: 0 }
       continue
     }
     if (currentTarget) {

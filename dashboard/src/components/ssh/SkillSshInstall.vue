@@ -15,7 +15,7 @@
       <p v-if="!connectionTargets(connection.id).length">尚未配置安装目标，请到「管理连接」添加 Agent 或项目目录</p>
       <div v-for="target in connectionTargets(connection.id)" :key="target.id" class="skill-ssh-target" :aria-busy="Boolean(rows[target.id]?.loading)">
         <div class="skill-ssh-info">
-          <strong>{{ target.name }}</strong>
+          <strong class="ssh-provider-label"><ProviderIcon :target="target" :size="16" /><span>{{ target.name }}</span></strong>
           <code>{{ target.path }}</code>
           <QLoadingState v-if="rows[target.id]?.loading">正在连接并检查…</QLoadingState>
           <span v-else-if="rows[target.id]?.error" class="ssh-error" role="alert">{{ rows[target.id].error }}</span>
@@ -41,6 +41,7 @@ import QDisclosure from '../QDisclosure.vue'
 import QLoadingState from '../QLoadingState.vue'
 import SyncPreview from './SyncPreview.vue'
 import RunDetails from './RunDetails.vue'
+import ProviderIcon from '../ProviderIcon.vue'
 import { useSkillSshInstall } from '../../composables/useSkillSshInstall.js'
 import { isActiveRun, statusLabel } from '../../sources/remoteSyncState.js'
 import '../../styles/remote-sync.css'

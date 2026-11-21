@@ -89,6 +89,7 @@ def get_targets(cfg: SkillregConfig | None = None) -> list[dict]:
             "builtin": bool(record.get("builtin", False)),
             "source": record.get("source", "custom"),
             "agentKind": record.get("agentKind"),
+            "icon": record.get("icon") or agent_catalog.icon_for_agent(record.get("agentKind")),
             "detectedBy": record.get("detectedBy"),
             "exists": record.get("exists", Path(t).expanduser().is_dir()),
             "shared": bool(record.get("shared", False)),
@@ -117,6 +118,7 @@ def get_sync_config(cfg: SkillregConfig | None = None) -> dict:
             "builtin": bool(record.get("builtin", False)),
             "source": record.get("source", "custom"),
             "agentKind": record.get("agentKind"),
+            "icon": record.get("icon") or agent_catalog.icon_for_agent(record.get("agentKind")),
             "detectedBy": record.get("detectedBy"),
             "exists": record.get("exists", Path(t).expanduser().is_dir()),
             "shared": bool(record.get("shared", False)),
@@ -225,11 +227,11 @@ def get_sync_status(
             for project_target in project.get("targets", []):
                 discovered = discover_agent_dirs(project_target)
                 effective_targets = (
-                    [(entry["path"], entry["agent"]) for entry in discovered]
+                    [(entry["path"], entry["agent"], entry.get("icon")) for entry in discovered]
                     if discovered
-                    else [(project_target, None)]
+                    else [(project_target, None, None)]
                 )
-                for eff_path, agent_name in effective_targets:
+                for eff_path, agent_name, agent_icon in effective_targets:
                     if target and Path(eff_path).expanduser() != Path(target).expanduser() and Path(project_target).expanduser() != Path(target).expanduser():
                         continue
                     for item in source_skills:
@@ -243,6 +245,8 @@ def get_sync_status(
                         }
                         if agent_name:
                             row["_agent"] = agent_name
+                        if agent_icon:
+                            row["_icon"] = agent_icon
                         rows.append(row)
     return rows
 

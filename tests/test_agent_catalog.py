@@ -377,3 +377,134 @@ def test_sync_files_worker_discover_matches_nested_and_project_agents_py36(
 
     # Maintain strict Python 3.6 syntax compatibility for SSH worker upload.
     ast.parse(Path(sync_files.__file__).read_text(encoding="utf-8"), feature_version=(3, 6))
+
+
+def test_builtin_catalog_icons_cover_all_agents_and_match_assets():
+    all_specs = agent_catalog.list_builtin_agents(include_legacy=True)
+    assert len(all_specs) == 31
+
+    icons_dir = (
+        Path(__file__).resolve().parents[1]
+        / "dashboard"
+        / "src"
+        / "assets"
+        / "provider-icons"
+    )
+    assert (icons_dir / "custom.svg").is_file()
+    assert (icons_dir / "ATTRIBUTION.md").is_file()
+
+    for spec in all_specs:
+        assert spec.icon, f"Missing icon on AgentSpec {spec.id}"
+        assert spec.icon == spec.icon.strip().lower()
+        assert (icons_dir / f"{spec.icon}.svg").is_file(), (
+            f"Missing localized SVG for {spec.id} ({spec.icon}.svg)"
+        )
+
+    # sync_files.AGENT_ICONS (Py3.6 SSH worker) must match agent_catalog 1:1.
+    expected_map = {spec.id: spec.icon for spec in all_specs}
+    assert sync_files.AGENT_ICONS == expected_map
+    assert sync_files.DEFAULT_ICON == agent_catalog.DEFAULT_CUSTOM_ICON
+
+    # Aliases, legacy specs, remote paths, and unknown fallbacks resolve accurately.
+    assert agent_catalog.icon_for_agent("shared-agents") == "agents"
+    assert agent_catalog.icon_for_agent("claude-code") == "claude"
+    assert agent_catalog.icon_for_agent("tclaude") == "claude"
+    assert agent_catalog.icon_for_agent("tcodex") == "codex"
+    assert agent_catalog.icon_for_agent("agent") == "agent"
+    assert agent_catalog.icon_for_agent("factory-droid") == "droid"
+    assert agent_catalog.icon_for_agent("unknown-custom") == "custom"
+    assert agent_catalog.icon_for_agent(None) == "custom"
+
+    assert agent_catalog.icon_for_path("~/.gemini/config/skills", remote=True) == "antigravity"
+    assert agent_catalog.icon_for_path("~/.gemini/skills", remote=True) == "gemini"
+    assert agent_catalog.icon_for_path("/srv/repo/.opencode/skills", remote=True) == "opencode"
+    assert agent_catalog.icon_for_path("/opt/custom/skills", remote=True) == "custom"
+
+
+def test_sync_apis_serialize_provider_icons_for_builtin_custom_and_project_targets(
+    tmp_path, monkeypatch
+):
+    home, _workspace = _setup_env(tmp_path, monkeypatch, skills=["demo-skill"])
+    (home / ".agents" / "skills").mkdir(parents=True)
+    (home / ".claude").mkdir()
+    (home / ".claude" / "settings.json").write_text("{}", encoding="utf-8")
+    (home / ".gemini" / "config").mkdir(parents=True)
+    (home / ".gemini" / "config" / "mcp_config.json").write_text("{}", encoding="utf-8")
+    (home / ".codebuddy").mkdir()
+    (home / ".codebuddy" / "settings.json").write_text("{}", encoding="utf-8")
+    (home / ".workbuddy").mkdir()
+    (home / ".workbuddy" / "settings.json").write_text("{}", encoding="utf-8")
+
+    custom_dir = tmp_path / "arbitrary-skills"
+    custom_dir.mkdir()
+
+    project_dir = tmp_path / "sample-project"
+    (project_dir / ".claude").mkdir(parents=True)
+    (project_dir / ".cursor").mkdir(parents=True)
+
+    client = TestClient(create_app())
+
+    add_resp = client.post(
+        "/api/sync/targets",
+        json={"name": "Custom Local", "path": str(custom_dir)},
+    )
+    assert add_resp.status_code == 200
+    assert add_resp.json()["target"]["icon"] == "custom"
+
+    # /api/sync/config and /api/sync/targets serialize icons for both custom and built-in targets.
+    for endpoint in ("/api/sync/config", "/api/sync/targets", "/api/targets"):
+        resp = client.get(endpoint)
+        assert resp.status_code == 200
+        payload = resp.json()
+        items = payload["targets"] if isinstance(payload, dict) else payload
+        by_name = {t["name"]: t for t in items}
+        assert by_name["Custom Local"]["icon"] == "custom"
+        assert by_name["Shared Agents"]["icon"] == "agents"
+        assert by_name["Claude Code"]["icon"] == "claude"
+        assert by_name["Antigravity"]["icon"] == "antigravity"
+        assert by_name["CodeBuddy"]["icon"] == "codebuddy"
+        assert by_name["WorkBuddy"]["icon"] == "workbuddy"
+
+    # /api/sync/agents returns icon for every mainstream + legacy built-in provider.
+    agents_resp = client.get(
+        "/api/sync/agents",
+        params={"include_undetected": "true", "include_legacy": "true"},
+    )
+    assert agents_resp.status_code == 200
+    agents = agents_resp.json()["agents"]
+    assert len(agents) == 31
+    assert all(a.get("icon") for a in agents)
+    agents_by_id = {a["id"]: a for a in agents}
+    assert agents_by_id["tclaude"]["icon"] == "claude"
+    assert agents_by_id["tcodex"]["icon"] == "codex"
+    assert agents_by_id["agent"]["icon"] == "agent"
+
+    # /api/sync/discover-home returns icon on every entry.
+    home_resp = client.get("/api/sync/discover-home", params={"include_undetected": "true"})
+    assert home_resp.status_code == 200
+    assert len(home_resp.json()["agent_dirs"]) == 28
+    assert all(d.get("icon") for d in home_resp.json()["agent_dirs"])
+
+    # /api/sync/discover returns icon on discovered project agent directories.
+    proj_resp = client.get("/api/sync/discover", params={"path": str(project_dir)})
+    assert proj_resp.status_code == 200
+    proj_dirs = {d["agent"]: d for d in proj_resp.json()["agent_dirs"]}
+    assert proj_dirs["claude"]["icon"] == "claude"
+    assert proj_dirs["cursor"]["icon"] == "cursor"
+
+    # Project sync status rows expose _icon alongside _agent.
+    sync_manager.create_project("DemoProj", [str(project_dir)])
+    status_resp = client.get("/api/sync/status", params={"include_projects": "true"})
+    assert status_resp.status_code == 200
+    project_rows = [r for r in status_resp.json() if r.get("_project") == "DemoProj"]
+    assert {r.get("_icon") for r in project_rows} == {"claude", "cursor"}
+
+    # SSH worker discover_targets also emits icon field.
+    worker_home = sync_files.dispatch({"operation": "discover"})
+    worker_by_kind = {t["agentKind"]: t for t in worker_home["targets"]}
+    assert worker_by_kind["antigravity"]["icon"] == "antigravity"
+    assert worker_by_kind["codebuddy"]["icon"] == "codebuddy"
+    assert worker_by_kind["workbuddy"]["icon"] == "workbuddy"
+
+    worker_proj = sync_files.dispatch({"operation": "discover", "root": str(project_dir)})
+    assert {t["icon"] for t in worker_proj["targets"]} == {"claude", "cursor"}
