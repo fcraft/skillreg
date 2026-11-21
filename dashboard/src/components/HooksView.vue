@@ -212,9 +212,9 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: var(--qqx-space-md) var(--qqx-space-lg);
-  background: var(--qqx-bg-card);
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-md);
+  background: var(--sr-content-bg);
+  border: none;
+  border-radius: var(--sr-radius-md);
 }
 
 .hook-item-main {
@@ -238,10 +238,10 @@ onMounted(() => {
 
 .third-party-badge {
   display: inline-block;
-  padding: 1px 8px;
-  background: var(--qqx-bg-subtle);
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-full);
+  padding: 2px 8px;
+  background: var(--sr-bg-subtle);
+  border: none;
+  border-radius: var(--sr-radius-badge);
   font-size: var(--qqx-font-size-mini, 11px);
   color: var(--qqx-text-tertiary);
 }

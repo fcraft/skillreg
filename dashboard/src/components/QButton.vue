@@ -59,169 +59,163 @@ defineEmits(['click'])
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--sr-space-2);
   border: none;
-  font-weight: var(--qqx-font-medium);
+  font-weight: var(--sr-weight-semibold);
   white-space: nowrap;
   user-select: none;
+  border-radius: var(--sr-radius-sm);
+  line-height: 1;
 }
 
-/* Focus ring */
 .qqx-btn:focus-visible {
-  outline: none;
-  box-shadow: var(--qqx-shadow-focus);
+  outline: 2px solid var(--sr-accent);
+  outline-offset: 2px;
 }
 
-/* Sizes */
+/* Workbench Glass Control Heights: 32px (sm) / 38px (md) */
 .qqx-btn--small {
-  padding: 4px 10px;
-  font-size: var(--qqx-font-size-small);
-  border-radius: var(--qqx-radius-xs);
+  min-height: var(--sr-control-height-sm);
+  padding: 0 10px;
+  font-size: var(--sr-text-compact);
+  border-radius: var(--sr-radius-sm);
 }
 
 .qqx-btn--medium {
-  padding: 8px 16px;
-  font-size: var(--qqx-font-size-label);
-  border-radius: var(--qqx-radius-xs);
+  min-height: var(--sr-control-height-md);
+  padding: 0 14px;
+  font-size: var(--sr-text-body);
+  border-radius: var(--sr-radius-sm);
 }
 
 .qqx-btn--large {
-  padding: 10px 20px;
-  font-size: var(--qqx-font-size-body);
-  border-radius: var(--qqx-radius-md);
+  min-height: var(--sr-control-height-md);
+  padding: 0 16px;
+  font-size: var(--sr-text-body);
+  border-radius: var(--sr-radius-sm);
 }
 
-/* Pill shape */
 .qqx-btn--pill {
-  border-radius: var(--qqx-radius-full);
+  border-radius: var(--sr-radius-pill);
 }
 
-/* Types */
+/* Types — Zero decorative borders & shadows */
 .qqx-btn--primary {
-  background: var(--qqx-brand-fill-bg);
-  color: #ffffff;
-  box-shadow: var(--qqx-shadow-button);
+  background: var(--sr-accent);
+  color: var(--sr-text-inverse);
 }
 
 .qqx-btn--primary:hover:not(:disabled) {
-  background: var(--qqx-brand-fill-hover-bg);
+  background: var(--sr-accent-strong);
 }
 
 .qqx-btn--secondary {
-  background: var(--qqx-bg-subtle);
-  color: var(--qqx-text-primary);
+  background: var(--sr-control-bg);
+  color: var(--sr-text-primary);
 }
 
 .qqx-btn--secondary:hover:not(:disabled) {
-  background: var(--qqx-bg-hover);
+  background: var(--sr-control-bg-hover);
 }
 
 .qqx-btn--ghost {
   background: transparent;
-  color: var(--qqx-text-primary);
+  color: var(--sr-text-primary);
 }
 
 .qqx-btn--ghost:hover:not(:disabled) {
-  background: var(--qqx-bg-hover);
+  background: var(--sr-action-bg-hover);
+}
+
+.qqx-btn--ghost:active:not(:disabled) {
+  background: var(--sr-action-bg-pressed);
 }
 
 .qqx-btn--text {
   background: transparent;
-  color: var(--qqx-brand);
-  padding-left: 0;
-  padding-right: 0;
+  color: var(--sr-accent);
+  padding-left: 6px;
+  padding-right: 6px;
 }
 
 .qqx-btn--text:hover:not(:disabled) {
-  color: var(--qqx-brand-hover);
+  color: var(--sr-accent-strong);
+  background: var(--sr-action-bg-hover);
 }
 
 .qqx-btn--danger {
-  background: #e53e3e;
-  color: #ffffff;
+  background: var(--sr-role-rose-solid);
+  color: var(--sr-role-on-solid);
 }
 
 .qqx-btn--danger:hover:not(:disabled) {
-  background: #f56565;
+  background: var(--sr-role-rose-hover);
 }
 
-/* Tint variants */
-
-/* Ghost tint — color accent only, transparent background */
+/* Ghost tint variants */
 .qqx-btn--ghost.qqx-btn--tint-brand {
-  color: var(--qqx-brand);
+  color: var(--sr-accent);
 }
 
 .qqx-btn--ghost.qqx-btn--tint-brand:hover:not(:disabled) {
-  color: var(--qqx-brand-hover);
+  color: var(--sr-accent-strong);
+  background: var(--sr-action-bg-hover);
 }
 
 .qqx-btn--ghost.qqx-btn--tint-danger {
-  color: #e53e3e;
+  color: var(--sr-role-rose-ink);
 }
 
 .qqx-btn--ghost.qqx-btn--tint-danger:hover:not(:disabled) {
-  color: #f56565;
+  background: var(--sr-role-rose-surface);
 }
 
-/* Secondary tint — subtle background + color accent */
+/* Secondary semantic tint variants (AA >= 4.5:1 in both Light & Dark) */
 .qqx-btn--secondary.qqx-btn--tint-brand {
-  color: var(--qqx-brand);
-  background: #e6f4ff;
+  color: var(--sr-role-blue-ink);
+  background: var(--sr-role-blue-surface);
 }
 
 .qqx-btn--secondary.qqx-btn--tint-brand:hover:not(:disabled) {
-  color: var(--qqx-brand-hover);
-  background: #d4ebfc;
+  background: color-mix(in srgb, var(--sr-accent) 16%, var(--sr-role-blue-surface));
 }
 
 .qqx-btn--secondary.qqx-btn--tint-danger {
-  color: #e53e3e;
-  background: #fef0f0;
+  color: var(--sr-role-rose-ink);
+  background: var(--sr-role-rose-surface);
 }
 
 .qqx-btn--secondary.qqx-btn--tint-danger:hover:not(:disabled) {
-  color: #f56565;
-  background: #fde2e2;
+  background: color-mix(in srgb, var(--sr-role-rose-solid) 16%, var(--sr-role-rose-surface));
 }
 
-/* Dark mode tint overrides */
-[data-theme="dark"] .qqx-btn--secondary.qqx-btn--tint-brand {
-  background: #0d1f33;
-}
-
-[data-theme="dark"] .qqx-btn--secondary.qqx-btn--tint-brand:hover:not(:disabled) {
-  background: #162d45;
-}
-
-[data-theme="dark"] .qqx-btn--secondary.qqx-btn--tint-danger {
-  background: #2d1010;
-}
-
-[data-theme="dark"] .qqx-btn--secondary.qqx-btn--tint-danger:hover:not(:disabled) {
-  background: #3d1818;
-}
-
-/* Muted ghost — secondary text at rest, tint color only on hover */
+/* Muted ghost — secondary text at rest, accent only on hover */
 .qqx-btn--ghost.qqx-btn--muted {
-  color: var(--qqx-text-secondary);
+  color: var(--sr-text-secondary);
 }
 
 .qqx-btn--ghost.qqx-btn--muted:hover:not(:disabled) {
-  color: var(--qqx-text-primary);
+  color: var(--sr-text-primary);
 }
 
 .qqx-btn--ghost.qqx-btn--muted.qqx-btn--tint-brand:hover:not(:disabled) {
-  color: var(--qqx-brand);
+  color: var(--sr-accent);
 }
 
 .qqx-btn--ghost.qqx-btn--muted.qqx-btn--tint-danger:hover:not(:disabled) {
-  color: #e53e3e;
+  color: var(--sr-role-rose-ink);
 }
 
-/* Disabled */
 .qqx-btn--disabled {
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: not-allowed;
+}
+
+@media (pointer: coarse) {
+  .qqx-btn--small,
+  .qqx-btn--medium,
+  .qqx-btn--large {
+    min-height: 40px;
+  }
 }
 </style>

@@ -159,22 +159,22 @@ async function syncSkill(targetName, skillName) {
 .refresh-btn {
   margin-left: auto;
   font-size: var(--qqx-font-size-small);
-  padding: 4px 12px;
-  border-radius: var(--qqx-radius-full);
-  border: 1px solid var(--qqx-border-color);
-  background: var(--qqx-bg-card);
-  color: var(--qqx-text-primary);
+  padding: 5px 12px;
+  border-radius: var(--sr-radius-sm);
+  border: none;
+  background: var(--sr-control-bg);
+  color: var(--sr-text-primary);
   cursor: pointer;
 }
-.refresh-btn:hover:not(:disabled) { background: var(--qqx-bg-hover); }
+.refresh-btn:hover:not(:disabled) { background: var(--sr-control-bg-hover); }
 .refresh-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.sync-error { color: #ef4444; font-size: var(--qqx-font-size-small); margin-bottom: var(--qqx-space-md); }
+.sync-error { color: var(--sr-role-rose-ink); font-size: var(--qqx-font-size-small); margin-bottom: var(--qqx-space-md); }
 .empty { color: var(--qqx-text-tertiary); font-size: var(--qqx-font-size-small); padding: var(--qqx-space-lg); }
 
 .target-card {
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-md);
-  background: var(--qqx-bg-card);
+  border: none;
+  border-radius: var(--sr-radius-lg);
+  background: var(--sr-content-bg);
   margin-bottom: var(--qqx-space-md);
   overflow: hidden;
 }
@@ -183,7 +183,7 @@ async function syncSkill(targetName, skillName) {
   align-items: center;
   gap: var(--qqx-space-md);
   padding: var(--qqx-space-md) var(--qqx-space-lg);
-  background: var(--qqx-bg-elevated);
+  background: var(--sr-bg-subtle);
 }
 .target-info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .target-name {
@@ -200,7 +200,7 @@ async function syncSkill(targetName, skillName) {
 }
 .deregistered-banner {
   padding: var(--qqx-space-md) var(--qqx-space-lg);
-  color: #f59e0b;
+  color: var(--sr-role-amber-ink);
   font-size: var(--qqx-font-size-small);
 }
 
@@ -255,11 +255,11 @@ async function syncSkill(targetName, skillName) {
 
 .sync-btn {
   font-size: 11px;
-  padding: 2px 10px;
-  border-radius: var(--qqx-radius-full);
+  padding: 3px 10px;
+  border-radius: var(--sr-radius-badge);
   border: none;
-  background: var(--qqx-brand-fill-bg);
-  color: #fff;
+  background: var(--sr-accent);
+  color: var(--sr-text-inverse);
   cursor: pointer;
   flex-shrink: 0;
 }

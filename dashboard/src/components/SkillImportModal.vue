@@ -1077,110 +1077,114 @@ watch(() => props.modelValue, (val) => {
 
 .qqx-input {
   flex: 1;
-  height: 40px;
-  padding: 8px 12px;
-  border: 1px solid var(--qqx-input-border);
-  border-radius: var(--qqx-radius-xs);
-  background: var(--qqx-input-bg);
-  color: var(--qqx-text-primary);
-  font-size: var(--qqx-font-size-label);
+  height: var(--sr-control-height-md);
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--sr-radius-sm);
+  background: var(--sr-control-bg);
+  color: var(--sr-text-primary);
+  font-size: var(--sr-text-body);
   font-family: inherit;
-  transition: border-color var(--qqx-transition), box-shadow var(--qqx-transition);
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard),
+              box-shadow 140ms var(--sr-ease-standard);
   outline: none;
 }
 
+.qqx-input:hover:not(:focus) {
+  background: var(--sr-control-bg-hover);
+}
+
 .qqx-input:focus {
-  border-color: var(--qqx-brand);
-  box-shadow: var(--qqx-shadow-focus);
+  background: var(--sr-control-bg-active);
+  box-shadow: var(--sr-control-focus-shadow);
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard),
+              box-shadow 180ms var(--sr-ease-standard);
 }
 
 .qqx-input::placeholder {
-  color: var(--qqx-text-tertiary);
+  color: var(--sr-text-tertiary);
 }
 
 /* ── Drop zone ──────────────────────────────────── */
-
 .drop-zone {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--qqx-space-sm);
-  padding: var(--qqx-space-2xl) var(--qqx-space-xl);
-  border: 2px dashed var(--qqx-border-color);
-  border-radius: var(--qqx-radius-md);
-  background: var(--qqx-bg-subtle);
+  gap: var(--sr-space-2);
+  padding: var(--sr-space-6) var(--sr-space-5);
+  border: 1.5px dashed var(--sr-border-strong);
+  border-radius: var(--sr-radius-md);
+  background: var(--sr-content-bg);
   cursor: pointer;
-  transition: border-color var(--qqx-transition),
-              background var(--qqx-transition);
+  transition: border-color var(--sr-duration-fast) var(--sr-ease-standard),
+              background-color var(--sr-duration-fast) var(--sr-ease-standard);
   text-align: center;
 }
 
 .drop-zone:hover,
 .drop-zone--active {
-  border-color: var(--qqx-brand);
-  background: var(--qqx-brand-light);
+  border-color: var(--sr-accent);
+  background: var(--sr-role-blue-surface);
 }
 
 .drop-zone--has-file {
   border-style: solid;
-  border-color: var(--qqx-brand);
-  background: var(--qqx-brand-light);
+  border-color: var(--sr-accent);
+  background: var(--sr-role-blue-surface);
 }
 
 .drop-zone__icon {
-  color: var(--qqx-text-tertiary);
-  transition: color var(--qqx-transition);
+  color: var(--sr-text-tertiary);
+  transition: color var(--sr-duration-fast) var(--sr-ease-standard);
 }
 
 .drop-zone:hover .drop-zone__icon,
 .drop-zone--active .drop-zone__icon {
-  color: var(--qqx-brand);
+  color: var(--sr-accent);
 }
 
 .drop-zone__text {
-  font-size: var(--qqx-font-size-label);
-  color: var(--qqx-text-primary);
+  font-size: var(--sr-text-body);
+  color: var(--sr-text-primary);
   margin: 0;
   word-break: break-all;
 }
 
 .drop-zone__hint {
-  font-size: var(--qqx-font-size-small);
-  color: var(--qqx-text-tertiary);
+  font-size: var(--sr-text-compact);
+  color: var(--sr-text-tertiary);
   margin: 0;
 }
 
 .zip-actions {
   display: flex;
   justify-content: center;
-  margin-top: var(--qqx-space-md);
+  margin-top: var(--sr-space-3);
 }
 
 /* ── Info alert ─────────────────────────────────── */
-
 .info-alert {
   display: flex;
   align-items: center;
-  gap: var(--qqx-space-sm);
-  padding: var(--qqx-space-md);
-  background: var(--qqx-brand-light);
-  border: 1px solid rgba(0, 153, 255, 0.2);
-  border-radius: var(--qqx-radius-md);
-  color: var(--qqx-brand);
-  font-size: var(--qqx-font-size-label);
-  margin-top: var(--qqx-space-md);
+  gap: var(--sr-space-2);
+  padding: var(--sr-space-3);
+  background: var(--sr-role-blue-surface);
+  border: none;
+  border-radius: var(--sr-radius-md);
+  color: var(--sr-role-blue-ink);
+  font-size: var(--sr-text-card-title);
+  margin-top: var(--sr-space-3);
 }
 
 /* ── Result card (validate step) ────────────────── */
-
 .result-card {
   display: flex;
-  gap: var(--qqx-space-md);
-  padding: var(--qqx-space-lg);
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-md);
-  background: var(--qqx-bg-surface);
+  gap: var(--sr-space-3);
+  padding: var(--sr-space-4);
+  border: none;
+  border-radius: var(--sr-radius-md);
+  background: var(--sr-content-bg);
 }
 
 .result-card__icon {
@@ -1189,7 +1193,7 @@ watch(() => props.modelValue, (val) => {
 }
 
 .icon-success {
-  color: #22c55e;
+  color: var(--sr-role-sage-ink);
 }
 
 .result-card__body {
@@ -1198,36 +1202,35 @@ watch(() => props.modelValue, (val) => {
 }
 
 .result-name {
-  font-size: var(--qqx-font-size-body);
-  font-weight: var(--qqx-font-semibold);
-  color: var(--qqx-text-primary);
+  font-size: var(--sr-text-body);
+  font-weight: var(--sr-weight-semibold);
+  color: var(--sr-text-primary);
   margin: 0 0 4px;
 }
 
 .result-desc {
-  font-size: var(--qqx-font-size-small);
-  color: var(--qqx-text-secondary);
+  font-size: var(--sr-text-compact);
+  color: var(--sr-text-secondary);
   margin: 0 0 4px;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 .result-meta {
-  font-size: var(--qqx-font-size-small);
-  color: var(--qqx-text-tertiary);
+  font-size: var(--sr-text-compact);
+  color: var(--sr-text-tertiary);
   margin: 0;
 }
 
 /* ── Conflict warning ───────────────────────────── */
-
 .conflict-warning {
   display: flex;
-  gap: var(--qqx-space-sm);
-  margin-top: var(--qqx-space-lg);
-  padding: var(--qqx-space-md);
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  border-radius: var(--qqx-radius-md);
-  color: #d97706;
+  gap: var(--sr-space-2);
+  margin-top: var(--sr-space-4);
+  padding: var(--sr-space-3);
+  background: var(--sr-role-amber-surface);
+  border: none;
+  border-radius: var(--sr-radius-md);
+  color: var(--sr-role-amber-ink);
 }
 
 .conflict-content {
@@ -1290,19 +1293,19 @@ watch(() => props.modelValue, (val) => {
 
 .state-card {
   padding: var(--qqx-space-lg);
-  border-radius: var(--qqx-radius-md);
+  border-radius: var(--sr-radius-md);
 }
 
 .state-card--error {
-  background: rgba(239, 68, 68, 0.06);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  background: var(--sr-role-rose-surface);
+  border: none;
 }
 
 .state-card__inner {
   display: flex;
   align-items: center;
   gap: var(--qqx-space-sm);
-  color: #dc2626;
+  color: var(--sr-role-rose-ink);
   font-size: var(--qqx-font-size-label);
 }
 
@@ -1330,9 +1333,9 @@ watch(() => props.modelValue, (val) => {
   flex-direction: column;
   gap: var(--qqx-space-sm);
   padding: var(--qqx-space-md);
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-md);
-  background: var(--qqx-bg-surface);
+  border: none;
+  border-radius: var(--sr-radius-md);
+  background: var(--sr-content-bg);
   text-align: left;
 }
 
@@ -1400,8 +1403,9 @@ watch(() => props.modelValue, (val) => {
 /* ── Diff file list ──────────────────────────────── */
 
 .diff-files {
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-xs);
+  border: none;
+  border-radius: var(--sr-radius-md);
+  background: var(--sr-content-bg);
   overflow: hidden;
 }
 
@@ -1412,19 +1416,19 @@ watch(() => props.modelValue, (val) => {
   padding: var(--qqx-space-sm) var(--qqx-space-md);
   cursor: pointer;
   transition: background var(--qqx-transition);
-  border-bottom: 1px solid var(--qqx-border-color);
-}
-
-.diff-file-row:last-child {
   border-bottom: none;
 }
 
+.diff-file-row:nth-child(even) {
+  background: var(--sr-bg-subtle);
+}
+
 .diff-file-row:hover {
-  background: var(--qqx-bg-hover);
+  background: var(--sr-content-bg-hover);
 }
 
 .diff-file-row--expanded {
-  background: var(--qqx-bg-subtle);
+  background: var(--sr-control-bg-active);
 }
 
 .file-status {
@@ -1477,9 +1481,9 @@ watch(() => props.modelValue, (val) => {
 }
 
 .diff-file-expanded {
-  border-top: 1px solid var(--qqx-border-color);
+  border-top: none;
   padding: var(--qqx-space-sm) var(--qqx-space-md) var(--qqx-space-md);
-  background: var(--qqx-bg-card);
+  background: var(--sr-bg-panel);
 }
 
 /* ── Git import UI ─────────────────────────────────── */
@@ -1498,34 +1502,34 @@ watch(() => props.modelValue, (val) => {
   align-items: flex-start;
   gap: var(--qqx-space-sm);
   padding: var(--qqx-space-sm) var(--qqx-space-md);
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-xs);
+  border: none;
+  border-radius: var(--sr-radius-sm);
+  background: var(--sr-content-bg);
   cursor: pointer;
-  transition: border-color var(--qqx-transition), background var(--qqx-transition);
+  transition: background var(--qqx-transition);
   margin-bottom: var(--qqx-space-xs);
 }
 
-.git-skill-row:hover { border-color: var(--qqx-brand); }
+.git-skill-row:hover { background: var(--sr-content-bg-hover); }
 
 .git-skill-row--selected {
-  border-color: var(--qqx-brand);
-  background: var(--qqx-brand-light);
+  background: var(--sr-action-bg-selected);
 }
 
 .git-skill-check { flex-shrink: 0; padding-top: 2px; }
 
 .check-box {
   width: 18px; height: 18px;
-  border: 2px solid var(--qqx-border-color);
-  border-radius: 3px;
+  border: 2px solid var(--sr-border-strong);
+  border-radius: var(--sr-radius-xs);
   display: flex; align-items: center; justify-content: center;
-  color: #fff;
+  color: var(--sr-text-inverse);
   transition: all var(--qqx-transition);
 }
 
 .check-box--checked {
-  background: var(--qqx-brand);
-  border-color: var(--qqx-brand);
+  background: var(--sr-accent);
+  border-color: var(--sr-accent);
 }
 
 .git-skill-info { flex: 1; min-width: 0; }

@@ -1,61 +1,409 @@
-.qqx-layout__content:has(.ssh-page) { display: flex; flex-direction: column; overflow: hidden; }
-.ssh-page { display: flex; flex-direction: column; min-height: 0; width: 100%; color: var(--qqx-text-primary); }
-.ssh-header { margin-bottom: 8px; flex-shrink: 0; }
-.ssh-layout { display: grid; flex: 1; min-height: 0; grid-template-columns: 200px minmax(0, 1fr); gap: 24px; }
-.ssh-navigation { min-height: 0; border-right: 1px solid var(--qqx-border-color); padding-right: 16px; }
-.ssh-nav-desktop { display: flex; flex-direction: column; height: 100%; }
-.ssh-nav-heading { display: flex; justify-content: space-between; align-items: center; color: var(--qqx-text-secondary); font-size: 12px; margin-bottom: 8px; }
-.ssh-nav-list { overflow-y: auto; min-height: 0; padding: 4px; }
-.ssh-nav-mobile { display: none; }
-.ssh-connection { display: flex; width: 100%; align-items: center; gap: 8px; padding: 10px 8px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--qqx-text-secondary); text-align: left; cursor: pointer; }
-.ssh-connection.selected { border-color: var(--qqx-border-color); background: var(--qqx-brand-light); }
-.ssh-connection:not(.selected):hover { background: var(--qqx-bg-hover); }
-.ssh-connection > span { display: grid; flex: 1; min-width: 0; gap: 4px; }
-.ssh-connection strong { color: var(--qqx-text-primary); }
-.ssh-connection strong, .ssh-connection small { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.ssh-nav-collapsed { transform: rotate(-90deg); }
-.ssh-nav-targets { margin: 6px 0 16px 12px; }
-.ssh-directory { display: flex; width: 100%; align-items: center; gap: 8px; min-height: 38px; padding: 8px; text-align: left; color: var(--qqx-text-secondary); background: transparent; border: 0; border-radius: 6px; cursor: pointer; }
-.ssh-directory span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.ssh-directory svg { flex-shrink: 0; }
-.ssh-directory:hover { background: var(--qqx-bg-hover); }
-.ssh-directory.selected { background: var(--qqx-brand-light); color: var(--qqx-brand); }
-.ssh-workspace, .ssh-install-panel, .ssh-remote-panel { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-.ssh-install-panel, .ssh-remote-panel { flex: 1; }
-.ssh-context { display: flex; align-items: center; gap: 12px; min-height: 32px; flex-shrink: 0; font-size: 13px; }
-.ssh-context strong, .ssh-context button { flex-shrink: 0; }
-.ssh-context code { color: var(--qqx-text-secondary); font-size: 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1; }
-.ssh-view-tabs { display: flex; gap: 24px; border-bottom: 1px solid var(--qqx-border-color); flex-shrink: 0; }
-.ssh-view-tabs button { padding: 12px 0; font: inherit; font-size: 14px; cursor: pointer; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--qqx-text-secondary); }
-.ssh-view-tabs button[aria-pressed="true"] { color: var(--qqx-brand); border-bottom-color: var(--qqx-brand); font-weight: 600; }
-.ssh-list-toolbar { display: flex; align-items: center; gap: 12px; padding: 8px 0; flex-shrink: 0; }
-.ssh-list-toolbar .ssh-input { margin: 0; flex: 1; }
-.ssh-list-toolbar > :not(input) { flex-shrink: 0; }
-.ssh-install-destination { display: flex; align-items: center; gap: 8px; color: var(--qqx-text-secondary); font-size: 12px; padding-bottom: 8px; flex-shrink: 0; }
-.ssh-install-destination span { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.ssh-install-destination button { flex-shrink: 0; }
-.ssh-skill-list { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; gap: 0; margin: 0; padding: 3px; }
-.ssh-skill-list > label { min-height: 44px; flex-shrink: 0; padding: 10px 8px; box-sizing: border-box; border-bottom: 1px solid var(--qqx-border-color); border-radius: 6px; align-items: center; }
-.ssh-skill-list > label:hover { background: var(--qqx-bg-hover); }
-.ssh-skill-list > label:has(input:checked) { background: var(--qqx-brand-light); }
-.ssh-skill-list .q-checkbox__label { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); flex: 1; gap: 16px; min-width: 0; }
-.ssh-skill-name, .ssh-skill-list small { margin: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.ssh-skill-list small { font-size: 12px; line-height: 1.5; color: var(--qqx-text-secondary); }
-.ssh-submit { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; padding: 12px 0 0; border-top: 1px solid var(--qqx-border-color); font-size: 13px; color: var(--qqx-text-secondary); }
-.ssh-directory-empty { margin: auto; padding: 24px; text-align: center; color: var(--qqx-text-secondary); }
-.ssh-directory-empty h3 { margin-top: 16px; color: var(--qqx-text-primary); }
-.ssh-target-choice { padding: 12px; border-radius: 8px; border: 1px solid var(--qqx-border-color); }
-.ssh-target-row > div { flex: 1; min-width: 0; }
+.qqx-layout__content:has(.ssh-page) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ssh-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  color: var(--sr-text-primary);
+}
+
+.ssh-header {
+  margin-bottom: var(--sr-space-3);
+  flex-shrink: 0;
+}
+
+.ssh-layout {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: var(--sr-space-4);
+}
+
+.ssh-navigation {
+  min-height: 0;
+  padding: var(--sr-space-3);
+  border-radius: var(--sr-radius-lg);
+  background: var(--sr-content-bg);
+}
+
+.ssh-nav-desktop {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.ssh-nav-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--sr-text-tertiary);
+  font-size: var(--sr-text-meta);
+  font-weight: var(--sr-weight-semibold);
+  margin-bottom: var(--sr-space-2);
+  padding: 0 var(--sr-space-2);
+}
+
+.ssh-nav-list {
+  overflow-y: auto;
+  min-height: 0;
+  padding: 2px;
+}
+
+.ssh-nav-mobile {
+  display: none;
+}
+
+.ssh-connection {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--sr-space-2);
+  min-height: var(--sr-control-height-md);
+  padding: 8px 10px;
+  border-radius: var(--sr-radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--sr-text-secondary);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard),
+              color var(--sr-duration-fast) var(--sr-ease-standard);
+}
+
+.ssh-connection.selected {
+  background: var(--sr-nav-bg-selected);
+  color: var(--sr-text-primary);
+}
+
+.ssh-connection:not(.selected):hover {
+  background: var(--sr-bg-hover);
+  color: var(--sr-text-primary);
+}
+
+.ssh-connection > span {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+}
+
+.ssh-connection strong {
+  color: var(--sr-text-primary);
+  font-size: var(--sr-text-card-title);
+  font-weight: var(--sr-weight-semibold);
+}
+
+.ssh-connection strong,
+.ssh-connection small {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ssh-nav-collapsed {
+  transform: rotate(-90deg);
+}
+
+.ssh-nav-targets {
+  margin: 4px 0 var(--sr-space-3) var(--sr-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ssh-directory {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--sr-space-2);
+  min-height: var(--sr-control-height-sm);
+  padding: 6px 10px;
+  text-align: left;
+  color: var(--sr-text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--sr-radius-sm);
+  font-size: var(--sr-text-compact);
+  cursor: pointer;
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard),
+              color var(--sr-duration-fast) var(--sr-ease-standard);
+}
+
+.ssh-directory span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ssh-directory svg {
+  flex-shrink: 0;
+}
+
+.ssh-directory:hover {
+  background: var(--sr-bg-hover);
+  color: var(--sr-text-primary);
+}
+
+.ssh-directory.selected {
+  background: var(--sr-nav-bg-selected);
+  color: var(--sr-text-primary);
+  font-weight: var(--sr-weight-semibold);
+}
+
+.ssh-workspace,
+.ssh-install-panel,
+.ssh-remote-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.ssh-install-panel,
+.ssh-remote-panel {
+  flex: 1;
+}
+
+.ssh-context {
+  display: flex;
+  align-items: center;
+  gap: var(--sr-space-3);
+  min-height: var(--sr-control-height-sm);
+  flex-shrink: 0;
+  font-size: var(--sr-text-card-title);
+}
+
+.ssh-context strong,
+.ssh-context button {
+  flex-shrink: 0;
+}
+
+.ssh-context code {
+  color: var(--sr-text-secondary);
+  font-size: var(--sr-text-compact);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.ssh-view-tabs {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 2px;
+  padding: 3px;
+  margin-top: var(--sr-space-2);
+  border-radius: var(--sr-radius-md);
+  background: var(--sr-control-bg);
+  flex-shrink: 0;
+}
+
+.ssh-view-tabs button {
+  min-height: 28px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: var(--sr-text-compact);
+  font-weight: var(--sr-weight-medium);
+  cursor: pointer;
+  border: 0;
+  border-radius: var(--sr-radius-sm);
+  background: transparent;
+  color: var(--sr-text-secondary);
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard),
+              color var(--sr-duration-fast) var(--sr-ease-standard);
+}
+
+.ssh-view-tabs button:not([aria-pressed="true"]):hover {
+  color: var(--sr-text-primary);
+}
+
+.ssh-view-tabs button[aria-pressed="true"] {
+  color: var(--sr-text-primary);
+  background: var(--sr-action-bg-selected);
+  font-weight: var(--sr-weight-semibold);
+}
+
+.ssh-list-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sr-space-3);
+  padding: var(--sr-space-2) 0;
+  flex-shrink: 0;
+}
+
+.ssh-list-toolbar .ssh-input {
+  margin: 0;
+  flex: 1;
+}
+
+.ssh-list-toolbar > :not(input) {
+  flex-shrink: 0;
+}
+
+.ssh-install-destination {
+  display: flex;
+  align-items: center;
+  gap: var(--sr-space-2);
+  color: var(--sr-text-secondary);
+  font-size: var(--sr-text-compact);
+  padding-bottom: var(--sr-space-2);
+  flex-shrink: 0;
+}
+
+.ssh-install-destination span {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ssh-install-destination button {
+  flex-shrink: 0;
+}
+
+.ssh-skill-list {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  gap: 2px;
+  margin: 0;
+  padding: 2px;
+}
+
+.ssh-skill-list > label {
+  min-height: 44px;
+  flex-shrink: 0;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  border-radius: var(--sr-radius-sm);
+  align-items: center;
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard);
+}
+
+.ssh-skill-list > label:nth-child(even) {
+  background: var(--sr-table-stripe);
+}
+
+.ssh-skill-list > label:hover {
+  background: var(--sr-bg-hover);
+}
+
+.ssh-skill-list > label:has(input:checked) {
+  background: var(--sr-surface-selected);
+}
+
+.ssh-skill-list .q-checkbox__label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+  flex: 1;
+  gap: var(--sr-space-4);
+  min-width: 0;
+}
+
+.ssh-skill-name,
+.ssh-skill-list small {
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ssh-skill-list small {
+  font-size: var(--sr-text-compact);
+  line-height: 1.5;
+  color: var(--sr-text-secondary);
+}
+
+.ssh-submit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sr-space-3);
+  flex-shrink: 0;
+  padding: var(--sr-space-3) 0 0;
+  font-size: var(--sr-text-card-title);
+  color: var(--sr-text-secondary);
+}
+
+.ssh-directory-empty {
+  margin: auto;
+  padding: var(--sr-space-5);
+  max-width: 400px;
+  text-align: center;
+  color: var(--sr-text-secondary);
+}
+
+.ssh-directory-empty h3 {
+  margin-top: var(--sr-space-3);
+  color: var(--sr-text-primary);
+}
+
+.ssh-target-choice {
+  padding: var(--sr-space-3);
+  border-radius: var(--sr-radius-md);
+  background: var(--sr-content-bg);
+}
+
+.ssh-target-row > div {
+  flex: 1;
+  min-width: 0;
+}
+
 @media (max-width: 900px) {
-  .ssh-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 12px; }
-  .ssh-nav-desktop { display: none; }
-  .ssh-nav-mobile { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; font-size: 12px; color: var(--qqx-text-secondary); }
-  .ssh-navigation { padding: 0; border: 0; }
-  .ssh-header { margin-bottom: 12px; }
-  .ssh-header h2 { font-size: 20px; }
-  .ssh-list-toolbar { flex-wrap: wrap; gap: 6px; }
-  .ssh-list-toolbar .ssh-input { flex-basis: 70%; }
-  .ssh-skill-list .q-checkbox__label { grid-template-columns: minmax(0, 1fr); gap: 4px; }
-  .ssh-skill-list > label { min-height: 56px; }
-  .ssh-submit { flex-wrap: wrap; }
+  .ssh-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: var(--sr-space-3);
+  }
+
+  .ssh-nav-desktop {
+    display: none;
+  }
+
+  .ssh-nav-mobile {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--sr-space-3);
+    font-size: var(--sr-text-compact);
+    color: var(--sr-text-secondary);
+  }
+
+  .ssh-navigation {
+    padding: 0;
+    background: transparent;
+  }
+
+  .ssh-header {
+    margin-bottom: var(--sr-space-2);
+  }
+
+  .ssh-list-toolbar {
+    flex-wrap: wrap;
+    gap: var(--sr-space-2);
+  }
+
+  .ssh-list-toolbar .ssh-input {
+    flex-basis: 70%;
+  }
+
+  .ssh-skill-list .q-checkbox__label {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .ssh-skill-list > label {
+    min-height: 52px;
+  }
+
+  .ssh-submit {
+    flex-wrap: wrap;
+  }
 }

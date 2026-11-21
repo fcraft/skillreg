@@ -1045,15 +1045,15 @@ async function handleFixDetached(sub) {
 }
 
 .submodule-card {
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-md);
-  background: var(--qqx-bg-card);
+  border: none;
+  border-radius: var(--sr-radius-md);
+  background: var(--sr-content-bg);
   overflow: hidden;
-  transition: border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard);
 }
 
 .submodule-card.expanded {
-  border-color: var(--qqx-brand);
+  background: var(--sr-bg-subtle);
 }
 
 .submodule-row {
@@ -1157,21 +1157,21 @@ async function handleFixDetached(sub) {
   flex-shrink: 0;
 }
 
-.sub-sync.synced { color: #10b981; }
-.sub-sync.ahead { color: #f59e0b; }
-.sub-sync.behind { color: #ef4444; }
-.sub-sync.dirty { color: #8b5cf6; }
+.sub-sync.synced { color: var(--sr-role-sage-ink); background: var(--sr-role-sage-surface); }
+.sub-sync.ahead { color: var(--sr-role-amber-ink); background: var(--sr-role-amber-surface); }
+.sub-sync.behind { color: var(--sr-role-rose-ink); background: var(--sr-role-rose-surface); }
+.sub-sync.dirty { color: var(--sr-role-iris-ink); background: var(--sr-role-iris-surface); }
 
 /* Detached HEAD badge */
 .detached-badge {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 10px;
+  font-size: 11px;
   padding: 2px 7px;
-  border-radius: var(--qqx-radius-full);
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
+  border-radius: var(--sr-radius-badge);
+  background: var(--sr-role-rose-surface);
+  color: var(--sr-role-rose-ink);
   flex-shrink: 0;
   font-weight: var(--qqx-font-medium);
 }
@@ -1182,45 +1182,45 @@ async function handleFixDetached(sub) {
 
 /* Pointer comparison badge */
 .pointer-badge {
-  font-size: 10px;
+  font-size: 11px;
   padding: 2px 7px;
-  border-radius: var(--qqx-radius-full);
+  border-radius: var(--sr-radius-badge);
   flex-shrink: 0;
   font-weight: var(--qqx-font-medium);
   white-space: nowrap;
 }
 
 .pointer-badge.pointer-synced {
-  background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
+  background: var(--sr-role-sage-surface);
+  color: var(--sr-role-sage-ink);
 }
 
 .pointer-badge.pointer-behind {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
+  background: var(--sr-role-rose-surface);
+  color: var(--sr-role-rose-ink);
 }
 
 .pointer-badge.pointer-ahead {
-  background: rgba(245, 158, 11, 0.1);
-  color: #f59e0b;
+  background: var(--sr-role-amber-surface);
+  color: var(--sr-role-amber-ink);
 }
 
 /* Fix detached HEAD button */
 .fix-detached-btn {
-  font-size: 10px;
+  font-size: 11px;
   padding: 2px 8px;
-  border-radius: var(--qqx-radius-full);
-  border: 1px solid #ef4444;
-  background: transparent;
-  color: #ef4444;
+  border-radius: var(--sr-radius-badge);
+  border: none;
+  background: var(--sr-role-rose-surface);
+  color: var(--sr-role-rose-ink);
   cursor: pointer;
   flex-shrink: 0;
   transition: background var(--qqx-transition), color var(--qqx-transition);
 }
 
 .fix-detached-btn:hover:not(:disabled) {
-  background: #ef4444;
-  color: #fff;
+  background: var(--sr-danger);
+  color: var(--sr-text-inverse);
 }
 
 .fix-detached-btn:disabled {
@@ -1252,17 +1252,17 @@ async function handleFixDetached(sub) {
 
 .sync-btn {
   font-size: 11px;
-  padding: 2px 10px;
-  border-radius: var(--qqx-radius-full);
+  padding: 3px 10px;
+  border-radius: var(--sr-radius-badge);
   border: none;
-  background: var(--qqx-brand-fill-bg);
-  color: #fff;
+  background: var(--sr-accent);
+  color: var(--sr-text-inverse);
   cursor: pointer;
   flex-shrink: 0;
   transition: opacity var(--qqx-transition);
 }
 
-.sync-btn:hover:not(:disabled) { opacity: 0.85; }
+.sync-btn:hover:not(:disabled) { opacity: 0.88; }
 .sync-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .sync-btn:active:not(:disabled) { transform: scale(0.97); }
 
@@ -1283,17 +1283,17 @@ async function handleFixDetached(sub) {
 .refresh-summary-time { color: var(--qqx-text-secondary); }
 .refresh-pill {
   padding: 2px var(--qqx-space-sm);
-  border-radius: var(--qqx-radius-full);
+  border-radius: var(--sr-radius-badge);
   font-size: 12px;
   font-weight: 500;
-  background: var(--qqx-brand-light);
+  background: var(--sr-role-blue-surface);
 }
-.refresh-pill.behind { color: #ef4444; }
-.refresh-pill.ahead { color: #f59e0b; }
-.refresh-pill.diverged { color: #ef4444; }
-.refresh-pill.dirty { color: #8b5cf6; }
-.refresh-pill.unknown { color: var(--qqx-text-tertiary); }
-.refresh-pill.synced { color: #10b981; }
+.refresh-pill.behind { color: var(--sr-role-rose-ink); background: var(--sr-role-rose-surface); }
+.refresh-pill.ahead { color: var(--sr-role-amber-ink); background: var(--sr-role-amber-surface); }
+.refresh-pill.diverged { color: var(--sr-role-rose-ink); background: var(--sr-role-rose-surface); }
+.refresh-pill.dirty { color: var(--sr-role-iris-ink); background: var(--sr-role-iris-surface); }
+.refresh-pill.unknown { color: var(--qqx-text-tertiary); background: var(--sr-content-bg); }
+.refresh-pill.synced { color: var(--sr-role-sage-ink); background: var(--sr-role-sage-surface); }
 
 /* Single-row refresh: compact icon button */
 .refresh-btn {
@@ -1310,7 +1310,7 @@ async function handleFixDetached(sub) {
 /* --- Dirty diff viewer (inside preview modal) --- */
 .sync-diff-section {
   margin-top: var(--qqx-space-md);
-  border-top: 1px solid var(--qqx-border-color);
+  border-top: none;
   padding-top: var(--qqx-space-sm);
 }
 .sync-diff-header {
@@ -1339,28 +1339,27 @@ async function handleFixDetached(sub) {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px var(--qqx-space-sm);
+  padding: 3px var(--qqx-space-sm);
   font-size: 12px;
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-xs);
-  background: transparent;
+  border: none;
+  border-radius: var(--sr-radius-xs);
+  background: var(--sr-content-bg);
   color: var(--qqx-text-secondary);
   cursor: pointer;
   max-width: 100%;
 }
 .sync-diff-file.active {
-  border-color: var(--qqx-brand);
-  color: var(--qqx-brand);
-  background: var(--qqx-brand-light);
+  color: var(--sr-accent);
+  background: var(--sr-action-bg-selected);
 }
 .sync-diff-file-status {
   font-weight: 600;
   flex-shrink: 0;
 }
-.sync-diff-file.modified .sync-diff-file-status { color: #f59e0b; }
-.sync-diff-file.added .sync-diff-file-status { color: #10b981; }
-.sync-diff-file.deleted .sync-diff-file-status { color: #ef4444; }
-.sync-diff-file.renamed .sync-diff-file-status { color: var(--qqx-brand); }
+.sync-diff-file.modified .sync-diff-file-status { color: var(--sr-role-amber-ink); }
+.sync-diff-file.added .sync-diff-file-status { color: var(--sr-role-sage-ink); }
+.sync-diff-file.deleted .sync-diff-file-status { color: var(--sr-role-rose-ink); }
+.sync-diff-file.renamed .sync-diff-file-status { color: var(--sr-accent); }
 .sync-diff-file-name {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1371,21 +1370,21 @@ async function handleFixDetached(sub) {
   padding: var(--qqx-space-sm);
   max-height: 320px;
   overflow: auto;
-  font-family: var(--qqx-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-family: var(--sr-font-mono);
   font-size: 12px;
   line-height: 1.5;
-  background: var(--qqx-bg-elevated, #f6f8fa);
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-xs);
+  background: var(--sr-content-bg);
+  border: none;
+  border-radius: var(--sr-radius-sm);
 }
 .sync-diff-content code {
   display: block;
   white-space: pre-wrap;
   word-break: break-all;
 }
-.sync-diff-content code.diff-add { color: #1a7f37; background: rgba(26,127,55,0.08); }
-.sync-diff-content code.diff-del { color: #cf222e; background: rgba(207,34,46,0.08); }
-.sync-diff-content code.diff-hunk { color: var(--qqx-brand); }
+.sync-diff-content code.diff-add { color: var(--qqx-diff-added-tag-text); background: var(--qqx-diff-added-bg); }
+.sync-diff-content code.diff-del { color: var(--qqx-diff-removed-tag-text); background: var(--qqx-diff-removed-bg); }
+.sync-diff-content code.diff-hunk { color: var(--sr-accent); }
 .sync-diff-content code.diff-meta { color: var(--qqx-text-tertiary); }
 
 /* --- Custom commit message input --- */
@@ -1413,14 +1412,16 @@ async function handleFixDetached(sub) {
 
 .sync-tooltip-body {
   position: fixed;
-  background: var(--qqx-text-primary);
-  color: var(--qqx-bg-card);
+  background: var(--sr-glass-bg);
+  color: var(--sr-text-primary);
   font-size: 11px;
   padding: 6px 10px;
-  border-radius: var(--qqx-radius-sm);
+  border-radius: var(--sr-radius-sm);
   white-space: nowrap;
   z-index: var(--z-tooltip);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--sr-shadow-md);
+  backdrop-filter: var(--sr-glass-filter);
+  -webkit-backdrop-filter: var(--sr-glass-filter);
   line-height: 1.5;
   pointer-events: none;
 }
@@ -1439,8 +1440,8 @@ async function handleFixDetached(sub) {
 
 /* Commit panel */
 .commit-panel {
-  border-top: 1px solid var(--qqx-border-color);
-  background: var(--qqx-bg-surface);
+  border-top: none;
+  background: var(--sr-bg-subtle);
   max-height: 320px;
   overflow-y: auto;
 }
@@ -1450,22 +1451,22 @@ async function handleFixDetached(sub) {
   align-items: center;
   gap: var(--qqx-space-md);
   padding: 6px 16px 6px 40px;
-  border-bottom: 1px solid var(--qqx-border-color);
+  border-bottom: none;
   font-size: var(--qqx-font-size-small);
 }
 
-.commit-entry:last-child {
-  border-bottom: none;
+.commit-entry:nth-child(even) {
+  background: var(--sr-content-bg);
 }
 
 .commit-entry:hover {
-  background: var(--qqx-bg-hover);
+  background: var(--sr-content-bg-hover);
 }
 
 .commit-hash {
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: var(--sr-font-mono);
   font-size: 11px;
-  color: var(--qqx-brand);
+  color: var(--sr-accent);
   text-decoration: none;
   flex-shrink: 0;
 }
@@ -1496,11 +1497,11 @@ async function handleFixDetached(sub) {
 
 .sync-error {
   font-size: var(--qqx-font-size-small);
-  color: #ef4444;
+  color: var(--sr-role-rose-ink);
   margin-bottom: var(--qqx-space-md);
   padding: var(--qqx-space-sm) var(--qqx-space-md);
-  background: rgba(239, 68, 68, 0.08);
-  border-radius: var(--qqx-radius-sm);
+  background: var(--sr-role-rose-surface);
+  border-radius: var(--sr-radius-sm);
 }
 
 /* Skills section in expanded panel */
@@ -1581,14 +1582,16 @@ async function handleFixDetached(sub) {
 
 .repo-dropdown {
   position: fixed;
-  z-index: var(--z-dropdown, 200);
+  z-index: var(--sr-z-popover);
   min-width: 168px;
-  padding: 4px;
-  background: var(--qqx-bg-card);
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-sm);
-  box-shadow: var(--qqx-shadow-dropdown);
-  animation: repo-menu-in 0.12s ease-out;
+  padding: 5px;
+  background: var(--sr-glass-bg);
+  backdrop-filter: var(--sr-glass-filter);
+  -webkit-backdrop-filter: var(--sr-glass-filter);
+  border: none;
+  border-radius: var(--sr-radius-md);
+  box-shadow: var(--sr-shadow-md);
+  animation: repo-menu-in var(--sr-duration-fast) var(--sr-ease-smooth);
 }
 
 @keyframes repo-menu-in {
@@ -1601,43 +1604,44 @@ async function handleFixDetached(sub) {
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 7px 10px;
+  min-height: 32px;
+  padding: 5px 8px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--sr-radius-menu-item);
   background: transparent;
-  color: var(--qqx-text-primary);
-  font-size: var(--qqx-font-size-small);
+  color: var(--sr-text-primary);
+  font-size: var(--sr-text-compact);
   font-family: inherit;
   cursor: pointer;
   text-align: left;
-  transition: background 0.1s ease;
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard);
 }
 
 .repo-dropdown-item:hover {
-  background: var(--qqx-bg-hover);
+  background: var(--sr-bg-hover);
 }
 
 .repo-dropdown-item--danger {
-  color: #ef4444;
+  color: var(--sr-role-rose-ink);
 }
 
 .repo-dropdown-item--danger:hover {
-  background: rgba(239, 68, 68, 0.1);
+  background: var(--sr-role-rose-surface);
 }
 
 /* Repo install / rename / remove modal bodies */
 .repo-install-desc,
 .repo-remove-text {
-  font-size: var(--qqx-font-size-body);
-  color: var(--qqx-text-primary);
+  font-size: var(--sr-text-body);
+  color: var(--sr-text-primary);
   line-height: 1.6;
-  margin-bottom: var(--qqx-space-md);
+  margin-bottom: var(--sr-space-3);
 }
 
 .repo-install-targets {
   display: flex;
   flex-direction: column;
-  gap: var(--qqx-space-xs);
+  gap: 6px;
   max-height: 280px;
   overflow-y: auto;
 }
@@ -1645,17 +1649,23 @@ async function handleFixDetached(sub) {
 .repo-install-target-row {
   display: flex;
   align-items: center;
-  gap: var(--qqx-space-sm);
-  padding: var(--qqx-space-sm) var(--qqx-space-md);
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-sm);
+  gap: var(--sr-space-2);
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--sr-radius-md);
+  background: var(--sr-content-bg);
   cursor: pointer;
-  transition: all var(--qqx-transition);
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard),
+              box-shadow var(--sr-duration-fast) var(--sr-ease-standard);
+}
+
+.repo-install-target-row:hover {
+  background: var(--sr-content-bg-hover);
 }
 
 .repo-install-target-row--selected {
-  border-color: var(--qqx-brand);
-  background: var(--qqx-brand-light);
+  background: var(--sr-surface-selected);
+  box-shadow: inset 0 0 0 2px var(--sr-accent);
 }
 
 .repo-install-target-info {
@@ -1713,7 +1723,7 @@ async function handleFixDetached(sub) {
 }
 
 .repo-remove-warn-icon {
-  color: #ef4444;
+  color: var(--sr-role-rose-ink);
 }
 
 .repo-remove-hint {
@@ -1812,7 +1822,7 @@ async function handleFixDetached(sub) {
 .sync-preview-warnings {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid var(--qqx-border-color);
+  border-top: none;
 }
 
 .sync-preview-warning {
@@ -1820,7 +1830,7 @@ async function handleFixDetached(sub) {
   align-items: flex-start;
   gap: 8px;
   font-size: var(--qqx-font-size-small);
-  color: #f59e0b;
+  color: var(--sr-role-amber-ink);
   line-height: 1.5;
 }
 
@@ -1830,8 +1840,7 @@ async function handleFixDetached(sub) {
 }
 
 .managed-repo-card--selected {
-  border-color: var(--qqx-brand);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--qqx-brand) 16%, transparent);
+  box-shadow: var(--sr-control-focus-shadow);
 }
 
 .managed-repo-badge {

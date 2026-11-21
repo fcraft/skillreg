@@ -74,46 +74,53 @@ onMounted(() => {
 
 <style scoped>
 .qqx-tabs__nav {
-  display: flex;
-  gap: var(--qqx-space-xl);
-  border-bottom: 1px solid var(--qqx-border-color);
-  margin-bottom: var(--qqx-space-xl);
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--sr-radius-md);
+  background: var(--sr-control-bg);
+  margin-bottom: var(--sr-space-4);
   position: relative;
+  flex-wrap: wrap;
 }
 
 .qqx-tabs__item {
   position: relative;
-  padding: var(--qqx-space-sm) 0;
-  font-size: var(--qqx-font-size-label);
-  font-weight: var(--qqx-font-regular);
-  color: var(--qqx-text-secondary);
+  min-height: 26px;
+  padding: 0 12px;
+  font-size: var(--sr-text-compact);
+  font-weight: var(--sr-weight-medium);
+  color: var(--sr-text-secondary);
   background: transparent;
   border: none;
+  border-radius: var(--sr-radius-sm);
   cursor: pointer;
   font-family: inherit;
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard),
+              color var(--sr-duration-fast) var(--sr-ease-standard);
 }
 
 .qqx-tabs__item:not(.qqx-tabs__item--active):hover {
-  color: var(--qqx-text-primary);
+  color: var(--sr-text-primary);
 }
 
 .qqx-tabs__item--active {
-  color: var(--qqx-text-primary);
-  font-weight: var(--qqx-font-semibold);
+  background: var(--sr-action-bg-selected);
+  color: var(--sr-text-primary);
+  font-weight: var(--sr-weight-semibold);
 }
 
 .qqx-tabs__indicator {
-  position: absolute;
-  bottom: -1px;
-  height: 2px;
-  background: var(--qqx-brand);
-  border-radius: 1px;
-  transition: left 0.15s cubic-bezier(0.4, 0, 0.2, 1),
-              width 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  display: none;
+}
+
+@media (pointer: coarse) {
+  .qqx-tabs__item {
+    min-height: 40px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .qqx-tabs__content { animation: none; }
-  .qqx-tabs__indicator { transition: none; }
 }
 </style>

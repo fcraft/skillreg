@@ -1,216 +1,554 @@
-/* QQX Design Tokens — Dual Theme */
+/* ============================================================================
+ * skillreg Workbench AUI Design Tokens (--sr-*)
+ * Independent token architecture aligned to Workbench AUI Visual Contract
+ * Default Palette: mist (Light & Dark asymmetric elevation) · Glass Geometry
+ * ============================================================================ */
 
-/*
- * Responsive Breakpoints:
- *   Mobile:  < 768px  — single column, drawer sidebar, reduced padding
- *   Tablet:  768px – 1024px — collapsible sidebar, flex-wrap headers
- *   Desktop: > 1024px — full sidebar, standard layout
- */
-
-/* ========== Shared tokens (theme-independent) ========== */
 :root {
-  /* Font */
-  --qqx-font-family: Inter, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
-  --qqx-font-size-hero: 36px;
+  /* Typography */
+  --sr-font-sans: Geist, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display",
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, "HarmonyOS Sans SC", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", ui-sans-serif,
+    system-ui, sans-serif;
+  --sr-font-mono: "Geist Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    "Cascadia Code", Consolas, "HarmonyOS Sans SC", monospace;
+
+  /* Font Scale */
+  --sr-text-page-title: 18px;
+  --sr-text-dialog-title: 17px;
+  --sr-text-body: 14px;
+  --sr-text-card-title: 13px;
+  --sr-text-compact: 12px;
+  --sr-text-meta: 11px;
+  --sr-text-micro: 10px;
+
+  /* Font Weights */
+  --sr-weight-regular: 400;
+  --sr-weight-medium: 500;
+  --sr-weight-semibold: 600;
+  --sr-weight-bold: 700;
+
+  /* Glass Radius Scale (6 / 7 / 10 / 14 / 18 / 22 / 999px) */
+  --sr-radius-xs: 6px;
+  --sr-radius-badge: 7px;
+  --sr-radius-sm: 10px;
+  --sr-radius-md: 14px;
+  --sr-radius-lg: 18px;
+  --sr-radius-xl: 22px;
+  --sr-radius-pill: 999px;
+  /* Concentric inner radius inside 14px menu with 5px inset */
+  --sr-radius-menu-item: 9px;
+
+  /* Glass Control Heights (32 / 38px desktop) */
+  --sr-control-height-sm: 32px;
+  --sr-control-height-md: 38px;
+
+  /* Glass Spacing Scale (4 / 8 / 12 / 16 / 24 / 32px) */
+  --sr-space-1: 4px;
+  --sr-space-2: 8px;
+  --sr-space-3: 12px;
+  --sr-space-4: 16px;
+  --sr-space-5: 24px;
+  --sr-space-6: 32px;
+
+  /* Workbench Shell & Layout Geometry */
+  --sr-topbar-height: 48px;
+  --sr-sidebar-width: 232px;
+  --sr-gutter: 24px;
+  --sr-dialog-padding: 24px;
+  --sr-safe-area-top: env(safe-area-inset-top, 0px);
+  --sr-safe-area-right: env(safe-area-inset-right, 0px);
+  --sr-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --sr-safe-area-left: env(safe-area-inset-left, 0px);
+
+  /* Motion */
+  --sr-duration-fast: 120ms;
+  --sr-duration-normal: 180ms;
+  --sr-duration-slow: 260ms;
+  --sr-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --sr-ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --sr-ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Z-Index Scale */
+  --sr-z-app: 0;
+  --sr-z-sticky: 100;
+  --sr-z-popover: 200;
+  --sr-z-drawer: 300;
+  --sr-z-modal: 500;
+  --sr-z-command: 700;
+  --sr-z-toast: 900;
+  --sr-z-tooltip: 940;
+
+  /* Legacy --qqx-* / --z-* aliases mapped cleanly to Workbench AUI tokens */
+  --qqx-font-family: var(--sr-font-sans);
+  --qqx-font-mono: var(--sr-font-mono);
+  --qqx-font-size-hero: 26px;
   --qqx-font-size-display: 20px;
-  --qqx-font-size-title: 18px;
-  --qqx-font-size-body: 16px;
-  --qqx-font-size-label: 14px;
-  --qqx-font-size-caption: 13px;
-  --qqx-font-size-small: 12px;
-  --qqx-font-size-tiny: 10px;
+  --qqx-font-size-title: var(--sr-text-page-title);
+  --qqx-font-size-body: var(--sr-text-body);
+  --qqx-font-size-label: var(--sr-text-body);
+  --qqx-font-size-caption: var(--sr-text-card-title);
+  --qqx-font-size-small: var(--sr-text-compact);
+  --qqx-font-size-mini: var(--sr-text-meta);
+  --qqx-font-size-tiny: var(--sr-text-micro);
 
-  /* Font Weight */
-  --qqx-font-regular: 400;
-  --qqx-font-medium: 500;
-  --qqx-font-semibold: 600;
+  --qqx-font-regular: var(--sr-weight-regular);
+  --qqx-font-medium: var(--sr-weight-medium);
+  --qqx-font-semibold: var(--sr-weight-semibold);
 
-  /* Border Radius */
-  --qqx-radius-xs: 8px;
-  --qqx-radius-sm: 10px;
-  --qqx-radius-md: 12px;
-  --qqx-radius-lg: 16px;
-  --qqx-radius-xl: 18px;
-  --qqx-radius-2xl: 24px;
-  --qqx-radius-full: 9999px;
+  --qqx-radius-xs: var(--sr-radius-xs);
+  --qqx-radius-sm: var(--sr-radius-sm);
+  --qqx-radius-md: var(--sr-radius-md);
+  --qqx-radius-lg: var(--sr-radius-lg);
+  --qqx-radius-xl: var(--sr-radius-xl);
+  --qqx-radius-2xl: var(--sr-radius-xl);
+  --qqx-radius-full: var(--sr-radius-pill);
 
-  /* Spacing */
-  --qqx-space-xs: 4px;
-  --qqx-space-sm: 8px;
-  --qqx-space-md: 12px;
-  --qqx-space-lg: 16px;
-  --qqx-space-xl: 24px;
-  --qqx-space-2xl: 32px;
-  --qqx-space-3xl: 48px;
+  --qqx-space-xs: var(--sr-space-1);
+  --qqx-space-sm: var(--sr-space-2);
+  --qqx-space-md: var(--sr-space-3);
+  --qqx-space-lg: var(--sr-space-4);
+  --qqx-space-xl: var(--sr-space-5);
+  --qqx-space-2xl: var(--sr-space-6);
+  --qqx-space-3xl: 40px;
 
-  /* Sidebar */
-  --qqx-sidebar-width: 240px;
+  --qqx-sidebar-width: var(--sr-sidebar-width);
+  --qqx-transition: var(--sr-duration-fast) var(--sr-ease-standard);
 
-  /* Transition — QQX uses 0.15s with Material Design standard easing */
-  --qqx-transition: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-
-  /* Z-Index Scale — QQX layer hierarchy */
-  --z-base: 0;
+  --z-base: var(--sr-z-app);
   --z-card-hover: 1;
-  --z-sticky: 100;
-  --z-dropdown: 200;
-  --z-overlay-backdrop: 1000;
-  --z-overlay-panel: 1010;
-  --z-overlay-top: 1020;
-  --z-tooltip: 1100;
-  --z-notification: 1200;
-  --z-command: 1300;
+  --z-sticky: var(--sr-z-sticky);
+  --z-dropdown: var(--sr-z-popover);
+  --z-overlay-backdrop: var(--sr-z-modal);
+  --z-overlay-panel: calc(var(--sr-z-modal) + 10);
+  --z-overlay-top: calc(var(--sr-z-modal) + 20);
+  --z-tooltip: var(--sr-z-tooltip);
+  --z-notification: var(--sr-z-toast);
+  --z-command: var(--sr-z-command);
 }
 
-/* ========== Light Theme (default) ========== */
+@media (max-width: 760px) {
+  :root {
+    --sr-gutter: 16px;
+    --sr-dialog-padding: 16px;
+  }
+}
+
+/* ============================================================================
+ * Light Theme — Mist Palette (Default)
+ * Outer rail/app soft mist -> crisp bright panel -> 4% ink-tinted content cards
+ * ============================================================================ */
 :root,
 [data-theme="light"] {
-  /* Background */
-  --qqx-bg-base: #ffffff;
-  --qqx-bg-surface: #fbfbfc;
-  --qqx-bg-elevated: #f3f5f7;
-  --qqx-bg-card: #ffffff;
-  --qqx-bg-subtle: #f0f2f4;
-  --qqx-bg-hover: #eef0f3;
-  --qqx-bg-overlay: rgba(231, 234, 238, 0.6);
-  --qqx-bg-backdrop: rgba(0, 0, 0, 0.3);
+  color-scheme: light;
 
-  /* Text */
-  --qqx-text-primary: #48566a;
-  --qqx-text-secondary: #637083;
-  --qqx-text-tertiary: rgba(99, 112, 131, 0.7);
-  --qqx-text-quaternary: rgba(99, 112, 131, 0.6);
+  /* Mist Surface Hierarchy */
+  --sr-bg-rail: #e8eff8;
+  --sr-bg-subtle: #eaf1fb;
+  --sr-bg-app: #f0f4fa;
+  --sr-bg-panel: #f8faff;
+  --sr-bg-elevated: #fcfdff;
 
-  /* Brand */
-  --qqx-brand: #0099ff;
-  --qqx-brand-light: rgba(0, 153, 255, 0.1);
-  --qqx-brand-hover: #0088e6;
-  --qqx-link: #0099ff;
+  /* Text Hierarchy (AA >= 4.5:1) */
+  --sr-text-primary: #25374f;
+  --sr-text-secondary: #536984;
+  --sr-text-tertiary: #586c89;
+  --sr-text-inverse: #ffffff;
 
-  /* Border */
-  --qqx-border-color: #e7eaee;
-  --qqx-border-dashed: rgba(231, 234, 238, 0.7);
+  /* Accent */
+  --sr-accent: #2f6fed;
+  --sr-accent-strong: #2459c7;
 
-  /* Shadow — QQX uses flat design, shadows only for floating layers */
+  /* Status Primitives */
+  --sr-success: #379d4a;
+  --sr-warning: #ee9e0b;
+  --sr-danger: #ec5e41;
+
+  /* Translucent Ink Fills (Mist 12% / 7% / 4% / 2%) */
+  --sr-fill: color-mix(in srgb, var(--sr-text-primary) 12%, transparent);
+  --sr-fill-secondary: color-mix(in srgb, var(--sr-text-primary) 7%, transparent);
+  --sr-fill-tertiary: color-mix(in srgb, var(--sr-text-primary) 4%, transparent);
+  --sr-fill-quaternary: color-mix(in srgb, var(--sr-text-primary) 2%, transparent);
+  --sr-bg-hover: color-mix(in srgb, var(--sr-text-primary) 5%, transparent);
+
+  /* Functional Borders (Structural / High-Contrast / Error only) */
+  --sr-border-subtle: color-mix(in srgb, var(--sr-text-primary) 10%, transparent);
+  --sr-border-strong: color-mix(in srgb, var(--sr-text-primary) 18%, transparent);
+  --sr-border-none: transparent;
+
+  /* Semantic Color Roles (AA >= 4.5:1 for ink on surface & on-solid on solid) */
+  --sr-role-on-solid: #ffffff;
+  --sr-role-blue-surface: #edf2ff;
+  --sr-role-blue-ink: #3554a5;
+  --sr-role-blue-solid: #4061cc;
+  --sr-role-blue-hover: #3251b4;
+
+  --sr-role-iris-surface: #f1edfa;
+  --sr-role-iris-ink: #705094;
+  --sr-role-iris-solid: #7955a3;
+  --sr-role-iris-hover: #68468f;
+
+  --sr-role-sage-surface: #eaf3ed;
+  --sr-role-sage-ink: #366b50;
+  --sr-role-sage-solid: #43765c;
+  --sr-role-sage-hover: #32634b;
+
+  --sr-role-amber-surface: #faf0df;
+  --sr-role-amber-ink: #855b26;
+  --sr-role-amber-solid: #976525;
+  --sr-role-amber-hover: #80531a;
+
+  --sr-role-rose-surface: #f9e9ec;
+  --sr-role-rose-ink: #a33e54;
+  --sr-role-rose-solid: #b2445d;
+  --sr-role-rose-hover: #98354b;
+
+  /* Dynamic Workbench Glass Materials */
+  --sr-sidebar-bg: transparent;
+  --sr-canvas-bg: var(--sr-bg-panel);
+  --sr-bg-group: color-mix(in srgb, var(--sr-text-primary) 4%, var(--sr-bg-panel));
+  --sr-bg-card: var(--sr-bg-panel);
+  --sr-bg-floating: var(--sr-bg-elevated);
+  --sr-inspector-bg: color-mix(in srgb, var(--sr-bg-group) 75%, transparent);
+  --sr-content-bg: var(--sr-fill-tertiary);
+  --sr-content-bg-hover: var(--sr-fill-secondary);
+  --sr-surface-selected: color-mix(in srgb, var(--sr-accent) 12%, transparent);
+  --sr-table-stripe: color-mix(in srgb, var(--sr-bg-subtle) 65%, var(--sr-bg-panel));
+
+  /* Controls & Interactive States */
+  --sr-control-bg: var(--sr-fill-tertiary);
+  --sr-control-bg-hover: color-mix(in srgb, var(--sr-accent) 4%, var(--sr-fill-secondary));
+  --sr-control-bg-active: color-mix(in srgb, var(--sr-accent) 6%, var(--sr-fill-secondary));
+  --sr-control-bg-danger: color-mix(in srgb, var(--sr-danger) 5%, var(--sr-control-bg));
+  --sr-control-focus-shadow: inset 0 0 0 2px color-mix(in srgb, var(--sr-accent) 65%, var(--sr-bg-panel));
+
+  --sr-action-bg-hover: color-mix(in srgb, var(--sr-accent) 6%, transparent);
+  --sr-action-bg-pressed: color-mix(in srgb, var(--sr-accent) 10%, transparent);
+  --sr-action-bg-selected: color-mix(in srgb, var(--sr-accent) 12%, transparent);
+
+  /* Navigation Active State (Calm 7% ink tint, never saturated block) */
+  --sr-nav-bg-selected: color-mix(in srgb, var(--sr-text-primary) 7%, transparent);
+  --sr-nav-bg-selected-hover: color-mix(in srgb, var(--sr-text-primary) 11%, transparent);
+
+  /* Glass Overlays & Sticky Surfaces */
+  --sr-sticky-bg: color-mix(in srgb, var(--sr-bg-panel) 94%, transparent);
+  --sr-sticky-filter: blur(32px) saturate(110%);
+  --sr-glass-bg: color-mix(in srgb, var(--sr-bg-panel) 78%, transparent);
+  --sr-glass-filter: blur(24px) saturate(115%);
+  --sr-glass-reading-bg: color-mix(in srgb, var(--sr-bg-panel) 84%, transparent);
+  --sr-glass-reading-filter: blur(48px) saturate(140%);
+  --sr-overlay-bg: var(--sr-bg-panel);
+  --sr-overlay-scrim: rgba(15, 23, 42, 0.34);
+
+  /* Ambient Soft Shell Washes */
+  --sr-ambient-1: rgba(47, 111, 237, 0.08);
+  --sr-ambient-2: rgba(111, 86, 143, 0.06);
+  --sr-ambient-3: rgba(53, 103, 84, 0.05);
+
+  /* Restrained Floating Shadows (Light) */
+  --sr-shadow-sm: 0 2px 8px rgb(24 34 29 / 0.04);
+  --sr-shadow-md: 0 4px 14px rgb(24 34 29 / 0.06), 0 1px 3px rgb(24 34 29 / 0.04);
+  --sr-shadow-lg: 0 6px 20px rgb(24 34 29 / 0.08);
+  --sr-focus-ring: 0 0 0 2px var(--sr-bg-panel), 0 0 0 4px var(--sr-accent);
+
+  /* Diff Semantics (Light) */
+  --qqx-diff-added-bg: color-mix(in srgb, var(--sr-role-sage-solid) 11%, transparent);
+  --qqx-diff-added-border: var(--sr-role-sage-solid);
+  --qqx-diff-added-tag-bg: var(--sr-role-sage-surface);
+  --qqx-diff-added-tag-text: var(--sr-role-sage-ink);
+  --qqx-diff-removed-bg: color-mix(in srgb, var(--sr-role-rose-solid) 10%, transparent);
+  --qqx-diff-removed-border: var(--sr-role-rose-solid);
+  --qqx-diff-removed-tag-bg: var(--sr-role-rose-surface);
+  --qqx-diff-removed-tag-text: var(--sr-role-rose-ink);
+  --qqx-diff-modified-tag-bg: var(--sr-role-amber-surface);
+  --qqx-diff-modified-tag-text: var(--sr-role-amber-ink);
+  --qqx-diff-unchanged-tag-bg: var(--sr-role-sage-surface);
+  --qqx-diff-unchanged-tag-text: var(--sr-role-sage-ink);
+  --qqx-diff-added-row-bg: var(--sr-role-blue-surface);
+  --qqx-diff-modified-row-bg: var(--sr-role-amber-surface);
+  --qqx-diff-removed-row-bg: var(--sr-role-rose-surface);
+
+  /* Compatibility --qqx-* Theme Mapping */
+  --qqx-bg-base: var(--sr-bg-panel);
+  --qqx-bg-surface: var(--sr-bg-app);
+  --qqx-bg-elevated: var(--sr-content-bg);
+  --qqx-bg-card: var(--sr-content-bg);
+  --qqx-bg-subtle: var(--sr-control-bg);
+  --qqx-bg-hover: var(--sr-bg-hover);
+  --qqx-bg-overlay: var(--sr-fill-tertiary);
+  --qqx-bg-backdrop: var(--sr-overlay-scrim);
+
+  --qqx-text-primary: var(--sr-text-primary);
+  --qqx-text-secondary: var(--sr-text-secondary);
+  --qqx-text-tertiary: var(--sr-text-tertiary);
+  --qqx-text-quaternary: var(--sr-text-tertiary);
+
+  --qqx-brand: var(--sr-accent);
+  --qqx-brand-light: var(--sr-role-blue-surface);
+  --qqx-brand-hover: var(--sr-accent-strong);
+  --qqx-link: var(--sr-accent);
+  --qqx-brand-fill-bg: var(--sr-accent);
+  --qqx-brand-fill-hover-bg: var(--sr-accent-strong);
+
+  --qqx-border-color: var(--sr-border-subtle);
+  --qqx-border-dashed: var(--sr-border-strong);
+
   --qqx-shadow-card: none;
-  --qqx-shadow-dropdown: 0px 10px 15px -3px rgba(0, 0, 0, 0.1), 0px 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --qqx-shadow-dropdown: var(--sr-shadow-md);
   --qqx-shadow-button: none;
-  --qqx-shadow-focus: 0 0 0 2px #fff, 0 0 0 4px var(--qqx-brand);
+  --qqx-shadow-focus: var(--sr-control-focus-shadow);
 
-  /* Brand fill — solid backgrounds (buttons, tabs, progress bars) */
-  --qqx-brand-fill-bg: var(--qqx-brand);
-  --qqx-brand-fill-hover-bg: var(--qqx-brand-hover);
+  --qqx-input-bg: var(--sr-control-bg);
+  --qqx-input-border: transparent;
 
-  /* Input specific */
-  --qqx-input-bg: #ffffff;
-  --qqx-input-border: #e7eaee;
+  --qqx-modal-bg: var(--sr-overlay-bg);
+  --qqx-modal-shadow: var(--sr-shadow-lg);
 
-  /* Modal */
-  --qqx-modal-bg: #ffffff;
-  --qqx-modal-shadow: 0px 20px 60px rgba(0, 0, 0, 0.15), 0px 4px 12px rgba(0, 0, 0, 0.08);
-
-  /* Diff Viewer */
-  --qqx-diff-added-bg: rgba(16, 185, 129, 0.12);
-  --qqx-diff-added-border: rgba(16, 185, 129, 0.35);
-  --qqx-diff-added-tag-bg: #d1fae5;
-  --qqx-diff-added-tag-text: #065f46;
-  --qqx-diff-removed-bg: rgba(239, 68, 68, 0.1);
-  --qqx-diff-removed-border: rgba(239, 68, 68, 0.35);
-  --qqx-diff-removed-tag-bg: #fee2e2;
-  --qqx-diff-removed-tag-text: #991b1b;
-  /* Diff file stat badges */
-  --qqx-diff-modified-tag-bg: #fef3c7;
-  --qqx-diff-modified-tag-text: #92400e;
-  --qqx-diff-unchanged-tag-bg: #d1fae5;
-  --qqx-diff-unchanged-tag-text: #065f46;
-  /* Diff file row backgrounds */
-  --qqx-diff-added-row-bg: #dbeafe;
-  --qqx-diff-modified-row-bg: #fef3c7;
-  --qqx-diff-removed-row-bg: #fee2e2;
-
-  /* Status colors */
-  --qqx-success: #10b981;
-  --qqx-success-light: rgba(16, 185, 129, 0.1);
-  --qqx-error: #ef4444;
-  --qqx-error-light: rgba(239, 68, 68, 0.1);
-  --qqx-warning: #f59e0b;
-  --qqx-warning-light: rgba(245, 158, 11, 0.1);
-  --qqx-info: #b45309;
-  --qqx-info-light: rgba(180, 83, 9, 0.06);
+  --qqx-success: var(--sr-role-sage-ink);
+  --qqx-success-light: var(--sr-role-sage-surface);
+  --qqx-error: var(--sr-role-rose-ink);
+  --qqx-error-light: var(--sr-role-rose-surface);
+  --qqx-danger: var(--sr-role-rose-solid);
+  --qqx-danger-text: var(--sr-role-rose-ink);
+  --qqx-warning: var(--sr-role-amber-ink);
+  --qqx-warning-light: var(--sr-role-amber-surface);
+  --qqx-warn-text: var(--sr-role-amber-ink);
+  --qqx-info: var(--sr-role-amber-ink);
+  --qqx-info-light: var(--sr-role-amber-surface);
 }
 
-/* ========== Dark Theme ========== */
+/* ============================================================================
+ * Dark Theme — Mist Palette (Asymmetric Elevation, Zero Pitch Black)
+ * bg-rail (#0c121c) < bg-app (#101722) < bg-group < bg-panel (#151e2b) < bg-card < bg-floating
+ * ============================================================================ */
 [data-theme="dark"] {
-  /* Background */
-  --qqx-bg-base: #0a0a0a;
-  --qqx-bg-surface: #121212;
-  --qqx-bg-elevated: #1a1a1a;
-  --qqx-bg-card: #171717;
-  --qqx-bg-subtle: #242424;
-  --qqx-bg-hover: #262626;
-  --qqx-bg-overlay: rgba(41, 41, 41, 0.6);
-  --qqx-bg-backdrop: rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
 
-  /* Text */
-  --qqx-text-primary: #f5f5f5;
-  --qqx-text-secondary: #999999;
-  --qqx-text-tertiary: rgba(153, 153, 153, 0.7);
-  --qqx-text-quaternary: rgba(153, 153, 153, 0.6);
+  /* Mist Dark Elevation Ladder */
+  --sr-bg-rail: #0c121c;
+  --sr-bg-app: #101722;
+  --sr-bg-panel: #151e2b;
+  --sr-bg-subtle: #192538;
+  --sr-bg-elevated: #1b283a;
 
-  /* Brand */
-  --qqx-brand: #33adff;
-  --qqx-brand-light: rgba(51, 173, 255, 0.1);
-  --qqx-brand-hover: #4db8ff;
-  --qqx-link: #3b82f6;
+  /* Text Hierarchy (AA >= 4.5:1) */
+  --sr-text-primary: #edf3fc;
+  --sr-text-secondary: #b1c1d8;
+  --sr-text-tertiary: #91a5c0;
+  --sr-text-inverse: #101722;
 
-  /* Border */
-  --qqx-border-color: #292929;
-  --qqx-border-dashed: rgba(41, 41, 41, 0.7);
+  /* Accent */
+  --sr-accent: #7aa2f7;
+  --sr-accent-strong: #9ab8fa;
 
-  /* Shadow */
+  /* Status Primitives */
+  --sr-success: #c4f042;
+  --sr-warning: #ffb224;
+  --sr-danger: #f4416c;
+
+  /* Translucent Ink Fills (Mist Dark 18% / 11% / 7% / 3%) */
+  --sr-fill: color-mix(in srgb, var(--sr-text-primary) 18%, transparent);
+  --sr-fill-secondary: color-mix(in srgb, var(--sr-text-primary) 11%, transparent);
+  --sr-fill-tertiary: color-mix(in srgb, var(--sr-text-primary) 7%, transparent);
+  --sr-fill-quaternary: color-mix(in srgb, var(--sr-text-primary) 3%, transparent);
+  --sr-bg-hover: color-mix(in srgb, var(--sr-text-primary) 8%, transparent);
+
+  /* Functional Borders */
+  --sr-border-subtle: color-mix(in srgb, var(--sr-text-primary) 14%, transparent);
+  --sr-border-strong: color-mix(in srgb, var(--sr-text-primary) 24%, transparent);
+  --sr-border-none: transparent;
+
+  /* Semantic Color Roles (Dark AA >= 4.5:1) */
+  --sr-role-on-solid: #19212b;
+  --sr-role-blue-surface: #242e46;
+  --sr-role-blue-ink: #b4c8ff;
+  --sr-role-blue-solid: #aec3ff;
+  --sr-role-blue-hover: #c5d3ff;
+
+  --sr-role-iris-surface: #312a40;
+  --sr-role-iris-ink: #d1bceb;
+  --sr-role-iris-solid: #cdb6e9;
+  --sr-role-iris-hover: #dfcdf3;
+
+  --sr-role-sage-surface: #24372e;
+  --sr-role-sage-ink: #b0d5bc;
+  --sr-role-sage-solid: #aad1b7;
+  --sr-role-sage-hover: #c4dfcc;
+
+  --sr-role-amber-surface: #3b3023;
+  --sr-role-amber-ink: #e8c492;
+  --sr-role-amber-solid: #e4bd84;
+  --sr-role-amber-hover: #f1d2a5;
+
+  --sr-role-rose-surface: #3d2830;
+  --sr-role-rose-ink: #f0b3c1;
+  --sr-role-rose-solid: #e9a9b9;
+  --sr-role-rose-hover: #f4c6d2;
+
+  /* Dynamic Workbench Glass Materials (Dark Lifted Steps) */
+  --sr-sidebar-bg: transparent;
+  --sr-canvas-bg: var(--sr-bg-panel);
+  --sr-bg-group: color-mix(in srgb, var(--sr-text-primary) 5%, var(--sr-bg-app));
+  --sr-bg-card: color-mix(in srgb, var(--sr-text-primary) 11%, var(--sr-bg-app));
+  --sr-bg-floating: color-mix(in srgb, var(--sr-text-primary) 15%, var(--sr-bg-app));
+  --sr-inspector-bg: color-mix(in srgb, var(--sr-bg-group) 75%, transparent);
+  --sr-content-bg: var(--sr-fill-tertiary);
+  --sr-content-bg-hover: var(--sr-fill-secondary);
+  --sr-surface-selected: color-mix(in srgb, var(--sr-accent) 14%, transparent);
+  --sr-table-stripe: color-mix(in srgb, var(--sr-bg-subtle) 65%, var(--sr-bg-panel));
+
+  /* Controls & Interactive States */
+  --sr-control-bg: var(--sr-fill-tertiary);
+  --sr-control-bg-hover: color-mix(in srgb, var(--sr-accent) 5%, var(--sr-fill-secondary));
+  --sr-control-bg-active: color-mix(in srgb, var(--sr-accent) 8%, var(--sr-fill-secondary));
+  --sr-control-bg-danger: color-mix(in srgb, var(--sr-danger) 8%, var(--sr-control-bg));
+  --sr-control-focus-shadow: inset 0 0 0 2px color-mix(in srgb, var(--sr-accent) 65%, var(--sr-text-primary));
+
+  --sr-action-bg-hover: color-mix(in srgb, var(--sr-accent) 10%, transparent);
+  --sr-action-bg-pressed: color-mix(in srgb, var(--sr-accent) 15%, transparent);
+  --sr-action-bg-selected: color-mix(in srgb, var(--sr-accent) 16%, transparent);
+
+  /* Navigation Active State */
+  --sr-nav-bg-selected: color-mix(in srgb, var(--sr-text-primary) 8%, transparent);
+  --sr-nav-bg-selected-hover: color-mix(in srgb, var(--sr-text-primary) 12%, transparent);
+
+  /* Glass Overlays & Sticky Surfaces */
+  --sr-sticky-bg: color-mix(in srgb, var(--sr-bg-panel) 94%, transparent);
+  --sr-sticky-filter: blur(32px) saturate(110%);
+  --sr-glass-bg: color-mix(in srgb, var(--sr-bg-floating) 82%, transparent);
+  --sr-glass-filter: blur(24px) saturate(115%);
+  --sr-glass-reading-bg: color-mix(in srgb, var(--sr-bg-panel) 86%, transparent);
+  --sr-glass-reading-filter: blur(48px) saturate(140%);
+  --sr-overlay-bg: var(--sr-bg-floating);
+  --sr-overlay-scrim: rgba(0, 0, 0, 0.52);
+
+  /* Ambient Soft Shell Washes (Dark) */
+  --sr-ambient-1: rgba(122, 162, 247, 0.08);
+  --sr-ambient-2: rgba(182, 170, 209, 0.06);
+  --sr-ambient-3: rgba(164, 196, 176, 0.05);
+
+  /* Restrained Floating Shadows (Dark) */
+  --sr-shadow-sm: 0 2px 8px rgb(0 0 0 / 0.14);
+  --sr-shadow-md: 0 4px 14px rgb(0 0 0 / 0.22), 0 1px 3px rgb(0 0 0 / 0.14);
+  --sr-shadow-lg: 0 6px 20px rgb(0 0 0 / 0.28);
+  --sr-focus-ring: 0 0 0 2px var(--sr-bg-panel), 0 0 0 4px var(--sr-accent);
+
+  /* Diff Semantics (Dark) */
+  --qqx-diff-added-bg: color-mix(in srgb, var(--sr-role-sage-solid) 14%, transparent);
+  --qqx-diff-added-border: var(--sr-role-sage-solid);
+  --qqx-diff-added-tag-bg: var(--sr-role-sage-surface);
+  --qqx-diff-added-tag-text: var(--sr-role-sage-ink);
+  --qqx-diff-removed-bg: color-mix(in srgb, var(--sr-role-rose-solid) 14%, transparent);
+  --qqx-diff-removed-border: var(--sr-role-rose-solid);
+  --qqx-diff-removed-tag-bg: var(--sr-role-rose-surface);
+  --qqx-diff-removed-tag-text: var(--sr-role-rose-ink);
+  --qqx-diff-modified-tag-bg: var(--sr-role-amber-surface);
+  --qqx-diff-modified-tag-text: var(--sr-role-amber-ink);
+  --qqx-diff-unchanged-tag-bg: var(--sr-role-sage-surface);
+  --qqx-diff-unchanged-tag-text: var(--sr-role-sage-ink);
+  --qqx-diff-added-row-bg: var(--sr-role-blue-surface);
+  --qqx-diff-modified-row-bg: var(--sr-role-amber-surface);
+  --qqx-diff-removed-row-bg: var(--sr-role-rose-surface);
+
+  /* Compatibility --qqx-* Theme Mapping */
+  --qqx-bg-base: var(--sr-bg-panel);
+  --qqx-bg-surface: var(--sr-bg-app);
+  --qqx-bg-elevated: var(--sr-content-bg);
+  --qqx-bg-card: var(--sr-content-bg);
+  --qqx-bg-subtle: var(--sr-control-bg);
+  --qqx-bg-hover: var(--sr-bg-hover);
+  --qqx-bg-overlay: var(--sr-fill-tertiary);
+  --qqx-bg-backdrop: var(--sr-overlay-scrim);
+
+  --qqx-text-primary: var(--sr-text-primary);
+  --qqx-text-secondary: var(--sr-text-secondary);
+  --qqx-text-tertiary: var(--sr-text-tertiary);
+  --qqx-text-quaternary: var(--sr-text-tertiary);
+
+  --qqx-brand: var(--sr-accent);
+  --qqx-brand-light: var(--sr-role-blue-surface);
+  --qqx-brand-hover: var(--sr-accent-strong);
+  --qqx-link: var(--sr-accent);
+  --qqx-brand-fill-bg: var(--sr-accent);
+  --qqx-brand-fill-hover-bg: var(--sr-accent-strong);
+
+  --qqx-border-color: var(--sr-border-subtle);
+  --qqx-border-dashed: var(--sr-border-strong);
+
   --qqx-shadow-card: none;
-  --qqx-shadow-dropdown: 0px 10px 15px -3px rgba(0, 0, 0, 0.3);
+  --qqx-shadow-dropdown: var(--sr-shadow-md);
   --qqx-shadow-button: none;
-  --qqx-shadow-focus: 0 0 0 2px #121212, 0 0 0 4px var(--qqx-brand);
+  --qqx-shadow-focus: var(--sr-control-focus-shadow);
 
-  /* Brand fill — solid backgrounds (buttons, tabs, progress bars) */
-  --qqx-brand-fill-bg: #2289c4;
-  --qqx-brand-fill-hover-bg: #279ad6;
+  --qqx-input-bg: var(--sr-control-bg);
+  --qqx-input-border: transparent;
 
-  /* Input specific */
-  --qqx-input-bg: #121212;
-  --qqx-input-border: #292929;
+  --qqx-modal-bg: var(--sr-overlay-bg);
+  --qqx-modal-shadow: var(--sr-shadow-lg);
 
-  /* Modal */
-  --qqx-modal-bg: #1a1a1a;
-  --qqx-modal-shadow: 0px 20px 60px rgba(0, 0, 0, 0.5);
+  --qqx-success: var(--sr-role-sage-ink);
+  --qqx-success-light: var(--sr-role-sage-surface);
+  --qqx-error: var(--sr-role-rose-ink);
+  --qqx-error-light: var(--sr-role-rose-surface);
+  --qqx-danger: var(--sr-role-rose-solid);
+  --qqx-danger-text: var(--sr-role-rose-ink);
+  --qqx-warning: var(--sr-role-amber-ink);
+  --qqx-warning-light: var(--sr-role-amber-surface);
+  --qqx-warn-text: var(--sr-role-amber-ink);
+  --qqx-info: var(--sr-role-amber-ink);
+  --qqx-info-light: var(--sr-role-amber-surface);
+}
 
-  /* Diff Viewer */
-  --qqx-diff-added-bg: rgba(52, 211, 153, 0.1);
-  --qqx-diff-added-border: rgba(52, 211, 153, 0.25);
-  --qqx-diff-added-tag-bg: #0d2818;
-  --qqx-diff-added-tag-text: #6ee7b7;
-  --qqx-diff-removed-bg: rgba(248, 113, 113, 0.1);
-  --qqx-diff-removed-border: rgba(248, 113, 113, 0.25);
-  --qqx-diff-removed-tag-bg: #3d1215;
-  --qqx-diff-removed-tag-text: #fca5a5;
-  /* Diff file stat badges */
-  --qqx-diff-modified-tag-bg: #32240a;
-  --qqx-diff-modified-tag-text: #fcd34d;
-  --qqx-diff-unchanged-tag-bg: #0d2818;
-  --qqx-diff-unchanged-tag-text: #6ee7b7;
-  /* Diff file row backgrounds */
-  --qqx-diff-added-row-bg: #0d1d31;
-  --qqx-diff-modified-row-bg: #32240a;
-  --qqx-diff-removed-row-bg: #3d1215;
+/* ============================================================================
+ * Fallback & Accessibility Degradation
+ * ============================================================================ */
+@supports not (backdrop-filter: blur(1px)) {
+  :root,
+  [data-theme="light"],
+  [data-theme="dark"] {
+    --sr-glass-bg: var(--sr-overlay-bg);
+    --sr-glass-filter: none;
+    --sr-glass-reading-bg: var(--sr-bg-panel);
+    --sr-glass-reading-filter: none;
+    --sr-sticky-bg: var(--sr-bg-panel);
+    --sr-sticky-filter: none;
+  }
+}
 
-  /* Status colors */
-  --qqx-success: #34d399;
-  --qqx-success-light: rgba(52, 211, 153, 0.1);
-  --qqx-error: #f87171;
-  --qqx-error-light: rgba(248, 113, 113, 0.1);
-  --qqx-warning: #fbbf24;
-  --qqx-warning-light: rgba(251, 191, 36, 0.1);
-  --qqx-info: #d97706;
-  --qqx-info-light: rgba(217, 119, 6, 0.1);
+@media (prefers-reduced-transparency: reduce) {
+  :root,
+  [data-theme="light"],
+  [data-theme="dark"] {
+    --sr-sidebar-bg: var(--sr-bg-rail);
+    --sr-canvas-bg: var(--sr-bg-panel);
+    --sr-inspector-bg: var(--sr-bg-group);
+    --sr-content-bg: var(--sr-bg-subtle);
+    --sr-glass-bg: var(--sr-overlay-bg);
+    --sr-glass-filter: none;
+    --sr-glass-reading-bg: var(--sr-bg-panel);
+    --sr-glass-reading-filter: none;
+    --sr-sticky-bg: var(--sr-bg-panel);
+    --sr-sticky-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root,
+  [data-theme="light"],
+  [data-theme="dark"] {
+    --sr-sidebar-bg: var(--sr-bg-rail);
+    --sr-canvas-bg: var(--sr-bg-panel);
+    --sr-content-bg: var(--sr-bg-subtle);
+    --sr-glass-bg: var(--sr-overlay-bg);
+    --sr-glass-filter: none;
+    --sr-glass-reading-bg: var(--sr-bg-panel);
+    --sr-glass-reading-filter: none;
+    --sr-sticky-bg: var(--sr-bg-panel);
+    --sr-sticky-filter: none;
+    --sr-shadow-sm: none;
+    --sr-shadow-md: none;
+    --sr-shadow-lg: none;
+    --qqx-modal-shadow: none;
+    --qqx-shadow-dropdown: none;
+  }
 }

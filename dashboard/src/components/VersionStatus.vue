@@ -46,44 +46,49 @@ const statusTitle = computed(() => ({
 .version-status {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  color: var(--qqx-text-tertiary);
-  font-size: var(--qqx-font-size-small);
-  line-height: 1.35;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--sr-radius-md);
+  background: var(--sr-content-bg);
+  color: var(--sr-text-tertiary);
+  font-size: var(--sr-text-meta);
+  line-height: 1.4;
 }
 
 .version-status__summary {
   display: flex;
   align-items: center;
   gap: 7px;
-  color: var(--qqx-text-secondary);
-  font-weight: var(--qqx-font-medium);
+  color: var(--sr-text-secondary);
+  font-size: var(--sr-text-compact);
+  font-weight: var(--sr-weight-semibold);
 }
 
 .version-status__dot {
   width: 7px;
   height: 7px;
   flex: 0 0 7px;
-  border-radius: 9999px;
-  background: var(--qqx-text-tertiary);
+  border-radius: var(--sr-radius-pill);
+  background: var(--sr-text-tertiary);
 }
 
 .version-status__dot--synced {
-  background: var(--qqx-success, #22c55e);
+  background: var(--sr-role-sage-solid);
 }
 
 .version-status__dot--mismatch {
-  background: var(--qqx-warning, #f59e0b);
+  background: var(--sr-role-amber-solid);
 }
 
 .version-status__dot--offline {
-  background: var(--qqx-danger, #ef4444);
+  background: var(--sr-role-rose-solid);
 }
 
 .version-status__versions {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   padding-left: 14px;
+  font-family: var(--sr-font-mono);
 }
 </style>

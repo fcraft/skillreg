@@ -26,33 +26,34 @@ const label = computed(() => {
 .status-badge {
   display: inline-flex;
   align-items: center;
-  gap: var(--qqx-space-xs);
-  padding: 2px var(--qqx-space-sm);
-  border-radius: var(--qqx-radius-full);
-  font-size: var(--qqx-font-size-small);
-  font-weight: var(--qqx-font-medium);
-  background: var(--qqx-bg-elevated);
-  color: var(--qqx-text-secondary);
+  gap: 5px;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: var(--sr-radius-badge);
+  font-size: var(--sr-text-meta);
+  font-weight: var(--sr-weight-semibold);
+  background: var(--sr-content-bg);
+  color: var(--sr-text-secondary);
 }
 
 .dot {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: var(--sr-radius-pill);
   background: currentColor;
 }
 
 .status-badge.active {
-  color: #10b981;
-  background: rgba(16, 185, 129, 0.1);
+  color: var(--sr-role-sage-ink);
+  background: var(--sr-role-sage-surface);
 }
 
 .status-badge.stale {
-  color: #f59e0b;
-  background: rgba(245, 158, 11, 0.1);
+  color: var(--sr-role-amber-ink);
+  background: var(--sr-role-amber-surface);
 }
 
 .status-badge.unknown {
-  color: var(--qqx-text-tertiary);
+  color: var(--sr-text-tertiary);
 }
 </style>

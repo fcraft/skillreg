@@ -113,25 +113,25 @@ function relativeTime(isoDate) {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 12px;
+  padding: 5px 12px;
   font-size: var(--qqx-font-size-small);
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-full);
-  background: var(--qqx-bg-card);
-  color: var(--qqx-text-secondary);
+  border: none;
+  border-radius: var(--sr-radius-sm);
+  background: var(--sr-content-bg);
+  color: var(--sr-text-secondary);
   cursor: pointer;
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard),
+              color var(--sr-duration-fast) var(--sr-ease-standard);
 }
 
 .tab-btn:not(.tab-btn--active):hover {
-  border-color: var(--qqx-brand);
-  color: var(--qqx-text-primary);
+  background: var(--sr-content-bg-hover);
+  color: var(--sr-text-primary);
 }
 
 .tab-btn--active {
-  background: var(--qqx-brand-light);
-  border-color: var(--qqx-brand);
-  color: var(--qqx-brand);
+  background: var(--sr-nav-bg-selected);
+  color: var(--sr-text-primary);
   font-weight: var(--qqx-font-medium);
 }
 
@@ -141,32 +141,36 @@ function relativeTime(isoDate) {
 }
 
 .log-list {
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-md);
-  overflow: hidden;
+  border: none;
+  border-radius: var(--sr-radius-lg);
+  background: var(--sr-content-bg);
+  padding: var(--sr-space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .log-entry {
   display: flex;
   align-items: center;
-  gap: var(--qqx-space-md);
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--qqx-border-color);
-  transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  gap: var(--sr-space-3);
+  padding: 10px 14px;
+  border-radius: var(--sr-radius-sm);
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard);
 }
 
-.log-entry:last-child {
-  border-bottom: none;
+.log-entry:nth-child(even) {
+  background: var(--sr-table-stripe);
 }
 
 .log-entry:hover {
-  background: var(--qqx-bg-hover);
+  background: var(--sr-bg-hover);
 }
 
 .log-hash {
-  font-family: 'SF Mono', 'Fira Code', monospace;
-  font-size: var(--qqx-font-size-small);
-  color: var(--qqx-brand);
+  font-family: var(--sr-font-mono);
+  font-size: var(--sr-text-compact);
+  color: var(--sr-accent);
   text-decoration: none;
   flex-shrink: 0;
 }
@@ -177,8 +181,8 @@ function relativeTime(isoDate) {
 
 .log-message {
   flex: 1;
-  font-size: var(--qqx-font-size-label);
-  color: var(--qqx-text-primary);
+  font-size: var(--sr-text-body);
+  color: var(--sr-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -187,30 +191,30 @@ function relativeTime(isoDate) {
 .log-meta {
   display: flex;
   align-items: center;
-  gap: var(--qqx-space-sm);
+  gap: var(--sr-space-2);
   flex-shrink: 0;
 }
 
 .log-author {
-  font-size: var(--qqx-font-size-small);
-  color: var(--qqx-text-secondary);
+  font-size: var(--sr-text-compact);
+  color: var(--sr-text-secondary);
 }
 
 .log-date {
-  font-size: var(--qqx-font-size-small);
-  color: var(--qqx-text-tertiary);
+  font-size: var(--sr-text-compact);
+  color: var(--sr-text-tertiary);
   min-width: 60px;
   text-align: right;
 }
 
 .log-empty {
-  padding: var(--qqx-space-xl);
+  padding: var(--sr-space-5);
   text-align: center;
-  color: var(--qqx-text-tertiary);
-  font-size: var(--qqx-font-size-label);
+  color: var(--sr-text-tertiary);
+  font-size: var(--sr-text-card-title);
 }
 
-@media (max-width: 767px) {
+@media (max-width: 760px) {
   .log-entry {
     flex-wrap: wrap;
     gap: 4px;

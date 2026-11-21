@@ -122,8 +122,9 @@ const removedLines = computed(() => {
 
 <style scoped>
 .qqx-diff {
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-xs);
+  border: none;
+  border-radius: var(--sr-radius-md);
+  background: var(--sr-content-bg);
   overflow: hidden;
   margin-top: var(--qqx-space-md);
 }
@@ -133,8 +134,8 @@ const removedLines = computed(() => {
   align-items: center;
   justify-content: space-between;
   padding: var(--qqx-space-sm) var(--qqx-space-md);
-  background: var(--qqx-bg-elevated);
-  border-bottom: 1px solid var(--qqx-border-color);
+  background: var(--sr-bg-subtle);
+  border-bottom: none;
   flex-wrap: wrap;
   gap: var(--qqx-space-sm);
 }

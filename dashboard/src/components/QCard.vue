@@ -32,21 +32,21 @@ defineProps({
 
 <style scoped>
 .qqx-card {
-  background: var(--qqx-bg-card);
-  border: 1px solid var(--qqx-border-color);
-  border-radius: var(--qqx-radius-lg);
+  background: var(--sr-content-bg);
+  border: none;
+  border-radius: var(--sr-radius-lg);
   overflow: hidden;
-  transition: all var(--qqx-transition);
+  transition: background-color var(--sr-duration-fast) var(--sr-ease-standard);
 }
 
 .qqx-card--hoverable:hover {
-  border-color: var(--qqx-brand);
+  background: var(--sr-content-bg-hover);
 }
 
 .qqx-card--empty {
-  background: var(--qqx-bg-overlay);
-  border: 1px dashed var(--qqx-border-dashed);
-  border-radius: var(--qqx-radius-sm);
+  background: var(--sr-fill-quaternary);
+  border: none;
+  border-radius: var(--sr-radius-md);
   box-shadow: none;
 }
 
@@ -54,45 +54,42 @@ defineProps({
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--qqx-space-lg) var(--qqx-space-xl);
-  border-bottom: 1px solid var(--qqx-border-color);
+  padding: var(--sr-space-4) var(--sr-space-5) var(--sr-space-2);
 }
 
 .qqx-card__title {
-  font-size: var(--qqx-font-size-label);
-  font-weight: var(--qqx-font-semibold);
-  color: var(--qqx-text-primary);
+  font-size: var(--sr-text-card-title);
+  font-weight: var(--sr-weight-semibold);
+  color: var(--sr-text-primary);
 }
 
 .qqx-card__body {
-  padding: var(--qqx-space-xl);
+  padding: var(--sr-space-4) var(--sr-space-5) var(--sr-space-5);
 }
 
 .qqx-card__footer {
   display: flex;
   align-items: center;
-  gap: var(--qqx-space-sm);
-  padding: var(--qqx-space-md) var(--qqx-space-xl);
-  border-top: 1px solid var(--qqx-border-color);
+  gap: var(--sr-space-2);
+  padding: var(--sr-space-3) var(--sr-space-5) var(--sr-space-4);
 }
 
-/* ========== Responsive: Mobile ========== */
-@media (max-width: 767px) {
+@media (max-width: 760px) {
   .qqx-card {
     min-width: 0;
     word-break: break-word;
   }
 
   .qqx-card__body {
-    padding: var(--qqx-space-lg);
+    padding: var(--sr-space-4);
   }
 
   .qqx-card__header {
-    padding: var(--qqx-space-md) var(--qqx-space-lg);
+    padding: var(--sr-space-3) var(--sr-space-4) var(--sr-space-2);
   }
 
   .qqx-card__footer {
-    padding: var(--qqx-space-sm) var(--qqx-space-lg);
+    padding: var(--sr-space-3) var(--sr-space-4);
   }
 }
 </style>
