@@ -16,11 +16,21 @@ import stat
 import sys
 import tarfile
 import tempfile
+import time
 from pathlib import Path
 
 MAX_BYTES = 32 * 1024 * 1024
 MAX_FILES = 10000
-IGNORED = {".git", "__pycache__", ".DS_Store", "Thumbs.db", ".sync-manifest.json"}
+IGNORED = {
+    ".git",
+    "__pycache__",
+    ".DS_Store",
+    "Thumbs.db",
+    ".sync-manifest.json",
+    ".venv",
+    "venv",
+    "node_modules",
+}
 AGENTS = ["claude", "tclaude", "codebuddy", "codex", "tcodex", "agents", "agent"]
 MAX_INVENTORY = 1000
 MAX_DOCUMENT = 256 * 1024
@@ -71,11 +81,15 @@ def root_checked(value):
 def tree_snapshot(root):
     root = Path(root)
     if root.is_symlink():
-        raise SyncError("Symlink skill directories are not supported", "unsafe-path")
+        raise SyncError(
+            "Symlink skill directories are not supported: " + str(root), "unsafe-path"
+        )
     if not root.exists():
         return {"exists": False, "digest": None, "files": {}, "bytes": 0}
     if not root.is_dir():
-        raise SyncError("Skill path is not a directory", "unsafe-path")
+        raise SyncError(
+            "Skill path is not a directory: " + str(root), "unsafe-path"
+        )
     files = {}
     total = 0
     for directory, dirs, names in os.walk(str(root), followlinks=False):
@@ -92,6 +106,8 @@ def tree_snapshot(root):
                     "unsafe-path",
                 )
             if stat.S_ISDIR(mode):
+                continue
+            if name.endswith(".pyc"):
                 continue
             size = path.stat().st_size
             total += size
@@ -195,22 +211,69 @@ def exchange_directories(left, right):
         raise OSError(error, os.strerror(error))
 
 
-def install(request):
-    import fcntl
+def replace_directory(temporary, destination):
+    """Replace an existing directory atomically when supported, with backup rollback fallback"""
+    try:
+        exchange_directories(temporary, destination)
+        return
+    except SyncError as exc:
+        if exc.code not in ("unsupported-platform", "unsupported-filesystem"):
+            raise
+    backup = Path(
+        tempfile.mkdtemp(prefix=".skillreg-backup-", dir=str(destination.parent))
+    )
+    os.rmdir(str(backup))
+    moved_new = False
+    os.rename(str(destination), str(backup))
+    try:
+        os.rename(str(temporary), str(destination))
+        moved_new = True
+    except Exception:
+        if not destination.exists() and backup.exists():
+            try:
+                os.rename(str(backup), str(destination))
+            except OSError:
+                pass
+        raise
+    finally:
+        if moved_new and backup.exists():
+            shutil.rmtree(str(backup), ignore_errors=True)
 
+
+def _acquire_file_lock(fd, timeout):
+    try:
+        import fcntl
+    except ImportError:
+        return
+    deadline = time.monotonic() + max(0.0, float(timeout))
+    while True:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return
+        except BlockingIOError:
+            pass
+        except OSError as exc:
+            if exc.errno not in (errno.EAGAIN, errno.EWOULDBLOCK):
+                raise
+        if time.monotonic() >= deadline:
+            raise SyncError("Another sync is writing this target", "target-busy", True)
+        time.sleep(0.05)
+
+
+def install(request):
     root = root_checked(request["path"])
     name = name_checked(request["name"])
     root.mkdir(parents=True, exist_ok=True)
     lock_path = root / ".skillreg-sync.lock"
-    descriptor = os.open(str(lock_path), os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    flags = os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(str(lock_path), flags, 0o600)
     with os.fdopen(descriptor, "a") as lock:
-        try:
-            fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            raise SyncError("Another sync is writing this target", "target-busy", True)
+        _acquire_file_lock(lock.fileno(), request.get("lockTimeout", 2.0))
         destination = root / name
         current = tree_snapshot(destination)
-        if current["digest"] != request.get("expectedDigest"):
+        if "expectedDigest" in request and current["digest"] != request.get(
+            "expectedDigest"
+        ):
             raise SyncError(
                 "Target changed since preview; preview again", "target-changed", True
             )
@@ -250,7 +313,7 @@ def install(request):
                     True,
                 )
             if destination.exists():
-                exchange_directories(temporary, destination)
+                replace_directory(temporary, destination)
             else:
                 os.rename(str(temporary), str(destination))
             verified = tree_snapshot(destination)

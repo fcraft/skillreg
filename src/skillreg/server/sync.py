@@ -8,8 +8,46 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from ..services import sync_manager
+from ..services.sync_files import SyncError
 
 router = APIRouter(prefix="/api/sync", tags=["sync"])
+
+
+def raise_sync_http_error(exc: Exception) -> None:
+    """Translate sync domain and filesystem errors into structured HTTP errors."""
+    if isinstance(exc, SyncError):
+        status = (
+            404
+            if exc.code == "not-found"
+            else 403
+            if exc.code == "permission-denied"
+            else 409
+            if exc.code
+            in {
+                "conflict",
+                "ambiguous-target",
+                "target-busy",
+                "target-changed",
+                "source-changed",
+                "preview-expired",
+            }
+            else 400
+        )
+        raise HTTPException(
+            status,
+            {"code": exc.code, "message": str(exc), "retryable": exc.retryable},
+        ) from exc
+    if isinstance(exc, PermissionError):
+        raise HTTPException(
+            403,
+            {"code": "permission-denied", "message": str(exc), "retryable": False},
+        ) from exc
+    if isinstance(exc, (ValueError, OSError)):
+        raise HTTPException(
+            400,
+            {"code": "sync-failed", "message": str(exc), "retryable": False},
+        ) from exc
+    raise exc
 
 
 # ── request models ────────────────────────────────────────────────────
@@ -85,7 +123,8 @@ def add_target(body: AddTargetBody):
         target = sync_manager.add_target(body.name, body.path)
         return {"success": True, "target": target}
     except ValueError as e:
-        raise HTTPException(409 if "already exists" in str(e) else 400, str(e))
+        is_conflict = getattr(e, "code", None) == "conflict" or "already exists" in str(e)
+        raise HTTPException(409 if is_conflict else 400, str(e))
 
 
 @router.delete("/targets/{name:path}")
@@ -127,12 +166,24 @@ def execute_sync(body: ExecuteSyncBody):
             raise HTTPException(404, f"Project not found: {body.project}")
         results = []
         for t in project.get("targets", []):
-            r = sync_manager.execute_sync(t, dry_run=body.dryRun, skills=body.skills)
-            results.append({"target": t, **r})
+            try:
+                r = sync_manager.execute_sync(t, dry_run=body.dryRun, skills=body.skills)
+                results.append({"target": t, **r})
+            except (SyncError, ValueError, OSError) as exc:
+                results.append({
+                    "target": t,
+                    "success": False,
+                    "stdout": "",
+                    "stderr": str(exc),
+                    "code": getattr(exc, "code", "permission-denied" if isinstance(exc, PermissionError) else "sync-failed"),
+                })
         return {"project": project["name"], "results": results}
     if not body.target:
-        raise HTTPException(400, "Missing target or project")
-    return sync_manager.execute_sync(body.target, dry_run=body.dryRun, skills=body.skills)
+        raise HTTPException(400, {"code": "invalid", "message": "Missing target or project", "retryable": False})
+    try:
+        return sync_manager.execute_sync(body.target, dry_run=body.dryRun, skills=body.skills)
+    except (SyncError, ValueError, OSError) as exc:
+        raise_sync_http_error(exc)
 
 
 @router.get("/skill-presence")
@@ -147,7 +198,10 @@ def skill_presence(skill: str = Query(...)):
 @router.get("/target-skills")
 def target_skills(target: str = Query(...)):
     """List skills inside a target."""
-    return sync_manager.list_target_skills(target)
+    try:
+        return sync_manager.list_target_skills(target)
+    except (SyncError, ValueError, OSError) as exc:
+        raise_sync_http_error(exc)
 
 
 @router.get("/diff")
@@ -159,14 +213,17 @@ def skill_diff(skill: str = Query(...), target: str = Query(...)):
         for f in files:
             summary[f["status"]] = summary.get(f["status"], 0) + 1
         return {"files": files, "summary": summary}
-    except ValueError as e:
-        raise HTTPException(400, str(e))
+    except (SyncError, ValueError, OSError) as exc:
+        raise_sync_http_error(exc)
 
 
 @router.post("/remove-skill")
 def remove_skill(body: RemoveSkillBody):
     """Remove a skill from a target."""
-    return sync_manager.remove_skill_from_target(body.skill, body.target, force=body.force)
+    try:
+        return sync_manager.remove_skill_from_target(body.skill, body.target, force=body.force)
+    except (SyncError, ValueError, OSError) as exc:
+        raise_sync_http_error(exc)
 
 
 @router.get("/target-file")
@@ -178,8 +235,8 @@ def target_file(
     """Read a file from the target-side skill copy."""
     try:
         return sync_manager.get_target_file(skill, target, path)
-    except ValueError as e:
-        raise HTTPException(400, str(e))
+    except (SyncError, ValueError, OSError) as exc:
+        raise_sync_http_error(exc)
 
 
 @router.get("/discover-home")

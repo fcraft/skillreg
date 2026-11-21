@@ -19,10 +19,23 @@ export async function request(path, options = {}) {
     ...options,
   })
   if (!res.ok) {
-    const data = await res.json().catch(() => ({ error: res.statusText }))
+    const rawText = await res.text().catch(() => '')
+    let data = {}
+    if (rawText) {
+      try {
+        data = JSON.parse(rawText)
+      } catch {
+        data = { error: rawText.trim() }
+      }
+    }
     const detail = data.detail
     const structuredDetail = detail && typeof detail === 'object' ? detail : null
-    const message = data.error || structuredDetail?.message || detail || res.statusText
+    const message =
+      data.error
+      || structuredDetail?.message
+      || (typeof detail === 'string' ? detail : '')
+      || res.statusText
+      || `HTTP ${res.status}`
     throw new ApiError(
       res.status,
       message,

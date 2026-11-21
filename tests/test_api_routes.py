@@ -809,3 +809,87 @@ def test_rename_repo_path_escape_rejected(tmp_path, monkeypatch):
     # Either the dir is not found (relative to ws) or the escape guard trips —
     # both are acceptable rejections (never a 200 success).
     assert r.status_code in (400, 404)
+
+
+def test_sync_execute_returns_structured_errors_instead_of_500(tmp_path, monkeypatch):
+    """POST /api/sync/execute translates SyncError/OSError into structured JSON errors."""
+    from skillreg.services import sync_targets
+
+    _make_workspace(tmp_path, monkeypatch)
+    client = _client()
+
+    # 1. Unknown bare name -> 404 structured error
+    r_missing = client.post(
+        "/api/sync/execute",
+        json={"target": "nonexistent-target", "skills": ["my-skill"]},
+    )
+    assert r_missing.status_code == 404
+    assert r_missing.json()["detail"]["code"] == "not-found"
+
+    # 2. Ambiguous duplicate name -> 409 structured error
+    sync_targets.add_target("dup", str(tmp_path / "dup1" / ".claude" / "skills"))
+    sync_targets.add_target("dup", str(tmp_path / "dup2" / ".claude" / "skills"))
+    r_ambiguous = client.post(
+        "/api/sync/execute",
+        json={"target": "dup", "skills": ["my-skill"]},
+    )
+    assert r_ambiguous.status_code == 409
+    assert r_ambiguous.json()["detail"]["code"] == "ambiguous-target"
+
+    # 3. Relative custom path -> 400 structured error
+    r_relative = client.post(
+        "/api/sync/execute",
+        json={"target": ".claude/skills", "skills": ["my-skill"]},
+    )
+    assert r_relative.status_code == 400
+    assert r_relative.json()["detail"]["code"] == "invalid"
+
+    # 4. Dangling symlink at destination skill path -> 400 unsafe-path with path in message
+    symlink_target = tmp_path / "sym-target"
+    symlink_target.mkdir()
+    (symlink_target / "my-skill").symlink_to(tmp_path / "does-not-exist")
+    r_symlink = client.post(
+        "/api/sync/execute",
+        json={"target": str(symlink_target), "skills": ["my-skill"]},
+    )
+    assert r_symlink.status_code == 400
+    detail = r_symlink.json()["detail"]
+    assert detail["code"] == "unsafe-path"
+    assert "my-skill" in detail["message"]
+
+    # 5. Home directory root -> 400 invalid (not 500)
+    r_home = client.post(
+        "/api/sync/execute",
+        json={"target": "~", "skills": ["my-skill"]},
+    )
+    assert r_home.status_code == 400
+    assert r_home.json()["detail"]["code"] == "invalid"
+
+
+def test_sync_execute_project_isolates_per_target_errors(tmp_path, monkeypatch):
+    """A failing target in a project sync reports failure cleanly without 500ing other targets."""
+    from skillreg.services import sync_manager
+
+    _make_workspace(tmp_path, monkeypatch)
+    monkeypatch.setattr(sync_manager, "_PROJECTS_DIR", tmp_path / "projects")
+    monkeypatch.setattr(sync_manager, "_PROJECTS_FILE", tmp_path / "projects" / "projects.json")
+
+    good_target = tmp_path / "good-target"
+    bad_target = tmp_path / "bad-target"
+    bad_target.mkdir()
+    (bad_target / "my-skill").symlink_to(tmp_path / "missing-link")
+
+    project = sync_manager.create_project("mixed-project", [str(good_target), str(bad_target)])
+    client = _client()
+
+    resp = client.post(
+        "/api/sync/execute",
+        json={"project": project["id"], "skills": ["my-skill"]},
+    )
+    assert resp.status_code == 200
+    results = resp.json()["results"]
+    assert len(results) == 2
+    assert results[0]["success"] is True
+    assert results[1]["success"] is False
+    assert results[1]["code"] == "unsafe-path"
+    assert "Symlink" in results[1]["stderr"]

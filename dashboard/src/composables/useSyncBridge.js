@@ -1,6 +1,7 @@
 import { reactive } from 'vue'
 import { fetchSyncConfig, fetchSyncStatus } from '../api/index.js'
 import { useEventBus } from './useEventBus.js'
+import { computeSkillSyncSummary, mergeBridgeTargetStatus } from '../sources/skillInstallState.js'
 
 const state = reactive({
   statusMap: {},
@@ -8,6 +9,7 @@ const state = reactive({
   projectTargets: [],
   loading: false,
   loaded: false,
+  error: '',
 })
 
 let loadPromise = null
@@ -20,19 +22,36 @@ async function doLoadSyncStatus(force = false) {
   }
   if (state.loaded || loadPromise) return loadPromise || Promise.resolve()
   state.loading = true
+  state.error = ''
   loadPromise = (async () => {
     try {
       const [config, rows] = await Promise.all([
         fetchSyncConfig(),
         fetchSyncStatus(null, true),
       ])
-      const namedTargets = (config.targets || []).map(t => ({ name: t.name, path: t.path, _project: false }))
+      const namedTargets = (config.targets || []).map(t => ({
+        id: t.id || null,
+        name: t.name,
+        label: t.label || t.name,
+        path: t.path,
+        _project: false,
+      }))
       const projSet = new Map()
-      for (const row of rows) {
-        if (row._project) {
-          const key = row.target
-          if (!projSet.has(key)) {
-            projSet.set(key, { name: row.target, path: row.target, _project: true, _projectName: row._project, _projectId: row._projectId })
+      if (Array.isArray(rows)) {
+        for (const row of rows) {
+          if (row._project) {
+            const key = `${row._projectId || row._project}:${row.target}`
+            if (!projSet.has(key)) {
+              projSet.set(key, {
+                name: row.target,
+                path: row.target,
+                _project: true,
+                _projectName: row._project,
+                _projectId: row._projectId,
+                _projectRoot: row._projectRoot || null,
+                _agent: row._agent || null,
+              })
+            }
           }
         }
       }
@@ -46,8 +65,9 @@ async function doLoadSyncStatus(force = false) {
         }
       }
       state.loaded = true
-    } catch {
-      // silently fail — badges will just not show
+      state.error = ''
+    } catch (err) {
+      state.error = err?.message || '加载同步目标和状态失败'
     } finally {
       state.loading = false
       loadPromise = null
@@ -74,7 +94,11 @@ export function useSyncBridge() {
    * Lightweight per-skill refresh — only updates statusMap for one skill.
    */
   async function refreshSkill(skillName) {
-    if (!skillName || !state.loaded) return
+    if (!skillName) return
+    if (!state.loaded) {
+      await doLoadSyncStatus()
+      if (!state.loaded) return
+    }
     try {
       const rows = await fetchSyncStatus(null, true, skillName)
       const newEntries = {}
@@ -85,30 +109,30 @@ export function useSyncBridge() {
       }
       state.statusMap[skillName] = newEntries
     } catch {
-      // silently ignore — statusMap retains previous data
+      // statusMap retains previous data if refresh fails transiently
+    }
+  }
+
+  /**
+   * Merge single-target status rows from SkillSyncManager without overwriting
+   * unrelated targets or project targets already tracked by the bridge.
+   */
+  function mergeTargetStatus(targetKey, rows, targetsList = null) {
+    state.statusMap = mergeBridgeTargetStatus(state.statusMap, targetKey, rows)
+    if (Array.isArray(targetsList)) {
+      state.targets = targetsList.map(t => ({
+        id: t.id || null,
+        name: t.name,
+        label: t.label || t.name,
+        path: t.path,
+        _project: false,
+      }))
     }
   }
 
   function getSkillSyncSummary(skillName) {
     if (!state.loaded) return null
-    const targetsForSkill = state.statusMap[skillName]
-    const totalTargets = state.targets.length + state.projectTargets.length
-    if (!targetsForSkill) return { installed: 0, changed: 0, missing: 0, ok: 0, total: totalTargets }
-    const summary = { installed: 0, changed: 0, missing: 0, ok: 0, total: totalTargets, namedOk: 0, namedInstalled: 0, projInstalled: 0 }
-    for (const [target, st] of Object.entries(targetsForSkill)) {
-      summary.installed++
-      if (st === 'unchanged') summary.ok++
-      else if (st === 'changed') summary.changed++
-      else if (st === 'missing') summary.missing++
-      const isNamed = state.targets.some(t => t.name === target)
-      if (isNamed) {
-        summary.namedInstalled++
-        if (st === 'unchanged') summary.namedOk++
-      } else {
-        summary.projInstalled++
-      }
-    }
-    return summary
+    return computeSkillSyncSummary(state.targets, state.projectTargets, state.statusMap, skillName)
   }
 
   function getSkillTargetStatus(skillName) {
@@ -128,5 +152,16 @@ export function useSyncBridge() {
     return state.projectTargets.length
   }
 
-  return { state, loadSyncStatus, forceRefresh, refreshSkill, getSkillSyncSummary, getSkillTargetStatus, getTotalTargets, getNamedTargetCount, getProjectTargetCount }
+  return {
+    state,
+    loadSyncStatus,
+    forceRefresh,
+    refreshSkill,
+    mergeTargetStatus,
+    getSkillSyncSummary,
+    getSkillTargetStatus,
+    getTotalTargets,
+    getNamedTargetCount,
+    getProjectTargetCount,
+  }
 }
