@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from functools import wraps
 
 import click
 
-from .services import ssh_connections, sync_inventory, sync_runs, sync_targets
+from .services import ssh_connections, sync_inventory, sync_manager, sync_runs, sync_targets
 
 
 def output(value):
@@ -98,12 +99,20 @@ def register(cli, target, sync):
         output({"removed": identifier})
 
     @target.command("discover")
-    @click.option("--connection", required=True, help="连接 ID 或名称")
-    @click.option("--root", help="远端项目根目录；省略时发现全局 Agent")
+    @click.option("--connection", help="SSH 连接 ID 或名称；省略时探测本机内置 Agent 目录")
+    @click.option("--root", help="项目根目录；省略时探测全局 ~/ Agent 目录")
+    @click.option("--all", "include_all", is_flag=True, help="包含本机未检测到的内置 Agent 预设（仅本机全局探测）")
     @errors
-    def discover(connection, root):
-        """发现远端 Agent Skill 目录"""
-        output(ssh_connections.discover(connection, root))
+    def discover(connection, root, include_all):
+        """发现本机或远端 Agent Skill 目录"""
+        if connection:
+            output(ssh_connections.discover(connection, root))
+            return
+        if root:
+            resolved = str(Path(root).expanduser().resolve())
+            output({"root": resolved, "agent_dirs": sync_manager.discover_agent_dirs(root)})
+            return
+        output(sync_manager.list_builtin_agents(include_undetected=include_all))
 
     @target.command("label")
     @click.argument("identifier")

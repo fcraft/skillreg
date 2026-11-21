@@ -75,11 +75,14 @@
             <span>加载同步目标失败：{{ syncState.error }}</span>
             <QButton type="text" size="small" @click="retryLoadSync">重试</QButton>
           </div>
-          <div v-else-if="!targets.length" class="im-empty">暂无配置的目标目录</div>
+          <div v-else-if="!targets.length" class="im-empty">未自动探测到常见 Agent 目录，可在下方输入自定义目录或在「Sync 工具」中添加目标</div>
           <div v-for="t in targets" :key="t.id || t.path" class="im-row">
             <div class="im-row-info">
-              <span class="im-row-name">{{ t.label || t.name }}</span>
-              <span class="im-row-path">→ {{ t.path }}/{{ skill.name }}</span>
+              <div class="im-row-title">
+                <span class="im-row-name">{{ t.label || t.name }}</span>
+                <span v-if="targetBadgeText(t)" class="im-row-badge" :class="{ 'im-row-badge--shared': t.shared }">{{ targetBadgeText(t) }}</span>
+              </div>
+              <span class="im-row-path" :title="t.path">→ {{ formatAgentDisplayPath(t.path, t.relPath) }}/{{ skill.name }}</span>
             </div>
             <QButton v-if="isInstalled(t.path)" type="ghost" size="small" disabled>已安装</QButton>
             <QButton v-else type="secondary" tint="brand" size="small" :disabled="installing" @click="doInstallTarget(t)">
@@ -110,11 +113,11 @@
                 <div class="im-target-path" :title="t">{{ t }}</div>
                 <div v-if="discoveringTargets[t]" class="im-agent-loading">正在检测 agent 目录...</div>
                 <div v-else-if="discoveredMap[t]?.agent_dirs?.length" class="im-agent-list">
-                  <div v-for="d in discoveredMap[t].agent_dirs" :key="d.path" class="im-agent-row">
-                    <span class="im-agent-badge">{{ d.agent }}</span>
+                  <div v-for="d in discoveredMap[t].agent_dirs" :key="d.path || d.agent" class="im-agent-row">
+                    <span class="im-agent-badge">{{ d.name || d.agent }}</span>
                     <span class="im-agent-path">→ {{ d.path }}/{{ skill.name }}</span>
                     <QButton v-if="isInstalled(d.path)" type="ghost" size="small" disabled>已安装</QButton>
-                    <QButton v-else type="secondary" tint="brand" size="small" :disabled="installing" @click="doInstallPath(d.path, `${d.agent} (${d.path})`)">
+                    <QButton v-else type="secondary" tint="brand" size="small" :disabled="installing" @click="doInstallPath(d.path, `${d.name || d.agent} (${d.path})`)">
                       {{ installingTarget === d.path ? '安装中...' : '安装' }}
                     </QButton>
                   </div>
@@ -163,11 +166,12 @@
             <div class="sync-card-header">
               <div class="sync-card-info">
                 <span class="sync-card-name">{{ item.label }}</span>
+                <span v-if="targetBadgeText(item)" class="im-row-badge" :class="{ 'im-row-badge--shared': item.shared }">{{ targetBadgeText(item) }}</span>
                 <span v-if="item._projectName" class="sync-card-project">{{ item._projectName }}</span>
               </div>
               <span class="sync-badge" :class="'sync-badge--' + item.status">{{ statusLabel(item.status) }}</span>
             </div>
-            <div class="sync-card-path" :title="item.path">{{ item.path }}</div>
+            <div class="sync-card-path" :title="item.path">{{ formatAgentDisplayPath(item.path, item.relPath) }}</div>
             <div class="sync-card-actions">
               <QButton
                 v-if="item.status === 'changed' || item.status === 'missing'"
@@ -273,6 +277,10 @@ import {
   fetchSkillDiff, fetchSkillFile, fetchTargetFile,
   exportSkill,
 } from '../api/index.js'
+import {
+  formatAgentDisplayPath,
+  targetBadgeText,
+} from '../sources/agentTargets.js'
 
 const { state, close, openFileDrawer, closeFileDrawer } = useSkillDetail()
 const { state: syncState, loadSyncStatus, getSkillTargetStatus, refreshSkill } = useSyncBridge()
@@ -966,10 +974,34 @@ function closeFilePreview() {
   flex: 1;
 }
 
+.im-row-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 .im-row-name {
   font-size: var(--qqx-font-size-label);
   font-weight: var(--qqx-font-medium);
   color: var(--qqx-text-primary);
+}
+
+.im-row-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: var(--qqx-radius-full);
+  background: var(--qqx-bg-elevated);
+  color: var(--qqx-text-secondary);
+  font-size: 11px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.im-row-badge--shared {
+  background: var(--qqx-brand-light);
+  color: var(--qqx-brand);
 }
 
 .im-row-path {

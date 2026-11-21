@@ -7,7 +7,7 @@
       <QButton type="secondary" :disabled="busy || (scope === 'project' && !root)" @click="discover">{{ busy ? '发现中…' : '发现 Agent 目录' }}</QButton>
       <div v-if="discovered" class="ssh-target-options">
         <p v-if="!candidates.length" class="ssh-muted">没有发现 Agent 目录，可手动填写安装路径</p>
-        <QCheckbox v-for="item in candidates" :key="item.path" class="ssh-option" :model-value="selected.includes(item.path)" @update:model-value="selected = $event ? [...selected, item.path] : selected.filter(path => path !== item.path)"><span>{{ item.agentKind }}<code>{{ item.path }}</code></span></QCheckbox>
+        <QCheckbox v-for="item in candidates" :key="item.path" class="ssh-option" :model-value="selected.includes(item.path)" @update:model-value="selected = $event ? [...selected, item.path] : selected.filter(path => path !== item.path)"><span>{{ item.name || item.agentKind }}<code>{{ item.path }}</code></span></QCheckbox>
       </div>
       <QDisclosure id="ssh-manual-target" title="手动指定目录"><div class="ssh-form ssh-advanced">
         <label>目标名称<input v-model="manualName" class="ssh-input" placeholder="项目 Codex" /></label>
@@ -45,7 +45,7 @@ async function discover() {
 async function save() {
   if (busy.value) return
   busy.value = true; error.value = ''
-  const items = candidates.value.filter(t => selected.value.includes(t.path)).map(t => ({ ...t, name: `${props.connection.name} · ${t.agentKind}${scope.value === 'project' ? ' · 项目' : ''}` }))
+  const items = candidates.value.filter(t => selected.value.includes(t.path)).map(t => ({ ...t, name: `${props.connection.name} · ${t.name || t.agentKind}${scope.value === 'project' ? ' · 项目' : ''}` }))
   if (manualName.value && manualPath.value) items.push({ name: manualName.value, path: manualPath.value, scope: scope.value, projectRoot: scope.value === 'project' ? root.value : null })
   const added = []
   try {

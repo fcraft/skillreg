@@ -7,11 +7,37 @@ copy and must not fall back to searching for a legacy ``infra/sync-skills.py``.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import skillreg.config as cfgmod
 import skillreg.services.sync_manager as sync_manager
 
 
 def _configure(tmp_path, monkeypatch, *, skill_names: list[str] | None = None):
+    fake_home = tmp_path / "isolated-home"
+    fake_home.mkdir()
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: fake_home))
+    monkeypatch.setenv("HOME", str(fake_home))
+    monkeypatch.setenv("PATH", str(tmp_path / "empty-bin"))
+    for var in (
+        "CLAUDE_CONFIG_DIR",
+        "CODEX_HOME",
+        "COPILOT_HOME",
+        "OPENCODE_CONFIG_DIR",
+        "XDG_CONFIG_HOME",
+        "CODEBUDDY_CONFIG_DIR",
+        "WORKBUDDY_CONFIG_DIR",
+        "PI_CODING_AGENT_DIR",
+        "KIMI_CODE_HOME",
+        "QWEN_HOME",
+        "VIBE_HOME",
+        "HERMES_HOME",
+        "DSH_HOME",
+        "GROK_HOME",
+        "MINIMAX_DATA_DIR",
+    ):
+        monkeypatch.delenv(var, raising=False)
+
     cfg_path = tmp_path / "config.json"
     monkeypatch.setattr(cfgmod, "CONFIG_FILE", cfg_path)
     monkeypatch.setattr(cfgmod, "CONFIG_DIR", cfg_path.parent)

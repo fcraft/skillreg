@@ -15,6 +15,7 @@ from typing import Any
 
 import yaml
 
+from .agent_catalog import project_agent_conventions
 from .url_utils import normalize_git_url
 
 # ── constants --------------------------------------------------------------
@@ -36,16 +37,8 @@ _KNOWN_DEPENDENCIES: list[dict[str, str]] = [
     {"from": "ntcompose-build-page", "to": "ntdev-build", "type": "depends-on"},
 ]
 
-# Agent conventions (same as the sync target discovery)
-_AGENT_CONVENTIONS: list[tuple[str, str]] = [
-    (".claude/skills", "claude"),
-    (".tclaude/skills", "tclaude"),
-    (".codebuddy/skills", "codebuddy"),
-    (".codex/skills", "codex"),
-    (".tcodex/skills", "tcodex"),
-    (".agents/skills", "agents"),
-    (".agent/skills", "agent"),
-]
+# Agent conventions (shared with the built-in agent catalog)
+_AGENT_CONVENTIONS: list[tuple[str, str]] = project_agent_conventions()
 
 _CACHE_TTL_SECONDS = 30.0
 _GET_ALL_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}

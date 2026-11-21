@@ -395,7 +395,7 @@ def convert_skill(name: str) -> None:
 @target.command("list")
 @click.option("--json", "as_json", is_flag=True, help="输出带稳定 ID 的目标列表")
 def list_targets(as_json: bool) -> None:
-    """列出已配置的同步目标。"""
+    """列出已配置及自动识别的内置同步目标。"""
     from .services.sync_targets import target_records
     targets = target_records()
     if as_json:
@@ -407,7 +407,8 @@ def list_targets(as_json: bool) -> None:
         click.echo(f"{'名称':<20} 路径")
         click.echo("-" * 72)
         for item in targets:
-            click.echo(f"{item['name']:<20} {item['path']}  [{item['transport']}] {item['id']}")
+            tag = "builtin" if item.get("builtin") else item["transport"]
+            click.echo(f"{item['name']:<20} {item['path']}  [{tag}] {item['id']}")
     _echo_workspace_summary(heading="列出同步目标后的 skillreg 上下文")
 
 
@@ -819,10 +820,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
 
 def _target_display_label(path: str) -> str:
-    path_obj = Path(path).expanduser()
-    if path_obj.name == "skills" and path_obj.parent.name.startswith("."):
-        return path_obj.parent.name[1:]
-    return path_obj.name or path
+    from .services.sync_targets import display_name
+
+    return display_name(path)
 
 
 def _dashboard_running_pid() -> int | None:

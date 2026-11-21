@@ -31,7 +31,95 @@ IGNORED = {
     "venv",
     "node_modules",
 }
-AGENTS = ["claude", "tclaude", "codebuddy", "codex", "tcodex", "agents", "agent"]
+LEFTOVER_AGENT_DIRS = {"logs", "log", "debug", "diagnostics", "cache"}
+AGENTS = [
+    "agents",
+    "claude",
+    "codex",
+    "cursor",
+    "gemini",
+    "antigravity",
+    "copilot",
+    "opencode",
+    "codebuddy",
+    "workbuddy",
+    "pi",
+    "cline",
+    "droid",
+    "kimi",
+    "qwen",
+    "qoder",
+    "kiro",
+    "crush",
+    "vibe",
+    "hermes",
+    "dsh",
+    "commandcode",
+    "devin",
+    "grok",
+    "zcode",
+    "alma",
+    "omp",
+    "minimax-code",
+    "tclaude",
+    "tcodex",
+    "agent",
+]
+# (agent_id, display_name, root_parts, skills_subdir, env_var, xdg_subpath, shared)
+GLOBAL_AGENT_SPECS = [
+    ("agents", "Shared Agents", (".agents",), "skills", None, None, True),
+    ("claude", "Claude Code", (".claude",), "skills", "CLAUDE_CONFIG_DIR", None, False),
+    ("codex", "Codex", (".codex",), "skills", "CODEX_HOME", None, False),
+    ("cursor", "Cursor", (".cursor",), "skills", None, None, False),
+    ("gemini", "Gemini CLI", (".gemini",), "skills", None, None, False),
+    ("antigravity", "Antigravity", (".gemini", "config"), "skills", None, None, False),
+    ("copilot", "GitHub Copilot", (".copilot",), "skills", "COPILOT_HOME", None, False),
+    ("opencode", "OpenCode", (".config", "opencode"), "skills", "OPENCODE_CONFIG_DIR", "opencode", False),
+    ("codebuddy", "CodeBuddy", (".codebuddy",), "skills", "CODEBUDDY_CONFIG_DIR", None, False),
+    ("workbuddy", "WorkBuddy", (".workbuddy",), "skills", "WORKBUDDY_CONFIG_DIR", None, False),
+    ("pi", "Pi", (".pi", "agent"), "skills", "PI_CODING_AGENT_DIR", None, False),
+    ("cline", "Cline", (".cline",), "skills", None, None, False),
+    ("droid", "Droid", (".factory",), "skills", None, None, False),
+    ("kimi", "Kimi Code", (".kimi-code",), "skills", "KIMI_CODE_HOME", None, False),
+    ("qwen", "Qwen Code", (".qwen",), "skills", "QWEN_HOME", None, False),
+    ("qoder", "Qoder", (".qoder",), "skills", None, None, False),
+    ("kiro", "Kiro", (".kiro",), "skills", None, None, False),
+    ("crush", "Crush", (".config", "crush"), "skills", None, "crush", False),
+    ("vibe", "Mistral Vibe", (".vibe",), "skills", "VIBE_HOME", None, False),
+    ("hermes", "Hermes Agent", (".hermes",), "skills", "HERMES_HOME", None, False),
+    ("dsh", "DeepSeek Harness", (".dsh",), "skills", "DSH_HOME", None, False),
+    ("commandcode", "Command Code", (".commandcode",), "skills", None, None, False),
+    ("devin", "Devin", (".config", "devin"), "skills", None, "devin", False),
+    ("grok", "Grok Build", (".grok",), "skills", "GROK_HOME", None, False),
+    ("zcode", "ZCode", (".zcode",), "skills", None, None, False),
+    ("alma", "Alma", (".config", "alma"), "skills", None, None, False),
+    ("omp", "Oh-My-Pi", (".omp", "agent"), "skills", None, None, False),
+    ("minimax-code", "MiniMax Code", (".minimax",), "skills", "MINIMAX_DATA_DIR", None, False),
+    ("tclaude", "tclaude", (".tclaude",), "skills", None, None, False),
+    ("tcodex", "tcodex", (".tcodex",), "skills", None, None, False),
+    ("agent", "agent", (".agent",), "skills", None, None, False),
+]
+PROJECT_AGENT_SPECS = [
+    ("agents", "Shared Agents", (".agents",), "skills", True),
+    ("claude", "Claude Code", (".claude",), "skills", False),
+    ("codex", "Codex", (".codex",), "skills", False),
+    ("cursor", "Cursor", (".cursor",), "skills", False),
+    ("gemini", "Gemini CLI", (".gemini",), "skills", False),
+    ("copilot", "GitHub Copilot", (".copilot",), "skills", False),
+    ("opencode", "OpenCode", (".opencode",), "skills", False),
+    ("codebuddy", "CodeBuddy", (".codebuddy",), "skills", False),
+    ("pi", "Pi", (".pi",), "skills", False),
+    ("cline", "Cline", (".cline",), "skills", False),
+    ("droid", "Droid", (".factory",), "skills", False),
+    ("qwen", "Qwen Code", (".qwen",), "skills", False),
+    ("qoder", "Qoder", (".qoder",), "skills", False),
+    ("kiro", "Kiro", (".kiro",), "skills", False),
+    ("dsh", "DeepSeek Harness", (".dsh",), "skills", False),
+    ("commandcode", "Command Code", (".commandcode",), "skills", False),
+    ("tclaude", "tclaude", (".tclaude",), "skills", False),
+    ("tcodex", "tcodex", (".tcodex",), "skills", False),
+    ("agent", "agent", (".agent",), "skills", False),
+]
 MAX_INVENTORY = 1000
 MAX_DOCUMENT = 256 * 1024
 
@@ -393,6 +481,117 @@ def read_skill_document(value, name):
     }
 
 
+def _expand_abs_env(value, home):
+    if not value:
+        return None
+    cleaned = value.strip()
+    if not cleaned:
+        return None
+    if cleaned == "~":
+        candidate = home
+    elif cleaned.startswith("~/") or cleaned.startswith("~\\"):
+        candidate = home / cleaned[2:]
+    else:
+        candidate = Path(cleaned)
+    if not candidate.is_absolute():
+        return None
+    return Path(os.path.normpath(str(candidate)))
+
+
+def _has_agent_evidence(agent_root, skills_dir, skills_subdir, shared):
+    if not agent_root.is_dir():
+        return False
+    if skills_dir.exists() and not skills_dir.is_dir():
+        return False
+    try:
+        entries = list(agent_root.iterdir())
+    except OSError:
+        return False
+    if shared:
+        if skills_dir.is_dir() or not entries:
+            return True
+        for entry in entries:
+            if entry.name in (".DS_Store", "Thumbs.db"):
+                continue
+            if entry.is_dir() and entry.name.lower() in LEFTOVER_AGENT_DIRS:
+                continue
+            return True
+        return False
+    if not entries:
+        return True
+    for entry in entries:
+        if entry.name in (".DS_Store", "Thumbs.db") or entry.name == skills_subdir:
+            continue
+        if entry.is_dir() and entry.name.lower() in LEFTOVER_AGENT_DIRS:
+            continue
+        return True
+    if skills_dir.is_dir():
+        try:
+            for child in skills_dir.iterdir():
+                if child.name not in (".DS_Store", "Thumbs.db"):
+                    return True
+        except OSError:
+            pass
+    return False
+
+
+def discover_targets(root_arg=None):
+    root = Path(root_arg or str(Path.home())).expanduser()
+    if not root.is_absolute() or not root.is_dir():
+        raise SyncError("Project directory does not exist")
+    result = []
+    seen = set()
+    if root_arg:
+        for agent, name, parts, subdir, shared in PROJECT_AGENT_SPECS:
+            agent_root = root.joinpath(*parts)
+            target = agent_root / subdir
+            canonical = str(target)
+            if canonical in seen:
+                continue
+            if _has_agent_evidence(agent_root, target, subdir, shared):
+                seen.add(canonical)
+                result.append(
+                    {
+                        "agentKind": agent,
+                        "name": name,
+                        "path": canonical,
+                        "exists": target.is_dir(),
+                        "scope": "project",
+                        "projectRoot": str(root),
+                    }
+                )
+    else:
+        for agent, name, parts, subdir, env_var, xdg_subpath, shared in GLOBAL_AGENT_SPECS:
+            agent_root = None
+            if env_var:
+                agent_root = _expand_abs_env(os.environ.get(env_var), root)
+            if agent_root is None and xdg_subpath:
+                xdg = _expand_abs_env(os.environ.get("XDG_CONFIG_HOME"), root)
+                if xdg is not None:
+                    agent_root = xdg / xdg_subpath
+            if agent_root is None:
+                agent_root = root.joinpath(*parts)
+                if agent == "kimi" and not agent_root.exists() and (root / ".kimi").is_dir():
+                    agent_root = root / ".kimi"
+            target = agent_root / subdir
+            canonical = str(target)
+            if canonical in seen:
+                continue
+            if _has_agent_evidence(agent_root, target, subdir, shared):
+                seen.add(canonical)
+                result.append(
+                    {
+                        "agentKind": agent,
+                        "name": name,
+                        "path": canonical,
+                        "exists": target.is_dir(),
+                        "scope": "global",
+                        "projectRoot": None,
+                    }
+                )
+    return {"root": str(root), "targets": result}
+
+
 def dispatch(request):
     operation = request.get("operation")
     if operation == "check":
@@ -404,23 +603,7 @@ def dispatch(request):
             "user": __import__("getpass").getuser(),
         }
     if operation == "discover":
-        root = Path(request.get("root") or str(Path.home())).expanduser()
-        if not root.is_absolute() or not root.is_dir():
-            raise SyncError("Project directory does not exist")
-        result = []
-        for agent in AGENTS:
-            if (root / ("." + agent)).is_dir():
-                target = root / ("." + agent) / "skills"
-                result.append(
-                    {
-                        "agentKind": agent,
-                        "path": str(target),
-                        "exists": target.is_dir(),
-                        "scope": "project" if request.get("root") else "global",
-                        "projectRoot": str(root) if request.get("root") else None,
-                    }
-                )
-        return {"root": str(root), "targets": result}
+        return discover_targets(request.get("root"))
     if operation == "inspect":
         root = root_checked(request["path"])
         parent = root

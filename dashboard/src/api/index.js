@@ -171,8 +171,8 @@ export function fetchSyncTargets() {
   return get('/api/sync/targets')
 }
 
-export function addSyncTarget(name, path) {
-  return post('/api/sync/targets', { name, path })
+export function addSyncTarget(name, path, extra = {}) {
+  return post('/api/sync/targets', { name, path, ...extra })
 }
 
 export function removeSyncTarget(name) {
@@ -305,8 +305,18 @@ export function renameSyncTarget(oldName, newName) {
   return put(`/api/sync/targets/${encodeURIComponent(oldName)}/rename`, { newName })
 }
 
-export function discoverHomeAgentDirs() {
-  return get('/api/sync/discover-home')
+export function discoverHomeAgentDirs(includeUndetected = false) {
+  const qs = includeUndetected ? '?include_undetected=1' : ''
+  return get(`/api/sync/discover-home${qs}`)
+}
+
+export function fetchBuiltinAgents(includeUndetected = true) {
+  const qs = includeUndetected ? '?include_undetected=1' : '?include_undetected=0'
+  return get(`/api/sync/agents${qs}`)
+}
+
+export function setBuiltinAgentEnabled(agentId, enabled) {
+  return put(`/api/sync/agents/${encodeURIComponent(agentId)}`, { enabled: Boolean(enabled) })
 }
 
 // --- Import ---
