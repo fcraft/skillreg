@@ -313,8 +313,11 @@
         >
           <input type="radio" name="install-target" :value="t.path" v-model="installRepo.target" />
           <div class="repo-install-target-info">
-            <span class="repo-install-target-name">{{ t.label || t.name }}</span>
-            <span class="repo-install-target-path" :title="t.path">{{ displayPath(t.path) }}</span>
+            <span class="repo-install-target-name">
+              {{ t.label || t.name }}
+              <span v-if="targetBadgeText(t)" class="repo-install-target-badge">{{ targetBadgeText(t) }}</span>
+            </span>
+            <span class="repo-install-target-path" :title="t.path">{{ formatAgentDisplayPath(t.path, t.relPath) }}</span>
           </div>
         </label>
       </div>
@@ -412,8 +415,9 @@ import {
   fixDetachedHead as fixDetachedHeadApi, refreshSubmodule as refreshSubmoduleApi,
   fetchSubmoduleDiff as fetchSubmoduleDiffApi,
   removeSubmodule as removeSubmoduleApi, renameSubmodule as renameSubmoduleApi,
-      fetchSyncConfig, executeSync,
+  fetchSyncConfig, executeSync,
 } from '../api/index.js'
+import { formatAgentDisplayPath, normalizeTarget, targetBadgeText } from '../sources/agentTargets.js'
 import { MoreHorizontal, Pencil, Trash2, Download } from 'lucide-vue-next'
 import QModal from './QModal.vue'
 import QButton from './QButton.vue'
@@ -459,9 +463,7 @@ const renamePreviewPath = computed(() => {
 async function loadTargets() {
   try {
     const config = await fetchSyncConfig()
-    targets.value = (config.targets || []).map(t => ({
-      name: t.name, path: t.path, label: t.label || t.name,
-    }))
+    targets.value = (config.targets || []).map(t => normalizeTarget(t)).filter(Boolean)
   } catch {
     targets.value = []
   }
@@ -1664,9 +1666,23 @@ async function handleFixDetached(sub) {
 }
 
 .repo-install-target-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: var(--qqx-font-size-label);
   font-weight: var(--qqx-font-medium);
   color: var(--qqx-text-primary);
+}
+
+.repo-install-target-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: var(--qqx-radius-full);
+  background: var(--qqx-bg-elevated);
+  color: var(--qqx-text-secondary);
+  font-size: 10px;
+  font-weight: var(--qqx-font-regular);
 }
 
 .repo-install-target-path {

@@ -124,6 +124,10 @@ export function buildTargetStatusItems(targets = [], projectTargets = [], status
       target: targetIdentifier,
       label: t.label || t.name || t.path,
       path: t.path,
+      relPath: t.relPath || null,
+      builtin: Boolean(t.builtin),
+      shared: Boolean(t.shared),
+      agentKind: t.agentKind || null,
       _project: false,
       status: statusMap[t.path] || 'not-installed',
     })

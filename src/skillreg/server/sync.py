@@ -55,6 +55,11 @@ def raise_sync_http_error(exc: Exception) -> None:
 class AddTargetBody(BaseModel):
     name: str
     path: str
+    agentKind: str | None = None
+
+
+class UpdateBuiltinAgentBody(BaseModel):
+    enabled: bool
 
 
 class UpdateSkillsBody(BaseModel):
@@ -120,7 +125,7 @@ def get_status(
 def add_target(body: AddTargetBody):
     """Add a new sync target."""
     try:
-        target = sync_manager.add_target(body.name, body.path)
+        target = sync_manager.add_target(body.name, body.path, agent_kind=body.agentKind)
         return {"success": True, "target": target}
     except ValueError as e:
         is_conflict = getattr(e, "code", None) == "conflict" or "already exists" in str(e)
@@ -239,10 +244,32 @@ def target_file(
         raise_sync_http_error(exc)
 
 
+@router.get("/agents")
+def list_builtin_agents(
+    include_undetected: bool = Query(True),
+    include_legacy: bool = Query(False),
+):
+    """List built-in coding agent directory conventions and local detection status."""
+    return sync_manager.list_builtin_agents(
+        include_undetected=include_undetected,
+        include_legacy=include_legacy,
+    )
+
+
+@router.put("/agents/{agent_id}")
+def update_builtin_agent(agent_id: str, body: UpdateBuiltinAgentBody):
+    """Enable or hide an auto-detected built-in agent target."""
+    try:
+        result = sync_manager.set_builtin_agent_enabled(agent_id, body.enabled)
+        return {"success": True, **result}
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+
+
 @router.get("/discover-home")
-def discover_home():
-    """Auto-discover agent dirs under ~/."""
-    dirs = sync_manager.discover_home_agent_dirs()
+def discover_home(include_undetected: bool = Query(False)):
+    """Auto-discover built-in agent dirs under ~/."""
+    dirs = sync_manager.discover_home_agent_dirs(include_undetected=include_undetected)
     return {"agent_dirs": dirs}
 
 

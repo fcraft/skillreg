@@ -11,9 +11,9 @@
           <button :class="['sync-view-tab', { 'sync-view-tab--active': activeView === 'targets' }]" @click="activeView = 'targets'">目标</button>
           <button :class="['sync-view-tab', { 'sync-view-tab--active': activeView === 'projects' }]" @click="activeView = 'projects'">项目组</button>
         </div>
-        <QButton v-if="activeView === 'targets'" type="ghost" size="small" @click="addTargetOpen = true">+ 新增目标</QButton>
+        <QButton v-if="activeView === 'targets'" type="ghost" size="small" @click="openAddTargetModal">+ 新增目标</QButton>
         <QButton v-if="activeView === 'targets'" type="ghost" size="small" @click="openDiscoverHome">
-          <Search :size="14" /> 发现 ~/ 目录
+          <Search :size="14" /> 内置 Agent
         </QButton>
         <QButton type="ghost" size="small" @click="loadAll(true)"><RefreshCw :size="14" /> 刷新</QButton>
         <QButton v-if="activeView === 'targets'" type="primary" size="small" :disabled="syncing" @click="openSyncAllConfirm">
@@ -31,6 +31,16 @@
     <template v-if="!loading && skills.length">
       <!-- Target View -->
       <template v-if="activeView === 'targets'">
+      <div v-if="!allTargets.length" class="sync-empty-targets">
+        <p class="sync-empty-targets-title">未自动探测到常见 Agent 目录</p>
+        <p class="sync-empty-targets-desc">可从内置 Agent 预设中选择目录，或手动新增自定义同步目标。</p>
+        <div class="sync-empty-targets-actions">
+          <QButton type="secondary" size="small" @click="openDiscoverHome"><Search :size="14" /> 查看内置 Agent</QButton>
+          <QButton type="primary" size="small" @click="openAddTargetModal">+ 新增目标</QButton>
+        </div>
+      </div>
+
+      <template v-else>
       <!-- Target Selection Tabs -->
       <div class="target-tabs-row">
         <div class="target-tabs">
@@ -43,8 +53,11 @@
               :class="['target-tab', { 'target-tab--active': activeTarget === t.path, 'target-tab--project': t._project }]"
               @click="switchTarget(t.path)"
             >
-              <span class="target-tab-name">{{ t._label || t.label || t.name }}</span>
-              <span class="target-tab-path" :title="t.path">{{ formatDisplayPath(t.path) }}</span>
+              <span class="target-tab-header">
+                <span class="target-tab-name">{{ t._label || t.label || t.name }}</span>
+                <span v-if="targetBadgeText(t)" class="target-tab-badge" :class="{ 'target-tab-badge--shared': t.shared }">{{ targetBadgeText(t) }}</span>
+              </span>
+              <span class="target-tab-path" :title="t.path">{{ formatDisplayPath(t.path, t.relPath) }}</span>
             </button>
             <button
               class="target-tab-more"
@@ -55,12 +68,22 @@
               <MoreHorizontal :size="14" />
             </button>
             <div v-if="targetDropdownOpen === t.path" class="target-dropdown" @click.stop>
-              <button class="target-dropdown-item" @click="openRenameTarget(t)">
-                <Pencil :size="13" /> 重命名
-              </button>
-              <button class="target-dropdown-item target-dropdown-item--danger" @click="openDeleteTarget(t)">
-                <Trash2 :size="13" /> 删除
-              </button>
+              <template v-if="t.builtin">
+                <button class="target-dropdown-item" @click="promoteBuiltinTarget(t)">
+                  <Pencil :size="13" /> 保存为自定义目标
+                </button>
+                <button class="target-dropdown-item target-dropdown-item--danger" @click="hideBuiltinTarget(t)">
+                  <Trash2 :size="13" /> 隐藏此内置目录
+                </button>
+              </template>
+              <template v-else>
+                <button class="target-dropdown-item" @click="openRenameTarget(t)">
+                  <Pencil :size="13" /> 重命名
+                </button>
+                <button class="target-dropdown-item target-dropdown-item--danger" @click="openDeleteTarget(t)">
+                  <Trash2 :size="13" /> 删除
+                </button>
+              </template>
             </div>
           </div>
         </div>
@@ -124,6 +147,7 @@
           </div>
         </div>
       </QCard>
+      </template>
       </template>
 
       <!-- Project View -->
@@ -231,16 +255,33 @@
     </QModal>
 
     <!-- Add Target Modal -->
-    <QModal v-model="addTargetOpen" title="新增目标目录" width="480px">
+    <QModal v-model="addTargetOpen" title="新增目标目录" width="520px">
       <div class="add-target-form">
+        <div v-if="quickPresets.length" class="preset-section">
+          <div class="preset-label">常见 Agent 预设（点击快速填充，也可下方手动自定义）</div>
+          <div class="preset-chips">
+            <button
+              v-for="agent in quickPresets"
+              :key="agent.id"
+              type="button"
+              class="preset-chip"
+              :class="{ 'preset-chip--active': newTarget.agentKind === agent.id }"
+              :title="formatDisplayPath(agent.path, agent.rel_path)"
+              @click="applyAgentPreset(agent)"
+            >
+              <span>{{ agent.name }}</span>
+              <code class="preset-chip-path">{{ formatDisplayPath(agent.path, agent.rel_path) }}</code>
+            </button>
+          </div>
+        </div>
         <div class="form-field">
           <label class="form-label">名称</label>
-          <input v-model="newTarget.name" type="text" class="form-input" placeholder="例如: agents" />
+          <input v-model="newTarget.name" type="text" class="form-input" placeholder="例如: agents 或自定义名称" />
         </div>
         <div class="form-field">
           <label class="form-label">路径</label>
           <div class="form-input-row">
-            <input v-model="newTarget.path" type="text" class="form-input form-input-flex" placeholder="例如: ~/.agents/skills" />
+            <input v-model="newTarget.path" type="text" class="form-input form-input-flex" placeholder="例如: ~/.agents/skills 或任意自定义目录" @input="newTarget.agentKind = null" />
             <QButton type="secondary" size="large" :disabled="pickingDirectory" @click="pickDirectory">
               <FolderOpen :size="14" /> {{ pickingDirectory ? '选择中...' : '选择目录' }}
             </QButton>
@@ -414,42 +455,105 @@
       </template>
     </QModal>
 
-    <!-- Discover Home Dirs Modal -->
-    <QModal v-model="discoverOpen" title="发现 ~/ 目录" width="560px">
-      <div v-if="discoverLoading" class="sync-loading">正在扫描 ~/ 目录...</div>
+    <!-- Built-in Agent Catalog & Discovery Modal -->
+    <QModal v-model="discoverOpen" title="内置 Agent 目录" width="640px">
+      <div v-if="discoverLoading" class="sync-loading">正在探测常见 Agent 目录...</div>
       <div v-else-if="discoverError" class="sync-error">{{ discoverError }}</div>
       <div v-else class="discover-body">
-        <div v-if="!discoverDirs.length" class="sync-empty">未发现任何 agent 配置目录</div>
-        <div v-else class="discover-list">
-          <label
-            v-for="d in discoverDirs"
-            :key="d.path"
-            class="discover-row"
-            :class="{ 'discover-row--selected': discoverSelected.has(d.path) }"
-          >
-            <QCheckbox
-              size="sm"
-              :model-value="discoverSelected.has(d.path)"
-              @update:model-value="(val) => toggleDiscoverSelect(d.path, val)"
-            />
-            <div class="discover-info">
-              <span class="discover-agent">{{ d.agent }}</span>
-              <span class="discover-rel-path">{{ formatDisplayPath(d.rel_path) }}</span>
-            </div>
-            <code class="discover-path" :title="d.path">{{ formatDisplayPath(d.path) }}</code>
-          </label>
+        <div class="discover-toolbar">
+          <input
+            v-model="discoverQuery"
+            type="text"
+            class="form-input discover-search"
+            placeholder="搜索 Agent 名称或路径，例如: claude、cursor、opencode..."
+          />
+          <QButton type="ghost" size="small" @click="switchToManualTarget">+ 手动自定义目录</QButton>
         </div>
-        <div v-if="discoverDirs.length" class="discover-actions">
-          <QButton type="secondary" size="small" @click="selectAllDiscover(true)">全选</QButton>
-          <QButton type="secondary" size="small" @click="selectAllDiscover(false)">取消全选</QButton>
-          <QButton
-            type="primary"
-            size="small"
-            :disabled="discoverSaving || !discoverSelected.size"
-            @click="addDiscoveredTargets"
-          >
-            {{ discoverSaving ? '添加中...' : `添加选中 (${discoverSelected.size})` }}
-          </QButton>
+
+        <div class="discover-sections">
+          <div class="discover-section">
+            <div class="discover-section-title">
+              本机已自动识别 ({{ partitionedCatalog.detected.length }})
+              <span class="discover-section-hint">免手动配置即可直接同步与安装</span>
+            </div>
+            <div v-if="!partitionedCatalog.detected.length" class="discover-empty">
+              未匹配到本机已识别的 Agent 目录
+            </div>
+            <div v-else class="discover-list">
+              <div
+                v-for="agent in partitionedCatalog.detected"
+                :key="agent.id"
+                class="discover-row"
+                :class="{ 'discover-row--muted': !agent.active }"
+              >
+                <div class="discover-info">
+                  <div class="discover-name-line">
+                    <span class="discover-agent">{{ agent.name }}</span>
+                    <span v-if="agent.shared" class="discover-pill discover-pill--brand">共享</span>
+                    <span class="discover-pill">{{ detectedByLabel(agent.detectedBy, agent.detectedBinary) }}</span>
+                  </div>
+                  <code class="discover-path" :title="agent.path">{{ formatDisplayPath(agent.path, agent.rel_path) }}</code>
+                </div>
+                <div class="discover-row-actions">
+                  <span v-if="agent.configured" class="discover-status discover-status--custom">已自定义</span>
+                  <template v-else-if="agent.enabled">
+                    <span class="discover-status discover-status--active">已自动启用</span>
+                    <QButton
+                      type="ghost"
+                      size="small"
+                      :disabled="discoverBusyId === agent.id"
+                      @click="toggleBuiltinAgent(agent, false)"
+                    >隐藏</QButton>
+                  </template>
+                  <template v-else>
+                    <span class="discover-status discover-status--hidden">已隐藏</span>
+                    <QButton
+                      type="secondary"
+                      size="small"
+                      :disabled="discoverBusyId === agent.id"
+                      @click="toggleBuiltinAgent(agent, true)"
+                    >启用</QButton>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="discover-section">
+            <div class="discover-section-title">
+              其他常见 Agent 预设 ({{ partitionedCatalog.presets.length }})
+              <span class="discover-section-hint">本机暂未检测到，可一键添加</span>
+            </div>
+            <div v-if="!partitionedCatalog.presets.length" class="discover-empty">
+              无匹配的其他预设
+            </div>
+            <div v-else class="discover-list">
+              <div
+                v-for="agent in partitionedCatalog.presets"
+                :key="agent.id"
+                class="discover-row"
+              >
+                <div class="discover-info">
+                  <div class="discover-name-line">
+                    <span class="discover-agent">{{ agent.name }}</span>
+                    <span v-if="agent.shared" class="discover-pill discover-pill--brand">共享</span>
+                  </div>
+                  <code class="discover-path" :title="agent.path">{{ formatDisplayPath(agent.path, agent.rel_path) }}</code>
+                </div>
+                <div class="discover-row-actions">
+                  <span v-if="agent.configured" class="discover-status discover-status--custom">已添加</span>
+                  <QButton
+                    v-else
+                    type="secondary"
+                    tint="brand"
+                    size="small"
+                    :disabled="discoverBusyId === agent.id"
+                    @click="addPresetTarget(agent)"
+                  >{{ discoverBusyId === agent.id ? '添加中...' : '添加' }}</QButton>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </QModal>
@@ -493,9 +597,19 @@ import {
   fetchSyncStatus, fetchSkillDiff, fetchSkillFile, fetchTargetFile,
   fetchProjects, fetchTargetSkills,
   addSyncTarget, removeSyncTarget, renameSyncTarget,
-  removeSkillFromTarget as removeSkillApi, discoverHomeAgentDirs,
+  removeSkillFromTarget as removeSkillApi,
+  fetchBuiltinAgents, setBuiltinAgentEnabled,
   fetchDiscover, selectWorkspaceDirectory,
 } from '../api/index.js'
+import {
+  buildPresetDraft,
+  detectedByLabel,
+  formatAgentDisplayPath,
+  normalizeTarget,
+  partitionAgentCatalog,
+  pickQuickPresets,
+  targetBadgeText,
+} from '../sources/agentTargets.js'
 
 const toast = useToast()
 const { state: bridgeState, mergeTargetStatus } = useSyncBridge()
@@ -620,23 +734,8 @@ function getTargetLabel(targetPath) {
   return parts[parts.length - 1] || targetPath
 }
 
-function formatDisplayPath(targetPath) {
-  if (!targetPath) return ''
-  const normalized = String(targetPath).replace(/\\/g, '/')
-
-  const unixHomeMatch = normalized.match(/^\/Users\/[^/]+(?=\/|$)|^\/home\/[^/]+(?=\/|$)/i)
-  if (unixHomeMatch) {
-    const suffix = normalized.slice(unixHomeMatch[0].length).replace(/^\/+/, '')
-    return suffix ? `~/${suffix}` : '~'
-  }
-
-  const windowsHomeMatch = normalized.match(/^[A-Za-z]:\/Users\/[^/]+(?=\/|$)/i)
-  if (windowsHomeMatch) {
-    const suffix = normalized.slice(windowsHomeMatch[0].length).replace(/^\/+/, '')
-    return suffix ? `~/${suffix}` : '~'
-  }
-
-  return targetPath
+function formatDisplayPath(targetPath, relPath = null) {
+  return formatAgentDisplayPath(targetPath, relPath)
 }
 
 function projectSkills(proj) {
@@ -810,8 +909,34 @@ const changedFiles = computed(() => {
 const addTargetOpen = ref(false)
 const addTargetSaving = ref(false)
 const addTargetError = ref('')
-const newTarget = ref({ name: '', path: '' })
+const newTarget = ref({ name: '', path: '', agentKind: null })
 const pickingDirectory = ref(false)
+const builtinCatalog = ref([])
+
+const quickPresets = computed(() => pickQuickPresets(builtinCatalog.value, 8))
+
+async function loadBuiltinCatalog() {
+  try {
+    const data = await fetchBuiltinAgents(true)
+    builtinCatalog.value = data.agents || []
+  } catch {
+    // non-fatal — manual target form stays usable
+  }
+}
+
+function openAddTargetModal() {
+  addTargetError.value = ''
+  newTarget.value = { name: '', path: '', agentKind: null }
+  addTargetOpen.value = true
+  if (!builtinCatalog.value.length) {
+    loadBuiltinCatalog()
+  }
+}
+
+function applyAgentPreset(agent) {
+  newTarget.value = buildPresetDraft(agent)
+  addTargetError.value = ''
+}
 
 async function pickDirectory() {
   if (pickingDirectory.value) return
@@ -821,6 +946,7 @@ async function pickDirectory() {
     const result = await selectWorkspaceDirectory(newTarget.value.path || null)
     if (!result.cancelled && result.path) {
       newTarget.value.path = result.path
+      newTarget.value.agentKind = null
     }
   } catch (e) {
     if (e?.code === 'directory_picker_unavailable' || e?.status === 501) {
@@ -873,7 +999,7 @@ watch(() => route.query.skill, (skillName) => {
 watch(() => route.query.onboarding, (value) => {
   if (value !== 'target') return
   activeView.value = 'targets'
-  addTargetOpen.value = true
+  openAddTargetModal()
   const query = { ...route.query }
   delete query.onboarding
   router.replace({ query })
@@ -924,12 +1050,9 @@ async function loadAll(fullRefresh = false) {
     ])
 
     skills.value = data.skills || []
-    targets.value = (config.targets || []).map(t => ({
-      id: t.id || null,
-      name: t.name,
-      path: t.path,
-      label: t.label || t.name,
-    }))
+    targets.value = (config.targets || [])
+      .map(t => normalizeTarget(t))
+      .filter(Boolean)
 
     if (targets.value.length) {
       if (!activeTarget.value || !targets.value.find(t => t.path === activeTarget.value)) {
@@ -937,6 +1060,8 @@ async function loadAll(fullRefresh = false) {
       }
       // Only load status for the active target on mount (lazy load the rest)
       await loadStatusForTarget(activeTarget.value)
+    } else {
+      activeTarget.value = ''
     }
     syncToBridge()
   } catch (e) {
@@ -1294,13 +1419,10 @@ function syncToBridge() {
       ...targetEntries,
     }
   }
-  bridgeState.targets = targets.value.map(t => ({
-    id: t.id || null,
-    name: t.name,
-    label: t.label || t.name,
-    path: t.path,
-    _project: false,
-  }))
+  bridgeState.targets = targets.value
+    .map(t => normalizeTarget(t))
+    .filter(Boolean)
+    .map(t => ({ ...t, _project: false }))
 }
 
 // ---- Sync Actions ----
@@ -1416,10 +1538,12 @@ async function addTarget() {
   addTargetSaving.value = true
   addTargetError.value = ''
   try {
-    await addSyncTarget(newTarget.value.name, newTarget.value.path)
+    const extra = newTarget.value.agentKind ? { agentKind: newTarget.value.agentKind } : {}
+    await addSyncTarget(newTarget.value.name, newTarget.value.path, extra)
     addTargetOpen.value = false
-    newTarget.value = { name: '', path: '' }
+    newTarget.value = { name: '', path: '', agentKind: null }
     await loadAll(true)
+    loadBuiltinCatalog()
   } catch (e) {
     addTargetError.value = e.message
   } finally {
@@ -1459,14 +1583,17 @@ const deleteTargetPath = ref('')
 const deleteTargetSaving = ref(false)
 const deleteTargetError = ref('')
 
-// ── Discover home dirs state ──
+// ── Built-in agent catalog & discovery state ──
 
 const discoverOpen = ref(false)
 const discoverLoading = ref(false)
 const discoverError = ref('')
-const discoverDirs = ref([])
-const discoverSelected = ref(new Set())
-const discoverSaving = ref(false)
+const discoverQuery = ref('')
+const discoverBusyId = ref(null)
+
+const partitionedCatalog = computed(() =>
+  partitionAgentCatalog(builtinCatalog.value, discoverQuery.value),
+)
 
 const managedCount = computed(() => {
   if (!targetFilesData.value?.skills) return 0
@@ -1619,17 +1746,16 @@ async function doDeleteTarget() {
   }
 }
 
-// ── Discover home dirs ──
+// ── Built-in agent catalog & actions ──
 
 async function openDiscoverHome() {
   discoverOpen.value = true
   discoverLoading.value = true
   discoverError.value = ''
-  discoverDirs.value = []
-  discoverSelected.value = new Set()
+  discoverQuery.value = ''
   try {
-    const data = await discoverHomeAgentDirs()
-    discoverDirs.value = data.agent_dirs || []
+    const data = await fetchBuiltinAgents(true)
+    builtinCatalog.value = data.agents || []
   } catch (e) {
     discoverError.value = e.message
   } finally {
@@ -1637,49 +1763,69 @@ async function openDiscoverHome() {
   }
 }
 
-function toggleDiscoverSelect(path, checked) {
-  const next = new Set(discoverSelected.value)
-  if (checked !== undefined) {
-    // Called from v-model update — use explicit value
-    if (checked) next.add(path)
-    else next.delete(path)
-  } else {
-    // Called from row click — toggle
-    if (next.has(path)) next.delete(path)
-    else next.add(path)
-  }
-  discoverSelected.value = next
-}
-
-function selectAllDiscover(select) {
-  if (select) {
-    discoverSelected.value = new Set(discoverDirs.value.map(d => d.path))
-  } else {
-    discoverSelected.value = new Set()
-  }
-}
-
-async function addDiscoveredTargets() {
-  if (!discoverSelected.value.size) return
-  discoverSaving.value = true
-  discoverError.value = ''
-  let added = 0
-  let failed = 0
-  for (const path of discoverSelected.value) {
-    const dir = discoverDirs.value.find(d => d.path === path)
-    if (!dir) continue
-    try {
-      await addSyncTarget(dir.agent, path)
-      added++
-    } catch {
-      failed++
-    }
-  }
-  discoverSaving.value = false
+function switchToManualTarget() {
   discoverOpen.value = false
-  await loadAll(true)
-  if (added) toast.success(`已添加 ${added} 个目标`)
-  if (failed) toast.warn(`${failed} 个目标添加失败`)
+  openAddTargetModal()
+}
+
+async function toggleBuiltinAgent(agent, enabled) {
+  discoverBusyId.value = agent.id
+  discoverError.value = ''
+  try {
+    await setBuiltinAgentEnabled(agent.id, enabled)
+    const data = await fetchBuiltinAgents(true)
+    builtinCatalog.value = data.agents || []
+    await loadAll(true)
+    toast.success(enabled ? `已启用内置目录: ${agent.name}` : `已隐藏内置目录: ${agent.name}`)
+  } catch (e) {
+    discoverError.value = e.message || '操作失败'
+  } finally {
+    discoverBusyId.value = null
+  }
+}
+
+async function addPresetTarget(agent) {
+  discoverBusyId.value = agent.id
+  discoverError.value = ''
+  try {
+    await addSyncTarget(agent.name, agent.path, { agentKind: agent.id })
+    const data = await fetchBuiltinAgents(true)
+    builtinCatalog.value = data.agents || []
+    await loadAll(true)
+    toast.success(`已添加目标: ${agent.name}`)
+  } catch (e) {
+    discoverError.value = e.message || '添加失败'
+  } finally {
+    discoverBusyId.value = null
+  }
+}
+
+async function promoteBuiltinTarget(t) {
+  closeTargetDropdown()
+  try {
+    await addSyncTarget(t.label || t.name, t.path, t.agentKind ? { agentKind: t.agentKind } : {})
+    await loadAll(true)
+    loadBuiltinCatalog()
+    toast.success(`已保存为自定义目标: ${t.label || t.name}`)
+  } catch (e) {
+    toast.error(`保存失败: ${e.message}`)
+  }
+}
+
+async function hideBuiltinTarget(t) {
+  closeTargetDropdown()
+  if (!t.agentKind) return
+  try {
+    await setBuiltinAgentEnabled(t.agentKind, false)
+    if (activeTarget.value === t.path) {
+      activeTarget.value = targets.value.find(item => item.path !== t.path)?.path || ''
+    }
+    await loadAll(true)
+    loadBuiltinCatalog()
+    toast.success(`已隐藏内置目录: ${t.label || t.name}`)
+  } catch (e) {
+    toast.error(`隐藏失败: ${e.message}`)
+  }
 }
 </script>
 
@@ -1812,10 +1958,109 @@ async function addDiscoveredTargets() {
   border-left: 2px solid var(--qqx-brand);
 }
 
+.target-tab-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .target-tab-name {
   font-size: var(--qqx-font-size-label);
   font-weight: var(--qqx-font-medium);
   color: inherit;
+}
+
+.target-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 5px;
+  border-radius: var(--qqx-radius-full);
+  background: var(--qqx-bg-hover);
+  color: var(--qqx-text-tertiary);
+  font-size: 10px;
+  line-height: 1.5;
+  font-weight: var(--qqx-font-regular);
+}
+
+.target-tab-badge--shared {
+  background: var(--qqx-brand-light);
+  color: var(--qqx-brand);
+}
+
+.sync-empty-targets {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--qqx-space-sm);
+  padding: 48px 24px;
+  border: 1px dashed var(--qqx-border-color);
+  border-radius: var(--qqx-radius-md);
+  background: var(--qqx-bg-card);
+  text-align: center;
+}
+
+.sync-empty-targets-title {
+  margin: 0;
+  font-size: var(--qqx-font-size-body);
+  font-weight: var(--qqx-font-semibold);
+  color: var(--qqx-text-primary);
+}
+
+.sync-empty-targets-desc {
+  margin: 0;
+  font-size: var(--qqx-font-size-small);
+  color: var(--qqx-text-tertiary);
+}
+
+.sync-empty-targets-actions {
+  display: flex;
+  gap: var(--qqx-space-sm);
+  margin-top: var(--qqx-space-sm);
+}
+
+.preset-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qqx-space-xs);
+}
+
+.preset-label {
+  font-size: var(--qqx-font-size-small);
+  color: var(--qqx-text-tertiary);
+}
+
+.preset-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.preset-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--qqx-border-color);
+  border-radius: var(--qqx-radius-full);
+  background: var(--qqx-bg-elevated);
+  color: var(--qqx-text-primary);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color var(--qqx-transition), background var(--qqx-transition);
+}
+
+.preset-chip:hover,
+.preset-chip--active {
+  border-color: var(--qqx-brand);
+  background: var(--qqx-brand-light);
+}
+
+.preset-chip-path {
+  font-size: 11px;
+  color: var(--qqx-text-tertiary);
+  font-family: 'SF Mono', 'Fira Code', monospace;
 }
 
 .target-tab-path {
@@ -2793,7 +3038,7 @@ async function addDiscoveredTargets() {
   align-items: center;
 }
 
-/* ── Discover home dirs modal ── */
+/* ── Built-in agent catalog modal ── */
 
 .discover-body {
   display: flex;
@@ -2801,38 +3046,96 @@ async function addDiscoveredTargets() {
   gap: var(--qqx-space-md);
 }
 
+.discover-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--qqx-space-sm);
+}
+
+.discover-search {
+  flex: 1;
+  min-width: 0;
+}
+
+.discover-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qqx-space-lg);
+  max-height: 55vh;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.discover-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qqx-space-xs);
+}
+
+.discover-section-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--qqx-space-sm);
+  font-size: var(--qqx-font-size-small);
+  font-weight: var(--qqx-font-semibold);
+  color: var(--qqx-text-secondary);
+}
+
+.discover-section-hint {
+  font-size: 11px;
+  font-weight: var(--qqx-font-regular);
+  color: var(--qqx-text-tertiary);
+}
+
+.discover-empty {
+  padding: var(--qqx-space-md);
+  text-align: center;
+  font-size: var(--qqx-font-size-small);
+  color: var(--qqx-text-tertiary);
+  background: var(--qqx-bg-elevated);
+  border-radius: var(--qqx-radius-xs);
+}
+
 .discover-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  max-height: 50vh;
-  overflow-y: auto;
+  gap: 4px;
 }
 
 .discover-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--qqx-space-md);
   padding: var(--qqx-space-sm) var(--qqx-space-md);
+  border: 1px solid var(--qqx-border-color);
   border-radius: var(--qqx-radius-xs);
-  cursor: pointer;
-  transition: background var(--qqx-transition);
+  background: var(--qqx-bg-card);
+  transition: background var(--qqx-transition), border-color var(--qqx-transition);
 }
 
 .discover-row:hover {
   background: var(--qqx-bg-hover);
 }
 
-.discover-row--selected {
-  background: var(--qqx-brand-light);
+.discover-row--muted {
+  opacity: 0.7;
 }
 
 .discover-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   flex: 1;
   min-width: 0;
+}
+
+.discover-name-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .discover-agent {
@@ -2841,27 +3144,55 @@ async function addDiscoveredTargets() {
   color: var(--qqx-text-primary);
 }
 
-.discover-rel-path {
-  font-size: var(--qqx-font-size-tiny);
-  color: var(--qqx-text-tertiary);
+.discover-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: var(--qqx-radius-full);
+  background: var(--qqx-bg-elevated);
+  color: var(--qqx-text-secondary);
+  font-size: 11px;
+}
+
+.discover-pill--brand {
+  background: var(--qqx-brand-light);
+  color: var(--qqx-brand);
 }
 
 .discover-path {
   font-size: var(--qqx-font-size-tiny);
   font-family: 'SF Mono', 'Fira Code', monospace;
   color: var(--qqx-text-tertiary);
-  flex-shrink: 0;
-  max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.discover-actions {
+.discover-row-actions {
   display: flex;
+  align-items: center;
   gap: var(--qqx-space-sm);
-  justify-content: flex-end;
-  padding-top: var(--qqx-space-sm);
-  border-top: 1px solid var(--qqx-border-color);
+  flex-shrink: 0;
+}
+
+.discover-status {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: var(--qqx-radius-full);
+}
+
+.discover-status--active {
+  background: var(--qqx-success-light);
+  color: var(--qqx-success);
+}
+
+.discover-status--custom {
+  background: var(--qqx-brand-light);
+  color: var(--qqx-brand);
+}
+
+.discover-status--hidden {
+  background: var(--qqx-bg-elevated);
+  color: var(--qqx-text-tertiary);
 }
 </style>

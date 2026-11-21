@@ -1,5 +1,6 @@
 import { reactive } from 'vue'
 import { fetchSyncConfig, fetchSyncStatus } from '../api/index.js'
+import { normalizeTarget } from '../sources/agentTargets.js'
 import { useEventBus } from './useEventBus.js'
 import { computeSkillSyncSummary, mergeBridgeTargetStatus } from '../sources/skillInstallState.js'
 
@@ -29,13 +30,10 @@ async function doLoadSyncStatus(force = false) {
         fetchSyncConfig(),
         fetchSyncStatus(null, true),
       ])
-      const namedTargets = (config.targets || []).map(t => ({
-        id: t.id || null,
-        name: t.name,
-        label: t.label || t.name,
-        path: t.path,
-        _project: false,
-      }))
+      const namedTargets = (config.targets || [])
+        .map(t => normalizeTarget(t))
+        .filter(Boolean)
+        .map(t => ({ ...t, _project: false }))
       const projSet = new Map()
       if (Array.isArray(rows)) {
         for (const row of rows) {
@@ -120,13 +118,10 @@ export function useSyncBridge() {
   function mergeTargetStatus(targetKey, rows, targetsList = null) {
     state.statusMap = mergeBridgeTargetStatus(state.statusMap, targetKey, rows)
     if (Array.isArray(targetsList)) {
-      state.targets = targetsList.map(t => ({
-        id: t.id || null,
-        name: t.name,
-        label: t.label || t.name,
-        path: t.path,
-        _project: false,
-      }))
+      state.targets = targetsList
+        .map(t => normalizeTarget(t))
+        .filter(Boolean)
+        .map(t => ({ ...t, _project: false }))
     }
   }
 

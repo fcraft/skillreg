@@ -13,7 +13,7 @@ import uuid
 from pathlib import Path
 
 from .skill_registry import get_all, get_skill
-from . import sync_targets, sync_files
+from . import agent_catalog, sync_targets, sync_files
 
 from ..config import load_config, save_config, SkillregConfig
 
@@ -67,15 +67,11 @@ def _write_projects(data: dict) -> None:
 
 
 def get_targets(cfg: SkillregConfig | None = None) -> list[dict]:
-    """Get targets with their skill status overview.
-
-    In v1, targets are stored in ``~/.skillreg/config.json`` (simple list of
-    paths with optional names). The response includes sync status per target.
-    """
+    """Get local sync targets (configured + auto-detected built-in agents)."""
     if cfg is None:
         cfg = load_config()
     result = []
-    for record in sync_targets.target_records(cfg):
+    for record in sync_targets.target_records(cfg, include_builtin=True):
         if record["transport"] != "local":
             continue
         t = record["path"]
@@ -90,6 +86,14 @@ def get_targets(cfg: SkillregConfig | None = None) -> list[dict]:
             "skills": skills,
             "skillCount": len(skills),
             "status": {},
+            "builtin": bool(record.get("builtin", False)),
+            "source": record.get("source", "custom"),
+            "agentKind": record.get("agentKind"),
+            "detectedBy": record.get("detectedBy"),
+            "exists": record.get("exists", Path(t).expanduser().is_dir()),
+            "shared": bool(record.get("shared", False)),
+            "readsShared": bool(record.get("readsShared", False)),
+            "relPath": record.get("relPath"),
         })
     return result
 
@@ -98,17 +102,27 @@ def get_sync_config(cfg: SkillregConfig | None = None) -> dict:
     """Return a synthesized sync config compatible with the dashboard."""
     if cfg is None:
         cfg = load_config()
-    targets = [
-        {
+    targets = []
+    for record in sync_targets.target_records(cfg, include_builtin=True):
+        if record["transport"] != "local":
+            continue
+        t = record["path"]
+        label = record["name"]
+        targets.append({
             "id": record["id"],
-            "name": record["name"],
-            "path": record["path"],
-            "label": record["name"],
-            "skills": _target_filter_for(cfg, record["path"]),
-        }
-        for record in sync_targets.target_records(cfg)
-        if record["transport"] == "local"
-    ]
+            "name": label,
+            "path": t,
+            "label": label,
+            "skills": _target_filter_for(cfg, t),
+            "builtin": bool(record.get("builtin", False)),
+            "source": record.get("source", "custom"),
+            "agentKind": record.get("agentKind"),
+            "detectedBy": record.get("detectedBy"),
+            "exists": record.get("exists", Path(t).expanduser().is_dir()),
+            "shared": bool(record.get("shared", False)),
+            "readsShared": bool(record.get("readsShared", False)),
+            "relPath": record.get("relPath"),
+        })
     return {
         "schema_version": 2,
         "targets": targets,
@@ -129,28 +143,34 @@ def get_sync_config(cfg: SkillregConfig | None = None) -> dict:
     }
 
 
-def add_target(name: str, path: str) -> dict:
+def add_target(name: str, path: str, agent_kind: str | None = None) -> dict:
     """Add a new sync target."""
-    return sync_targets.add_target(name, path)
+    return sync_targets.add_target(name, path, agent_kind=agent_kind)
 
 
 def remove_target(name: str) -> None:
-    """Remove a sync target by name or path."""
+    """Remove a sync target by name or path (or hide a built-in agent target)."""
     sync_targets.remove_target(name)
 
 
 def rename_target(old_name: str, new_name: str) -> dict:
-    """Rename a target."""
+    """Rename a configured target's path."""
     cfg = load_config()
     target = _resolve_config_target(cfg, old_name)
     if target is None:
         raise ValueError(f'Target "{old_name}" not found')
+    record = sync_targets.resolve_target(old_name, cfg=cfg)
+    if record.get("builtin"):
+        raise ValueError("Built-in agent target paths cannot be renamed; add a custom target instead")
     if _resolve_config_target(cfg, new_name) is not None:
         raise ValueError(f'Target "{new_name}" already exists')
-    record = sync_targets.resolve_target(old_name, cfg=cfg)
     projects = _read_projects()
     record["path"] = new_name
-    cfg.targets = [record if item["id"] == record["id"] else item for item in sync_targets.target_records(cfg)]
+    configured = sync_targets.configured_target_records(cfg)
+    cfg.targets = [
+        sync_targets._storable_record(record if item["id"] == record["id"] else item)
+        for item in configured
+    ]
     _rename_target_filter(cfg, target, new_name)
     save_config(cfg)
     for project in projects["projects"].values():
@@ -521,43 +541,71 @@ def get_target_file(skill: str, target: str, rel_path: str) -> dict:
 # ── agent dir discovery ────────────────────────────────────────────────────
 
 
-_AGENT_CONVENTIONS: list[tuple[str, str]] = [
-    (".claude/skills", "claude"),
-    (".tclaude/skills", "tclaude"),
-    (".codebuddy/skills", "codebuddy"),
-    (".codex/skills", "codex"),
-    (".tcodex/skills", "tcodex"),
-    (".agents/skills", "agents"),
-    (".agent/skills", "agent"),
-]
+_AGENT_CONVENTIONS: list[tuple[str, str]] = agent_catalog.project_agent_conventions()
 
 
 def discover_agent_dirs(root_path: str) -> list[dict]:
-    """Scan a directory for agent skill directories."""
-    root = Path(root_path).expanduser().resolve()
-    if not root.is_dir():
-        return []
-    found = []
-    for rel, agent_name in _AGENT_CONVENTIONS:
-        agent_dir = root / rel.split("/")[0]
-        if agent_dir.is_dir():
-            found.append({"agent": agent_name, "path": str(root / rel)})
-    return found
+    """Scan a project directory for built-in agent skill directories."""
+    return agent_catalog.discover_project_agent_dirs(root_path)
 
 
-def discover_home_agent_dirs() -> list[dict]:
-    """Auto-discover agent dirs under ~/."""
-    home = Path.home()
-    found = []
-    for rel, agent_name in _AGENT_CONVENTIONS:
-        agent_dir = home / rel.split("/")[0]
-        if agent_dir.is_dir():
-            found.append({
-                "agent": agent_name,
-                "rel_path": rel,
-                "path": str(home / rel),
-            })
-    return found
+def list_builtin_agents(
+    *,
+    include_undetected: bool = True,
+    include_legacy: bool = False,
+    cfg: SkillregConfig | None = None,
+) -> dict:
+    """Return built-in agent catalog enriched with local detection and config state."""
+    cfg = cfg or load_config()
+    configured_paths = {
+        str(Path(r["path"]).expanduser().absolute())
+        for r in sync_targets.configured_target_records(cfg)
+        if r["transport"] == "local"
+    }
+    agents = []
+    detected_count = 0
+    active_count = 0
+    for item in agent_catalog.detect_home_agents(
+        include_undetected=include_undetected,
+        include_legacy=include_legacy,
+    ):
+        canonical = str(Path(item["path"]).expanduser().absolute())
+        configured = canonical in configured_paths
+        enabled = sync_targets._is_builtin_enabled(cfg, item["id"])
+        active = configured or (item["detected"] and enabled)
+        if item["detected"]:
+            detected_count += 1
+        if active:
+            active_count += 1
+        agents.append({
+            **item,
+            "configured": configured,
+            "enabled": enabled,
+            "active": active,
+        })
+    return {
+        "agents": agents,
+        "detectedCount": detected_count,
+        "activeCount": active_count,
+        "totalCount": len(agents),
+    }
+
+
+def discover_home_agent_dirs(
+    *,
+    include_undetected: bool = False,
+    include_legacy: bool = False,
+) -> list[dict]:
+    """Auto-discover built-in agent dirs under ~/."""
+    return list_builtin_agents(
+        include_undetected=include_undetected,
+        include_legacy=include_legacy,
+    )["agents"]
+
+
+def set_builtin_agent_enabled(agent_id: str, enabled: bool) -> dict:
+    """Enable or hide a built-in auto-detected agent target."""
+    return sync_targets.set_builtin_agent_enabled(agent_id, enabled)
 
 
 def refresh_target(target: str) -> dict:
@@ -614,10 +662,19 @@ def _skill_status(workspace: Path, target: str, item: dict) -> str:
 
 
 def _selected_targets(cfg: SkillregConfig, target: str | None) -> list[str]:
-    records = [r for r in sync_targets.target_records(cfg) if r["transport"] == "local"]
+    records = [
+        r for r in sync_targets.target_records(cfg, include_builtin=True)
+        if r["transport"] == "local"
+    ]
     targets = [r["path"] for r in records]
     if not target:
         return list(targets)
+    try:
+        resolved_path = _resolve_config_target(cfg, target)
+        if resolved_path is not None:
+            return [resolved_path]
+    except ValueError:
+        pass
     resolved = Path(target).expanduser()
     matched = [
         r["path"]
@@ -747,6 +804,9 @@ def _target_name(path: Path) -> str:
 
 
 def _target_display_name(path: Path) -> str:
+    matched = agent_catalog.match_agent_for_path(path)
+    if matched is not None:
+        return matched.id
     resolved = path.expanduser()
     normalized = [part for part in resolved.parts if part not in ("/", "")]
     if len(normalized) >= 2 and normalized[-1] == "skills":
