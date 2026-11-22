@@ -112,7 +112,7 @@ def register(cli, target, sync):
             resolved = str(Path(root).expanduser().resolve())
             output({"root": resolved, "agent_dirs": sync_manager.discover_agent_dirs(root)})
             return
-        output(sync_manager.list_builtin_agents(include_undetected=include_all))
+        output(sync_manager.list_builtin_agents(include_undetected=include_all, include_legacy=include_all))
 
     @target.command("label")
     @click.argument("identifier")

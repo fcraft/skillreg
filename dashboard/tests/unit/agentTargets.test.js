@@ -20,7 +20,7 @@ test('formatAgentDisplayPath prefers relPath and normalizes Unix/Windows home pa
   assert.equal(formatAgentDisplayPath('/opt/custom/skills'), '/opt/custom/skills')
 })
 
-test('classifyTargets separates custom targets from auto-detected built-in targets', () => {
+test('classifyTargets separates custom targets from joined built-in targets', () => {
   const result = classifyTargets([
     { id: 'c1', name: 'my-dir', path: '/tmp/custom' },
     { id: 'b1', name: 'Claude Code', path: '/home/u/.claude/skills', builtin: true, agentKind: 'claude' },
@@ -34,7 +34,7 @@ test('classifyTargets separates custom targets from auto-detected built-in targe
   assert.equal(result.builtin[0].icon, 'claude')
   assert.equal(result.builtin[1].icon, 'agents')
   assert.equal(targetBadgeText(result.custom[0]), '')
-  assert.equal(targetBadgeText(result.builtin[0]), '自动识别')
+  assert.equal(targetBadgeText(result.builtin[0]), '内置')
   assert.equal(targetBadgeText(result.builtin[1]), '内置 · 共享')
 })
 
@@ -47,7 +47,7 @@ test('detectedByLabel explains detection signal clearly', () => {
 
 test('partitionAgentCatalog splits detected and preset agents and filters by aliases or paths', () => {
   const catalog = [
-    { id: 'claude', name: 'Claude Code', aliases: ['claude-code'], rel_path: '.claude/skills', path: '/home/u/.claude/skills', detected: true, active: true, configured: false },
+    { id: 'claude', name: 'Claude Code', aliases: ['claude-code'], rel_path: '.claude/skills', path: '/home/u/.claude/skills', detected: true, added: true, configured: false },
     { id: 'opencode', name: 'OpenCode', aliases: ['oc'], rel_path: '.config/opencode/skills', path: '/home/u/.config/opencode/skills', detected: false, active: false, configured: false },
     { id: 'droid', name: 'Droid', aliases: ['factory'], rel_path: '.factory/skills', path: '/home/u/.factory/skills', detected: false, active: false, configured: false },
   ]
@@ -78,13 +78,13 @@ test('buildPresetDraft and pickQuickPresets prepare preset inputs while skipping
   })
 
   const quick = pickQuickPresets([
-    { id: 'claude', name: 'Claude Code', detected: true, active: true, configured: true, legacy: false },
+    { id: 'claude', name: 'Claude Code', detected: true, added: true, configured: true, legacy: false },
     { id: 'tclaude', name: 'tclaude', detected: false, active: false, configured: false, legacy: true },
-    { id: 'codex', name: 'Codex', detected: true, active: true, configured: false, legacy: false },
+    { id: 'codex', name: 'Codex', detected: true, added: true, configured: false, legacy: false },
     { id: 'cursor', name: 'Cursor', detected: true, active: false, configured: false, legacy: false },
     { id: 'opencode', name: 'OpenCode', detected: false, active: false, configured: false, legacy: false },
   ], 3)
-  assert.deepEqual(quick.map(a => a.id), ['cursor', 'opencode', 'codex'])
+  assert.deepEqual(quick.map(a => a.id), ['cursor', 'opencode'])
 })
 
 test('resolveTargetExecuteKey uses canonical path instead of display label', () => {

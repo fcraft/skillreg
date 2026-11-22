@@ -70,12 +70,13 @@
 
         <!-- Sub Tab: 目标 -->
         <div v-if="installSubTab === 'targets'" class="im-body">
+          <QButton type="secondary" size="small" @click="openAgentPicker">添加内置 Agent</QButton>
           <div v-if="syncState.loading && !syncState.loaded" class="im-empty">加载同步目标...</div>
           <div v-else-if="syncState.error && !targets.length" class="im-error im-error-row" role="alert">
             <span>加载同步目标失败：{{ syncState.error }}</span>
             <QButton type="text" size="small" @click="retryLoadSync">重试</QButton>
           </div>
-          <div v-else-if="!targets.length" class="im-empty">未自动探测到常见 Agent 目录，可在下方输入自定义目录或在「Sync 工具」中添加目标</div>
+          <div v-else-if="!targets.length" class="im-empty">还没有同步目标，也可在下方输入自定义目录</div>
           <div v-for="t in targets" :key="t.id || t.path" class="im-row">
             <ProviderIcon :target="t" :size="18" class="im-row-icon" />
             <div class="im-row-info">
@@ -260,6 +261,9 @@
 </template>
 
 <script setup>
+import { useEventBus } from '../composables/useEventBus.js'
+const { emit: emitEvent } = useEventBus()
+const openAgentPicker = () => emitEvent('open-agent-picker')
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { FolderOpen, TriangleAlert, Download } from 'lucide-vue-next'

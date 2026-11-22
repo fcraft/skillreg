@@ -39,3 +39,4 @@ dashboard/playwright-report/
 .idea/
 .vscode/
 .workbuddy/
+.super-agent/

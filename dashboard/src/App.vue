@@ -84,6 +84,7 @@
           @action="toast.onAction()"
         />
       </div>
+      <AgentDirectoryPicker v-if="!workspaceLoading" />
       <QModal v-model="workspaceModalOpen" :title="workspaceCreateCandidate ? '创建新 Workspace' : '切换 Workspace'" width="560px">
         <div v-if="workspaceCreateCandidate" class="workspace-create-confirm">
           <div class="workspace-create-icon"><FolderPlus :size="22" /></div>
@@ -153,6 +154,7 @@ import QButton from './components/QButton.vue'
 import QThemeSwitch from './components/QThemeSwitch.vue'
 import NavItem from './components/NavItem.vue'
 import SkillContextPanel from './components/SkillContextPanel.vue'
+import AgentDirectoryPicker from './components/AgentDirectoryPicker.vue'
 import SkillDetailModal from './components/SkillDetailModal.vue'
 import QToast from './components/QToast.vue'
 import QModal from './components/QModal.vue'

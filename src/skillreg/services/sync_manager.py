@@ -67,7 +67,7 @@ def _write_projects(data: dict) -> None:
 
 
 def get_targets(cfg: SkillregConfig | None = None) -> list[dict]:
-    """Get local sync targets (configured + auto-detected built-in agents)."""
+    """Get local sync targets (configured + enabled built-in agents)."""
     if cfg is None:
         cfg = load_config()
     result = []
@@ -574,9 +574,9 @@ def list_builtin_agents(
         include_legacy=include_legacy,
     ):
         canonical = str(Path(item["path"]).expanduser().absolute())
-        configured = canonical in configured_paths
+        configured = any(sync_targets._local_path_matches(path, canonical) for path in configured_paths)
         enabled = sync_targets._is_builtin_enabled(cfg, item["id"])
-        active = configured or (item["detected"] and enabled)
+        active = configured or enabled
         if item["detected"]:
             detected_count += 1
         if active:
@@ -586,10 +586,13 @@ def list_builtin_agents(
             "configured": configured,
             "enabled": enabled,
             "active": active,
+            "added": active,
         })
     return {
         "agents": agents,
         "detectedCount": detected_count,
+        "onboarding": cfg.agent_onboarding,
+        "hasTargets": bool(configured_paths or active_count),
         "activeCount": active_count,
         "totalCount": len(agents),
     }

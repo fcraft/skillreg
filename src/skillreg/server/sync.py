@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
-from ..services import sync_manager
+from ..services import sync_manager, sync_targets
 from ..services.sync_files import SyncError
 
 router = APIRouter(prefix="/api/sync", tags=["sync"])
@@ -56,6 +57,11 @@ class AddTargetBody(BaseModel):
     name: str
     path: str
     agentKind: str | None = None
+
+
+class JoinAgentsBody(BaseModel):
+    agentIds: list[str]
+    onboarding: Literal["completed", "skipped"] | None = None
 
 
 class UpdateBuiltinAgentBody(BaseModel):
@@ -247,13 +253,22 @@ def target_file(
 @router.get("/agents")
 def list_builtin_agents(
     include_undetected: bool = Query(True),
-    include_legacy: bool = Query(False),
+    include_legacy: bool = Query(True),
 ):
     """List built-in coding agent directory conventions and local detection status."""
     return sync_manager.list_builtin_agents(
         include_undetected=include_undetected,
         include_legacy=include_legacy,
     )
+
+
+@router.post("/agents/join")
+def join_agents(body: JoinAgentsBody):
+    try:
+        sync_targets.join_builtin_agents(body.agentIds, body.onboarding)
+    except SyncError as exc:
+        raise_sync_http_error(exc)
+    return {"success": True}
 
 
 @router.put("/agents/{agent_id}")

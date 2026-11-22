@@ -79,6 +79,8 @@ SSH 同步入口为 Dashboard `/ssh`，以及 CLI `connection`、`target discove
 `sync run/history/retry/cancel`、`sync status --target-id`。具体参数以 help 为准，
 前置条件和状态边界见 `docs/ssh-sync.md`
 
+本机 Agent 探测只返回候选，显式保存或启用的目录才进入目标清单。首次引导结果随本地 config.json 持久化。
+
 已保存目标的轻量目录探测与按需文档读取由 `sync_inventory.py` 提供，CLI 为
 `target inventory <id>` 和 `target read-skill <id> <name>`。Dashboard 添加目标后
 依次探测新增目录；其他目标按需探测。目录列表不递归读取内容，也不代表同步状态

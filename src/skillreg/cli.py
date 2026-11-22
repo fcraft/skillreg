@@ -395,7 +395,7 @@ def convert_skill(name: str) -> None:
 @target.command("list")
 @click.option("--json", "as_json", is_flag=True, help="输出带稳定 ID 的目标列表")
 def list_targets(as_json: bool) -> None:
-    """列出已配置及自动识别的内置同步目标。"""
+    """列出已加入的同步目标。"""
     from .services.sync_targets import target_records
     targets = target_records()
     if as_json:

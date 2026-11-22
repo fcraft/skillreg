@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -121,6 +123,7 @@ def configure_app(temp_root: Path) -> None:
     sync_manager._PROJECTS_FILE = sync_manager._PROJECTS_DIR / "projects.json"
     cfg = cfgmod.load_config()
     cfg.workspace_path = str(workspace)
+    cfg.agent_onboarding = "skipped"
     cfg.targets = [str(target)]
     cfgmod.save_config(cfg)
 
@@ -128,10 +131,23 @@ def configure_app(temp_root: Path) -> None:
 
 
 def main() -> None:
-    temp_root = Path(tempfile.mkdtemp(prefix="skillreg-dashboard-e2e-"))
+    temp_root = Path.home() if "--first-visit" in sys.argv else Path(tempfile.mkdtemp(prefix="skillreg-dashboard-e2e-"))
     configure_app(temp_root)
+    if "--first-visit" in sys.argv:
+        cfg = cfgmod.load_config()
+        cfg.targets = []
+        cfg.agent_onboarding = "pending"
+        cfgmod.save_config(cfg)
+        for name in (".claude", ".cursor"):
+            (Path.home() / name).mkdir()
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1", 0))
+            print(f"http://127.0.0.1:{sock.getsockname()[1]}", flush=True)
+            server = uvicorn.Server(uvicorn.Config(create_app(), log_level="warning"))
+            server.run(sockets=[sock])
+        return
     app = create_app()
-    uvicorn.run(app, host="127.0.0.1", port=8765, log_level="warning")
+    uvicorn.run(app, host="127.0.0.1", port=int(os.environ.get("SKILLREG_E2E_PORT", 8765)), log_level="warning")
 
 
 if __name__ == "__main__":
