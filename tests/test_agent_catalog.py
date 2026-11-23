@@ -222,7 +222,7 @@ def test_discover_project_agent_dirs_covers_common_coding_agents(tmp_path):
     assert by_agent["agents"]["exists"] is True
 
 
-def test_zero_config_builtin_targets_work_via_api_and_preserve_manual_targets(
+def test_discovered_agents_join_by_choice_and_preserve_manual_targets(
     tmp_path, monkeypatch
 ):
     home, _workspace = _setup_env(tmp_path, monkeypatch, skills=["demo-skill"])
@@ -233,14 +233,25 @@ def test_zero_config_builtin_targets_work_via_api_and_preserve_manual_targets(
 
     client = TestClient(create_app())
 
-    # Without any manually configured targets, built-ins appear immediately.
+    assert client.get("/api/sync/config").json()["targets"] == []
+    candidates = client.get("/api/sync/agents").json()
+    assert candidates["onboarding"] == "pending"
+    assert len(candidates["agents"]) == 31
+    assert not any(agent["added"] for agent in candidates["agents"])
+    invalid = client.post("/api/sync/agents/join", json={"agentIds": ["cursor", "unknown"]})
+    assert invalid.status_code == 404
+    assert client.get("/api/sync/config").json()["targets"] == []
+    joined = client.post("/api/sync/agents/join", json={
+        "agentIds": ["claude", "cursor"], "onboarding": "completed",
+    })
+    assert joined.status_code == 200
+    assert cfgmod.load_config().agent_onboarding == "completed"
     cfg_resp = client.get("/api/sync/config")
-    assert cfg_resp.status_code == 200
     targets = cfg_resp.json()["targets"]
     assert [t["agentKind"] for t in targets] == ["claude", "cursor"]
     assert all(t["builtin"] is True for t in targets)
 
-    # Installing directly to a built-in target works with zero manual setup.
+    # Joined targets support installation by display name.
     exec_resp = client.post(
         "/api/sync/execute",
         json={"target": "Claude Code", "skills": ["demo-skill"]},
@@ -286,6 +297,11 @@ def test_zero_config_builtin_targets_work_via_api_and_preserve_manual_targets(
     assert claude_entries[0]["name"] == "work-claude"
     assert claude_entries[0]["builtin"] is False
 
+    assert client.delete("/api/sync/targets/work-claude").status_code == 200
+    candidate = next(a for a in client.get("/api/sync/agents").json()["agents"] if a["id"] == "claude")
+    assert candidate["detected"] and not candidate["added"]
+    assert (home / ".claude/skills/demo-skill/SKILL.md").is_file()
+
     # Built-in agents can be hidden and re-enabled cleanly.
     hide_resp = client.put("/api/sync/agents/cursor", json={"enabled": False})
     assert hide_resp.status_code == 200
@@ -318,7 +334,7 @@ def test_zero_config_builtin_targets_work_via_api_and_preserve_manual_targets(
     assert rename_resp.status_code == 400
 
 
-def test_cli_target_list_discover_and_zero_config_sync(tmp_path, monkeypatch):
+def test_cli_discover_then_add_and_sync(tmp_path, monkeypatch):
     home, _workspace = _setup_env(tmp_path, monkeypatch, skills=["alpha"])
     (home / ".cursor").mkdir()
     (home / ".cursor" / "mcp.json").write_text("{}", encoding="utf-8")
@@ -330,8 +346,7 @@ def test_cli_target_list_discover_and_zero_config_sync(tmp_path, monkeypatch):
     listed = runner.invoke(cli, ["target", "list", "--json"])
     assert listed.exit_code == 0, listed.output
     records = json.loads(listed.output)
-    assert [r["agentKind"] for r in records] == ["cursor", "opencode"]
-    assert all(r["builtin"] is True for r in records)
+    assert records == []
 
     discovered = runner.invoke(cli, ["target", "discover"])
     assert discovered.exit_code == 0, discovered.output
@@ -344,6 +359,8 @@ def test_cli_target_list_discover_and_zero_config_sync(tmp_path, monkeypatch):
     payload_all = json.loads(discovered_all.output)
     assert payload_all["totalCount"] > payload_all["detectedCount"]
 
+    added = runner.invoke(cli, ["target", "add", str(home / ".config/opencode/skills")])
+    assert added.exit_code == 0, added.output
     synced = runner.invoke(cli, ["sync", "execute", "--target", "opencode"])
     assert synced.exit_code == 0, synced.output
     assert (home / ".config" / "opencode" / "skills" / "alpha" / "SKILL.md").is_file()
@@ -451,6 +468,10 @@ def test_sync_apis_serialize_provider_icons_for_builtin_custom_and_project_targe
     assert add_resp.status_code == 200
     assert add_resp.json()["target"]["icon"] == "custom"
 
+    response = client.post("/api/sync/agents/join", json={
+        "agentIds": ["agents", "claude", "antigravity", "codebuddy", "workbuddy"],
+    })
+    assert response.status_code == 200
     # /api/sync/config and /api/sync/targets serialize icons for both custom and built-in targets.
     for endpoint in ("/api/sync/config", "/api/sync/targets", "/api/targets"):
         resp = client.get(endpoint)
@@ -508,3 +529,17 @@ def test_sync_apis_serialize_provider_icons_for_builtin_custom_and_project_targe
 
     worker_proj = sync_files.dispatch({"operation": "discover", "root": str(project_dir)})
     assert {t["icon"] for t in worker_proj["targets"]} == {"claude", "cursor"}
+
+
+def test_legacy_membership_and_skipped_onboarding(tmp_path, monkeypatch):
+    home, _ = _setup_env(tmp_path, monkeypatch)
+    cfgmod.CONFIG_FILE.write_text(json.dumps({
+        "targets": ["~/.cursor/skills"],
+        "agents": {"codex": {"enabled": True}, "claude": {"enabled": False}},
+    }))
+    client = TestClient(create_app())
+    assert {row["agentKind"] for row in client.get("/api/sync/targets").json()} == {"codex", "cursor"}
+    assert client.post("/api/sync/agents/join", json={"agentIds": [], "onboarding": "skipped"}).is_success
+    assert TestClient(create_app()).get("/api/sync/agents").json()["onboarding"] == "skipped"
+    assert client.delete("/api/sync/targets/codex").is_success
+    assert not (home / ".codex").exists()

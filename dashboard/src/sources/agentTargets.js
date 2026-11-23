@@ -59,7 +59,7 @@ export function classifyTargets(targets = []) {
 export function targetBadgeText(target) {
   if (!target) return ''
   if (target.builtin) {
-    return target.shared ? '内置 · 共享' : '自动识别'
+    return target.shared ? '内置 · 共享' : '内置'
   }
   return ''
 }
@@ -119,11 +119,13 @@ export function resolveTargetExecuteKey(target) {
 }
 
 export function pickQuickPresets(agents = [], limit = 8) {
-  const candidates = (agents || []).filter(agent => !agent.configured && !agent.legacy)
-  const sorted = [
-    ...candidates.filter(agent => !agent.active && agent.detected),
-    ...candidates.filter(agent => !agent.detected),
-    ...candidates.filter(agent => agent.active),
-  ]
-  return sorted.slice(0, limit)
+  const available = agents.filter(agent => !agent.added && !agent.legacy)
+  const { detected, presets } = partitionAgentCatalog(available)
+  return [...detected, ...presets].slice(0, limit)
+}
+
+export function needsAgentOnboarding(catalog) {
+  return catalog.onboarding === 'pending' && (
+    !catalog.hasTargets || catalog.agents.some(agent => agent.detected && !agent.added)
+  )
 }

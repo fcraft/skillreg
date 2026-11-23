@@ -19,7 +19,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -48,6 +48,7 @@ class SkillregConfig(BaseModel):
         default_factory=dict,
         description="Optional per-target skill whitelist keyed by target path/name.",
     )
+    agent_onboarding: Literal["pending", "completed", "skipped"] = "pending"
     agents: Dict[str, Any] = Field(
         default_factory=dict,
         description="Agent conventions map. Keys are agent names "

@@ -315,6 +315,10 @@ export function fetchBuiltinAgents(includeUndetected = true) {
   return get(`/api/sync/agents${qs}`)
 }
 
+export function joinBuiltinAgents(agentIds, onboarding = null) {
+  return post('/api/sync/agents/join', { agentIds, onboarding })
+}
+
 export function setBuiltinAgentEnabled(agentId, enabled) {
   return put(`/api/sync/agents/${encodeURIComponent(agentId)}`, { enabled: Boolean(enabled) })
 }

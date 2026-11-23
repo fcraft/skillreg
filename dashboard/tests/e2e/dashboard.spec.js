@@ -241,10 +241,12 @@ test('target file management shows the contents of an existing target', async ({
   const action = row.locator('.target-file-actions .qqx-btn')
   await expect(badge).toHaveCSS('height', '24px')
   await expect(action).toHaveCSS('height', '24px')
-  const [badgeBox, actionBox] = await Promise.all([badge.boundingBox(), action.boundingBox()])
-  expect(badgeBox).not.toBeNull()
-  expect(actionBox).not.toBeNull()
-  expect(Math.abs((badgeBox.y + badgeBox.height / 2) - (actionBox.y + actionBox.height / 2))).toBeLessThanOrEqual(1)
+  const centerOffset = await row.evaluate(element => {
+    const badgeBox = element.querySelector('.target-file-badge').getBoundingClientRect()
+    const actionBox = element.querySelector('.target-file-actions .qqx-btn').getBoundingClientRect()
+    return Math.abs((badgeBox.y + badgeBox.height / 2) - (actionBox.y + actionBox.height / 2))
+  })
+  expect(centerOffset).toBeLessThanOrEqual(1)
 })
 
 test('spa fallback supports direct route entry', async ({ page }) => {

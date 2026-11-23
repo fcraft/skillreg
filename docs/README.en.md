@@ -6,7 +6,7 @@
 
 `skillreg` manages local AI agent skills. Register any folder containing
 `SKILL.md` into a shared workspace, then sync it to Claude, Codex, CodeBuddy,
-`~/.agents/skills`, or other agent skill directories.
+`~/.agents/skills`, or other agent skill directories. On your first Dashboard visit, select the agents to add as sync targets. You can also add them later from the Sync page.
 
 ## Capabilities
 

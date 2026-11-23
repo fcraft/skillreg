@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from pathlib import Path, PurePosixPath
 from threading import RLock
+from typing import Literal
 
 from ..config import load_config, save_config
 from . import agent_catalog
@@ -75,9 +76,7 @@ def _local_path_matches(record_path: str, identifier: str) -> bool:
 
 def _is_builtin_enabled(cfg, agent_id: str) -> bool:
     entry = cfg.agents.get(agent_id)
-    if isinstance(entry, dict) and entry.get("enabled") is False:
-        return False
-    return True
+    return isinstance(entry, dict) and entry.get("enabled") is True
 
 
 def configured_target_records(cfg=None) -> list[dict]:
@@ -122,7 +121,7 @@ def configured_target_records(cfg=None) -> list[dict]:
 
 
 def builtin_target_records(cfg=None, *, include_disabled: bool = False) -> list[dict]:
-    """Return auto-detected built-in agent targets not already overridden in config."""
+    """Return explicitly enabled presets without duplicating configured targets."""
     cfg = cfg or load_config()
     configured_local = {
         _canonical_local_path(r["path"])
@@ -130,7 +129,9 @@ def builtin_target_records(cfg=None, *, include_disabled: bool = False) -> list[
         if r["transport"] == "local"
     }
     records = []
-    for item in agent_catalog.detect_home_agents(include_undetected=False):
+    if not include_disabled and not any(_is_builtin_enabled(cfg, key) for key in cfg.agents):
+        return records
+    for item in agent_catalog.detect_home_agents(include_undetected=True, include_legacy=True):
         canonical = _canonical_local_path(item["path"])
         if canonical in configured_local or any(
             _local_path_matches(cp, canonical) for cp in configured_local
@@ -174,7 +175,7 @@ def builtin_target_records(cfg=None, *, include_disabled: bool = False) -> list[
 
 
 def target_records(cfg=None, *, include_builtin: bool = True) -> list[dict]:
-    """Return configured targets (first) merged with auto-detected built-in targets."""
+    """Return configured targets (first) merged with enabled built-in targets."""
     cfg = cfg or load_config()
     configured = configured_target_records(cfg)
     if not include_builtin:
@@ -323,9 +324,6 @@ def add_target(
             "projectRoot": project_root,
             "skills": list(dict.fromkeys(skills or [])),
         }
-        if agent_kind and isinstance(cfg.agents.get(agent_kind), dict):
-            if cfg.agents[agent_kind].get("enabled") is False:
-                cfg.agents[agent_kind] = {**cfg.agents[agent_kind], "enabled": True}
         cfg.targets = [_storable_record(r) for r in records] + [record]
         save_config(cfg)
         return {
@@ -389,17 +387,44 @@ def remove_target(identifier: str) -> None:
             agent_id = selected.get("agentKind")
             if not agent_id:
                 raise SyncError("Built-in target has no agent identifier")
-            existing = cfg.agents.get(agent_id)
-            next_entry = dict(existing) if isinstance(existing, dict) else {}
-            next_entry["enabled"] = False
-            cfg.agents[agent_id] = next_entry
+            _set_enabled(cfg, agent_id, False)
             save_config(cfg)
             return
         configured = configured_target_records(cfg)
         cfg.targets = [
             _storable_record(r) for r in configured if r["id"] != selected["id"]
         ]
+        if selected["transport"] == "local":
+            for spec in agent_catalog.list_builtin_agents(include_legacy=True):
+                if _is_builtin_enabled(cfg, spec.id):
+                    _, path, _ = agent_catalog.resolve_global_agent_paths(spec)
+                    if _local_path_matches(selected["path"], str(path)):
+                        cfg.agents[spec.id]["enabled"] = False
         cfg.target_skill_filters.pop(selected["path"], None)
+        save_config(cfg)
+
+
+def _set_enabled(cfg, agent_id: str, enabled: bool) -> None:
+    existing = cfg.agents.get(agent_id)
+    entry = dict(existing) if isinstance(existing, dict) else {}
+    cfg.agents[agent_id] = {**entry, "enabled": enabled}
+
+
+def join_builtin_agents(
+    agent_ids: list[str], onboarding: Literal["completed", "skipped"] | None = None,
+) -> None:
+    specs = []
+    for agent_id in dict.fromkeys(agent_ids):
+        spec = agent_catalog.get_agent_spec(agent_id)
+        if spec is None:
+            raise SyncError("Unknown built-in agent: " + agent_id, "not-found")
+        specs.append(spec)
+    with _LOCK:
+        cfg = load_config()
+        for spec in specs:
+            _set_enabled(cfg, spec.id, True)
+        if onboarding:
+            cfg.agent_onboarding = onboarding
         save_config(cfg)
 
 
@@ -410,9 +435,6 @@ def set_builtin_agent_enabled(agent_id: str, enabled: bool) -> dict:
         raise SyncError("Unknown built-in agent: " + agent_id, "not-found")
     with _LOCK:
         cfg = load_config()
-        existing = cfg.agents.get(spec.id)
-        entry = dict(existing) if isinstance(existing, dict) else {}
-        entry["enabled"] = bool(enabled)
-        cfg.agents[spec.id] = entry
+        _set_enabled(cfg, spec.id, enabled)
         save_config(cfg)
     return {"id": spec.id, "name": spec.name, "icon": spec.icon, "enabled": bool(enabled)}

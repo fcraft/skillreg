@@ -26,7 +26,7 @@
 
 `skillreg` 用来管理本地 AI Agent Skills。你可以把任意项目里写好的
 `SKILL.md` 注册到统一 workspace，再同步到 Claude、Codex、CodeBuddy 或
-`~/.agents/skills` 等 agent skill 目录。
+`~/.agents/skills` 等 agent skill 目录。首次打开 Dashboard 时，勾选本机发现的 Agent 即可加入同步目标。也可以稍后从「Sync 工具」添加。
 
 ## 能力
 
