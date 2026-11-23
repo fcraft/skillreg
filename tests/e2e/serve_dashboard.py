@@ -142,6 +142,7 @@ def main() -> None:
             (Path.home() / name).mkdir()
         with socket.socket() as sock:
             sock.bind(("127.0.0.1", 0))
+            sock.listen()
             print(f"http://127.0.0.1:{sock.getsockname()[1]}", flush=True)
             server = uvicorn.Server(uvicorn.Config(create_app(), log_level="warning"))
             server.run(sockets=[sock])
